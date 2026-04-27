@@ -17,7 +17,7 @@
 - **노래 채널(Soundroom)**: `/세팅`으로 전용 텍스트 채널·패널 생성 후, **채팅 검색어·패널 버튼·대기열 패널·(일반 채널의) 플레이어 버튼**으로 재생·대기열·일시정지 등 조작 (레포에는 `/play`·24/7·가사·Top.gg 투표 같은 **옛 일반 음악봇 루트는 제거**됨)
 - 플레이리스트: **`/playlist`**(한국어 표기: **`/플레이리스트`**) 한 개만 등록 — 서브로 `create` / `add` / `load` / `view` / `remove` / `delete`
 - 인기차트: **전역** 유튜브 재생목록 하나 — `.env`의 `DISCORD_OWNER_IDS`에 넣은 **제작자만** `/melon_chart`(또는 `/인기차트-관리`)로 등록·해제. 등록해 두면 **모든 서버** 노래 채널 **[인기차트]** 버튼이 같은 목록을 재생
-- SQLite 저장소: 서버 설정, 최근 재생, 플레이리스트 저장 (`storage/`·`*.sqlite`는 `.gitignore` — **예전에 DB를 커밋했다면** `git rm --cached -r --ignore-unmatch storage/*.sqlite` 후 한 번 정리)
+- SQLite 저장소: 서버 설정, 최근 재생, 플레이리스트 저장 (런타임 DB는 레포 루트 **`/storage/`**·`*.sqlite`는 `.gitignore` — **예전에 DB를 커밋했다면** `git rm --cached -r --ignore-unmatch storage/*.sqlite` 후 한 번 정리)
 
 ## 준비
 
