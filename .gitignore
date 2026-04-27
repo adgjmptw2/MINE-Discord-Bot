@@ -1,0 +1,16 @@
+.env
+.env.*
+!.env.example
+
+node_modules/
+dist/
+# 런타임 SQLite 디렉터리(레포 루트). src/storage 코드는 포함
+/storage/
+
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+*.log
+*.tsbuildinfo
+.DS_Store

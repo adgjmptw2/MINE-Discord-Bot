@@ -1,0 +1,51 @@
+{
+  "name": "mine-soundroom",
+  "description": "Discord music bot (마인 노래채널 / Soundroom).",
+  "version": "2.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "engines": {
+    "node": ">=20 <25"
+  },
+  "scripts": {
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true});\"",
+    "prebuild": "npm run clean",
+    "build": "tsc --project tsconfig.json && tsc-alias -p tsconfig.json",
+    "start": "npm run build && node dist/launcher.js",
+    "start:bot": "npm run build && node dist/index.js",
+    "start:bun": "bun run build && bun dist/launcher.js",
+    "start:bot:bun": "bun run build && bun dist/index.js",
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "format": "prettier --write \"src/**/*.{ts,d.ts}\"",
+    "check": "npm run typecheck",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.10.0",
+    "discord.js": "^14.21.0",
+    "dotenv": "^17.3.1",
+    "drizzle-orm": "^0.44.2",
+    "pretty-ms": "^9.2.0",
+    "riffy": "^1.0.12"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^24.5.2",
+    "drizzle-kit": "^0.31.4",
+    "prettier": "^3.6.2",
+    "tsc-alias": "^1.8.16",
+    "typescript": "^5.9.2"
+  },
+  "keywords": [
+    "riffy",
+    "music-bot",
+    "discord-music-bot",
+    "soundroom",
+    "discord-bot",
+    "typescript"
+  ],
+  "author": "마인",
+  "license": "MIT"
+}
