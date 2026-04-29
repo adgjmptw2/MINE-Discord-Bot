@@ -93,7 +93,7 @@ export async function handleSoundroomButton(client: MineClient, interaction: But
   if (interaction.customId === "sr_pick_alt" || interaction.customId === "sr_error_log") {
     const text =
       interaction.customId === "sr_pick_alt"
-        ? "지금은 검색 1위 결과만 자동 재생됩니다."
+        ? "채팅으로 넣은 곡은 **한 곡**만 대기열에 들어갑니다. 관련 재생목록 전체는 **자동 재생** 버튼을 사용해 주세요."
         : "저장된 오류 기록이 없습니다.";
     await interaction.reply({ content: text, flags: MessageFlags.Ephemeral });
     scheduleEphemeralReplyDelete(interaction);
@@ -216,11 +216,11 @@ export async function handleSoundroomButton(client: MineClient, interaction: But
   }
 
   if (interaction.customId === "sr_search") {
-    const modal = new ModalBuilder().setCustomId("sr_search_modal").setTitle("음악 검색");
+    const modal = new ModalBuilder().setCustomId("sr_search_modal").setTitle("자동 재생");
 
     const input = new TextInputBuilder()
       .setCustomId("sr_search_query")
-      .setLabel("노래 이름 또는 YouTube 링크")
+      .setLabel("한 곡 (제목 또는 링크)")
       .setStyle(TextInputStyle.Short)
       .setRequired(true)
       .setMaxLength(200);

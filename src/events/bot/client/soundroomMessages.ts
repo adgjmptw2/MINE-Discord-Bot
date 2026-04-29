@@ -22,6 +22,24 @@ export function buildSoundroomResolveQuery(raw: string): string {
   return trimmed;
 }
 
+/** 전용 playlist URL이면 true. watch+list(믹스)는 false — 채팅은 1곡만. */
+export function isExplicitFullPlaylistIntentUrl(raw: string): boolean {
+  const q = raw.trim().toLowerCase();
+  if (/youtube\.com\/playlist\?list=[^&\s#]+/i.test(q)) {
+    return true;
+  }
+  if (/music\.youtube\.com\/playlist\?list=[^&\s#]+/i.test(q)) {
+    return true;
+  }
+  if (/open\.spotify\.com\/playlist\//i.test(q)) {
+    return true;
+  }
+  if (/soundcloud\.com\/[^/]+\/sets\//i.test(q)) {
+    return true;
+  }
+  return false;
+}
+
 export async function tryHandleSoundroomMessage(client: MineClient, message: Message): Promise<boolean> {
   if (!message.guild || message.author.bot) {
     return false;
@@ -69,22 +87,25 @@ export async function tryHandleSoundroomMessage(client: MineClient, message: Mes
   }
 
   let notifyTrack: ExtendedTrack;
-  if (resolve.loadType === "playlist") {
+  let playlistCount: number | undefined;
+  let playlistName: string | undefined;
+
+  if (resolve.loadType === "playlist" && isExplicitFullPlaylistIntentUrl(raw) && tracks.length > 1) {
     for (const t of tracks) {
       t.info.requester = member;
       player.queue.add(t);
     }
     notifyTrack = tracks[0]!;
+    playlistCount = tracks.length;
+    playlistName = resolve.playlistInfo?.name;
   } else {
-    const track = tracks.shift()!;
+    const track = tracks[0]!;
     track.info.requester = member;
     player.queue.add(track);
     notifyTrack = track;
   }
 
   const volPct = Math.round(player.volume ?? 100);
-  const playlistCount = resolve.loadType === "playlist" ? tracks.length : undefined;
-  const playlistName = resolve.loadType === "playlist" ? resolve.playlistInfo?.name : undefined;
   await sendSoundroomAddNotification(ch, notifyTrack, volPct, playlistCount, playlistName);
 
   if (player.queue.length > 0 && !player.playing && !player.paused) {

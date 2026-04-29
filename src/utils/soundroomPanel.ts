@@ -48,7 +48,7 @@ export function buildSoundroomIdlePayload(client: MineClient): BaseMessageOption
   const embed = new EmbedBuilder()
     .setTitle(`${b} 노래 채널`)
     .setColor(0x7c5cff)
-    .setDescription("검색어를 보내거나 아래 버튼으로 바로 음악을 넣을 수 있습니다.");
+    .setDescription("검색어를 채팅창에 보내시거나,\n자동 재생에 한곡을 넣으시면 관련 재생목록이 자동 재생됩니다.");
   if (thumb) {
     embed.setThumbnail(thumb);
   }
@@ -59,7 +59,7 @@ export function buildSoundroomIdlePayload(client: MineClient): BaseMessageOption
   );
 
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId("sr_search").setLabel("음악 검색").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId("sr_search").setLabel("자동 재생").setStyle(ButtonStyle.Success),
   );
 
   return {
@@ -102,7 +102,7 @@ export function buildSoundroomPlayingPayload(client: MineClient, player: Extende
   );
 
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId("sr_search").setLabel("음악 검색").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId("sr_search").setLabel("자동 재생").setStyle(ButtonStyle.Success),
   );
 
   return {

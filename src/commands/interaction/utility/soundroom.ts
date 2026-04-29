@@ -6,6 +6,13 @@ import type { SlashCommand } from "@/types";
 
 const COMMAND_NAME = "세팅";
 
+/** Discord 길드 텍스트 채널 이름에 공백·과도한 길이가 있으면 생성이 실패할 수 있어 정리합니다. */
+function sanitizeGuildTextChannelName(raw: string): string {
+  const trimmed = raw.trim().replace(/\s+/g, "-").slice(0, 100);
+  const noEdgeHyphen = trimmed.replace(/^-+|-+$/g, "");
+  return noEdgeHyphen.length > 0 ? noEdgeHyphen : "mine-soundroom";
+}
+
 const command: SlashCommand = {
   name: COMMAND_NAME,
   description: "Create a dedicated soundroom channel with a control panel.",
@@ -20,7 +27,9 @@ const command: SlashCommand = {
     }
 
     const guild = interaction.guild!;
-    const me = guild.members.me;
+    const me =
+      guild.members.me ??
+      (await guild.members.fetch({ user: client.user!.id, force: true }).catch(() => null));
     if (!me?.permissions.has([PermissionFlagsBits.ManageChannels, PermissionFlagsBits.ManageMessages, PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks])) {
       await interaction.reply({
         flags: MessageFlags.Ephemeral,
@@ -48,7 +57,9 @@ const command: SlashCommand = {
 
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-    const channelName = client.config.soundroom?.channelName?.trim() || "🎵 | 마인-노래채널";
+    const channelName = sanitizeGuildTextChannelName(
+      client.config.soundroom?.channelName?.trim() || "🎵-마인-노래채널",
+    );
 
     try {
       const channel = await guild.channels.create({
@@ -86,9 +97,9 @@ const command: SlashCommand = {
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);
       await interaction.editReply({
-        content: `노래 채널을 만들지 못했습니다. 봇에게 **채널 관리** 등 필요한 권한이 있는지, 채널 이름에 쓸 수 없는 문자가 없는지 확인한 뒤 다시 시도해 주십시오.\n(${detail})`,
+        content: `노래 채널을 만들지 못했습니다.\n• **서버 관리자**가 아니라 **봇 역할**에 채널 관리·메시지 관리·전송·임베드가 있는지 확인하세요.\n• 채널 이름(\`${channelName}\`)에 Discord가 막는 문자가 있으면 \`config.soundroom.channelName\`을 바꿔 주세요.\n(${detail})`,
       });
-      scheduleEphemeralReplyDelete(interaction);
+      scheduleEphemeralReplyDelete(interaction, 120_000);
     }
   },
 };

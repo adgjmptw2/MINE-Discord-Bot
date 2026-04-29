@@ -64,7 +64,8 @@ const config: BotConfig = {
   ],
   soundroom: {
     brandName: "마인",
-    channelName: "🎵 | 마인-노래채널",
+    /** 공백은 Discord 채널 이름에서 거부되는 경우가 많아 하이픈만 사용 */
+    channelName: "🎵-마인-노래채널",
   },
 };
 

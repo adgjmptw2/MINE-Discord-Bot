@@ -138,30 +138,34 @@ export default async function loadSlashCommands(client: MineClient): Promise<voi
   }
 
   const rest = new REST({ version: "10" }).setToken(token);
-  const devGuildId = process.env.DEV_GUILD_ID?.trim();
+  const devGuildRaw = process.env.DEV_GUILD_ID?.trim();
+  const devGuildIds = devGuildRaw
+    ? devGuildRaw
+        .split(",")
+        .map((id) => id.trim())
+        .filter((id) => /^\d{17,22}$/.test(id))
+    : [];
 
   await assertTokenMatchesClientId(rest, client.config.clientid);
 
-  await resetCommandsIfRequested(rest, client.config.clientid, devGuildId);
-  await cleanupOldCommands(rest, client.config.clientid, devGuildId, new Set(uniqueSlash.map((command) => command.name)));
-  await rest.put(commandsListRoute(client.config.clientid, devGuildId), { body: applicationCommandsJsonBody(uniqueSlash) });
+  const primaryDevGuildId = devGuildIds[0];
+  await resetCommandsIfRequested(rest, client.config.clientid, primaryDevGuildId);
 
-  /**
-   * DEV_GUILD_ID로 길드 전용 등록만 하면, 과거에 같은 앱에 등록해 둔 **글로벌** 슬래시가 삭제되지 않아
-   * Discord가 글로벌+길드 명령을 합쳐 보여 줌 → `/247`, `/eval` 등 옛 명령이 계속 보이는 현상.
-   */
-  if (devGuildId) {
-    await rest.put(Routes.applicationCommands(client.config.clientid), { body: [] });
-    log(
-      "success",
-      "commands",
-      "DEV_GUILD_ID: cleared GLOBAL slash commands for this app (only this guild's 3 commands stay visible).",
-    );
+  const commandJson = applicationCommandsJsonBody(uniqueSlash);
+  const validNames = new Set(uniqueSlash.map((command) => command.name));
+
+  for (const gid of devGuildIds) {
+    await cleanupOldCommands(rest, client.config.clientid, gid, validNames);
+    await rest.put(Routes.applicationGuildCommands(client.config.clientid, gid), { body: commandJson });
+    log("success", "commands", `Registered ${uniqueSlash.length} guild slash commands for guild ${gid} (즉시 반영)`);
   }
 
-  if (devGuildId) {
-    log("success", "commands", `Registered ${uniqueSlash.length} guild slash commands for guild ${devGuildId} (즉시 반영)`);
-  } else {
-    log("success", "commands", `Registered ${uniqueSlash.length} global slash commands (Discord 반영에 최대 ~1시간 걸릴 수 있음)`);
+  // 글로벌 전부 덮어쓰기(옛 명령 제거). DEV_GUILD_ID 있어도 비우지 않음.
+  await cleanupOldCommands(rest, client.config.clientid, undefined, validNames);
+  await rest.put(Routes.applicationCommands(client.config.clientid), { body: commandJson });
+  log("success", "commands", `Registered ${uniqueSlash.length} global slash commands (전 서버, 반영 ~1h)`);
+
+  if (devGuildIds.length > 0) {
+    log("info", "commands", `DEV_GUILD_ID: ${devGuildIds.length}개 길드는 즉시, 나머지는 글로벌 대기.`);
   }
 }
