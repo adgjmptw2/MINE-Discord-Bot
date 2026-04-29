@@ -8,9 +8,9 @@
 
 ![노래 채널 패널](docs/readme-soundroom-panel.png)
 
-지금 재생 중 패널:
+지금 재생 중 · 대기열:
 
-![지금 재생 중](docs/readme-player-and-queue.png)
+![지금 재생 중 · 대기열](docs/readme-player-and-queue.png)
 
 ## 기능
 
@@ -41,4 +41,4 @@ bun install
 bun run start:bot:bun
 ```
 
-**`DEV_GUILD_ID`:** 쉼표로 여러 길드 ID를 넣을 수 있습니다. **해당 길드에는 슬래시가 즉시** 반영되고, 봇은 **글로벌 슬래시도 항상 같은 목록으로 덮어씁니다**(다른 서버 반영까지 최대 약 1시간). 여전히 특정 서버에만 `/`가 안 뜨면 봇 초대 URL에 **`scope=bot%20applications.commands`**(슬래시 권한)가 포함됐는지 확인하세요.
+**`DEV_GUILD_ID`:** 쉼표로 여러 길드 ID를 넣을 수 있습니다. 나열한 길드에는 슬래시가 바로 반영되고, 봇은 글로벌 슬래시도 같은 명령 목록으로 등록합니다. 그 외 서버는 Discord 쪽 반영까지 최대 약 1시간 걸릴 수 있습니다. 특정 서버에만 `/`가 안 보이면 봇 초대 URL에 **`scope=bot%20applications.commands`**가 들어 있는지 확인하세요.
