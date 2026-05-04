@@ -34,7 +34,7 @@ export function setMelonChartSource(rawUrl: string): { ok: true; parsed: ParsedY
     return {
       ok: false,
       message:
-        "유튜브 재생목록이 인식되지 않았습니다. `playlist?list=…` 주소이거나, 목록에 포함된 영상의 `watch?v=…&list=…` / `youtu.be/…?list=…` 링크를 넣어 주십시오.",
+        "유튜브 재생목록이 인식되지 않았습니다. `playlist?list=…` 주소이거나, 목록에 포함된 영상의 `watch?v=…&list=…` / `youtu.be/…?list=…` 링크를 넣어 주세요.",
     };
   }
   const now = new Date().toISOString();

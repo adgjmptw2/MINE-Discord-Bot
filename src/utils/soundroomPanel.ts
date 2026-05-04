@@ -8,8 +8,13 @@ import {
   type GuildTextBasedChannel,
 } from "discord.js";
 import { getSoundroom } from "@/storage/soundroom";
-import { formatDuration } from "@/utils/discord";
+import { formatDuration, truncate } from "@/utils/discord";
 import { getPlayer } from "@/utils/commands";
+import {
+  countUserSoundroomQueue,
+  getAutoplayState,
+  isSoundroomAutoplayTrack,
+} from "@/utils/soundroomAutoplay";
 import type { ExtendedPlayer, ExtendedTrack, MineClient } from "@/types";
 
 function brand(client: MineClient): string {
@@ -48,7 +53,9 @@ export function buildSoundroomIdlePayload(client: MineClient): BaseMessageOption
   const embed = new EmbedBuilder()
     .setTitle(`${b} 노래 채널`)
     .setColor(0x7c5cff)
-    .setDescription("검색어를 채팅창에 보내시거나,\n자동 재생에 한곡을 넣으시면 관련 재생목록이 자동 재생됩니다.");
+    .setDescription(
+      "채팅에 검색어 또는 유튜브 링크를 입력하면 재생됩니다.\n자동 재생은 재생 중 패널 버튼으로 켜고 끌 수 있습니다.",
+    );
   if (thumb) {
     embed.setThumbnail(thumb);
   }
@@ -58,13 +65,9 @@ export function buildSoundroomIdlePayload(client: MineClient): BaseMessageOption
     new ButtonBuilder().setCustomId("sr_melon").setLabel("인기차트").setStyle(ButtonStyle.Secondary),
   );
 
-  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId("sr_search").setLabel("자동 재생").setStyle(ButtonStyle.Success),
-  );
-
   return {
     embeds: [embed],
-    components: [row1, row2],
+    components: [row1],
   };
 }
 
@@ -86,9 +89,34 @@ export function buildSoundroomPlayingPayload(client: MineClient, player: Extende
 
   const requester = track.info.requester?.user.username ?? "알 수 없음";
 
-  const embed = new EmbedBuilder().setTitle("지금 재생 중").setColor(client.config.color).setDescription(desc).setFooter({
-    text: `신청자: ${requester} | 볼륨: ${volPct}% • ${koreanFooterTime()}`,
-  });
+  const ap = getAutoplayState(player.guildId);
+  const userQueued = countUserSoundroomQueue(player);
+
+  const embed = new EmbedBuilder()
+    .setTitle("지금 재생 중")
+    .setColor(client.config.color)
+    .setDescription(desc)
+    .setFooter({
+      text: `신청자: ${requester} | 볼륨: ${volPct}% • 자동 재생 ${ap.enabled ? "ON" : "OFF"} • ${koreanFooterTime()}`,
+    });
+  if (ap.enabled) {
+    if (userQueued === 0) {
+      const nextAp = player.queue.find(isSoundroomAutoplayTrack);
+      const hintTitle = nextAp?.info.title?.trim() || ap.autoplayNextHintTitle?.trim() || "";
+      const hintLine = hintTitle ? truncate(hintTitle, 90) : "—";
+      embed.addFields({
+        name: "대기열",
+        value: `대기열이 비어있습니다.\n자동 재생 예정: ${hintLine}`,
+        inline: false,
+      });
+    }
+  } else if (userQueued === 0 && player.queue.length === 0) {
+    embed.addFields({
+      name: "대기열",
+      value: "다음 곡이 없습니다. 재생이 끝난 뒤 1분이 지나면 음성 채널에서 나갑니다.",
+      inline: false,
+    });
+  }
   if (thumb) {
     embed.setThumbnail(thumb).setImage(thumb);
   }
@@ -102,7 +130,10 @@ export function buildSoundroomPlayingPayload(client: MineClient, player: Extende
   );
 
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId("sr_search").setLabel("자동 재생").setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId("sr_autoplay_toggle")
+      .setLabel(ap.enabled ? "자동 재생 ON" : "자동 재생 OFF")
+      .setStyle(ap.enabled ? ButtonStyle.Success : ButtonStyle.Danger),
   );
 
   return {
@@ -178,7 +209,9 @@ export async function sendSoundroomAddNotification(
       .setDescription(`[${track.info.title}](${track.info.uri}) (${formatDuration(track.info.length)})`);
   }
 
-  embed.setThumbnail(track.info.thumbnail ?? null).setFooter({ text: `재생이 불안정하면 Lavalink 서버를 확인하세요 | 볼륨: ${volumePercent}%` });
+  embed
+    .setThumbnail(track.info.thumbnail ?? null)
+    .setFooter({ text: `재생이 끊기면 Lavalink·네트워크 설정을 확인해 주세요. | 볼륨: ${volumePercent}%` });
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId("sr_pick_alt").setLabel("다른 결과").setStyle(ButtonStyle.Secondary),

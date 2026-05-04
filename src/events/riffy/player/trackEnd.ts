@@ -1,4 +1,5 @@
 import { isSoundroomTextChannel } from "@/storage/soundroom";
+import { ensureSeedTrack, setLastEndedTrack } from "@/utils/soundroomAutoplay";
 import { panelMessage } from "@/utils/discord";
 import type { ExtendedPlayer, ExtendedTrack, MineClient } from "@/types";
 
@@ -9,15 +10,20 @@ export default function registerTrackEnd(client: MineClient): void {
     const reason = typeof rawReason === "string" ? rawReason : "finished";
     const channel = client.channels.cache.get(player.textChannel);
 
+    if (isSoundroomTextChannel(player.guildId, player.textChannel)) {
+      if (track) {
+        setLastEndedTrack(player.guildId, track);
+        ensureSeedTrack(player.guildId, track);
+      }
+      return;
+    }
+
     if (!channel || !("send" in channel) || typeof channel.send !== "function") {
       return;
     }
 
-    if (isSoundroomTextChannel(player.guildId, player.textChannel)) {
-      return;
-    }
-
-    await channel.send(
+    await channel
+      .send(
       panelMessage({
         panel: {
           eyebrow: "마인 노래 봇",

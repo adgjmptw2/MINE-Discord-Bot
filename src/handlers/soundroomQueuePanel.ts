@@ -19,47 +19,57 @@ import {
 import { getPlayer } from "@/utils/commands";
 import { formatTrackDuration, truncate } from "@/utils/discord";
 import { scheduleEphemeralReplyDelete, scheduleQueuePanelEphemeralDelete } from "@/utils/ephemeralCleanup";
+import {
+  setSoundroomQueueUserThenAutoplay,
+  splitSoundroomQueue,
+  userSoundroomQueueEntries,
+} from "@/utils/soundroomAutoplay";
 import type { ExtendedPlayer, ExtendedTrack, MineClient } from "@/types";
 
-/** 한 페이지에 보여줄 대기열 곡 수 */
+/** 한 페이지에 보여줄 신청 곡 수. 자동재생 예약 곡은 숨깁니다. */
 export const SOUNDROOM_QUEUE_PAGE_SIZE = 5;
 
-function queueToArray(player: ExtendedPlayer): ExtendedTrack[] {
-  const tracks = [...player.queue];
-  player.queue.clear();
-  return tracks;
+function userQueueLength(player: ExtendedPlayer): number {
+  return userSoundroomQueueEntries(player).length;
 }
 
-function arrayToQueue(player: ExtendedPlayer, tracks: ExtendedTrack[]): void {
-  for (const t of tracks) {
-    player.queue.add(t);
+function reverseUserSoundroomQueue(player: ExtendedPlayer): void {
+  const { user, autoplay } = splitSoundroomQueue(player);
+  setSoundroomQueueUserThenAutoplay(player, [...user].reverse(), autoplay);
+}
+
+function shuffleUserSoundroomQueue(player: ExtendedPlayer): void {
+  const { user, autoplay } = splitSoundroomQueue(player);
+  const copy = [...user];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const a = copy[i]!;
+    const b = copy[j]!;
+    copy[i] = b;
+    copy[j] = a;
   }
+  setSoundroomQueueUserThenAutoplay(player, copy, autoplay);
 }
 
-function reverseQueue(player: ExtendedPlayer): void {
-  const arr = queueToArray(player);
-  arr.reverse();
-  arrayToQueue(player, arr);
-}
-
-function moveQueueTrack(
+function moveUserQueueTrackByGlobalIndex(
   player: ExtendedPlayer,
-  fromIndex: number,
+  fromGlobalIndex: number,
   targetPosition1Based: number,
 ): boolean {
-  const arr = queueToArray(player);
-  if (fromIndex < 0 || fromIndex >= arr.length) {
-    arrayToQueue(player, arr);
+  const entries = userSoundroomQueueEntries(player);
+  const fromUserIdx = entries.findIndex((e) => e.queueIndex === fromGlobalIndex);
+  if (fromUserIdx < 0) {
     return false;
   }
-  const [item] = arr.splice(fromIndex, 1);
+  const { user, autoplay } = splitSoundroomQueue(player);
+  const arr = [...user];
+  const [item] = arr.splice(fromUserIdx, 1);
   if (!item) {
-    arrayToQueue(player, arr);
     return false;
   }
   const to0 = Math.max(0, Math.min(arr.length, targetPosition1Based - 1));
   arr.splice(to0, 0, item);
-  arrayToQueue(player, arr);
+  setSoundroomQueueUserThenAutoplay(player, arr, autoplay);
   return true;
 }
 
@@ -92,12 +102,12 @@ function formatNowPlayingLine(
 function formatQueueLine(
   guild: Guild,
   track: ExtendedTrack,
-  globalIndex1Based: number,
+  index1Based: number,
 ): string {
   const title = truncate(track.info.title ?? "제목 없음", 70);
   const dur = formatTrackDuration(track);
   const who = formatRequesterLine(guild, track);
-  return `${globalIndex1Based}. ${title} (${dur}) — ${who}`;
+  return `${index1Based}. ${title} (${dur}) — ${who}`;
 }
 
 function buildQueueEmbed(
@@ -105,21 +115,22 @@ function buildQueueEmbed(
   player: ExtendedPlayer,
   page: number,
 ): EmbedBuilder {
-  const queueLen = player.queue.length;
+  const userEntries = userSoundroomQueueEntries(player);
+  const queueLen = userEntries.length;
   const totalPages = Math.max(1, Math.ceil(queueLen / SOUNDROOM_QUEUE_PAGE_SIZE));
   const safePage = Math.min(Math.max(0, page), totalPages - 1);
   const start = safePage * SOUNDROOM_QUEUE_PAGE_SIZE;
-  const slice = player.queue.slice(
-    start,
-    start + SOUNDROOM_QUEUE_PAGE_SIZE,
-  );
+  const slice = userEntries.slice(start, start + SOUNDROOM_QUEUE_PAGE_SIZE);
 
   const lines: string[] = [formatNowPlayingLine(guild, player), ""];
-  if (slice.length === 0) {
+  if (queueLen === 0) {
+    lines.push("신청 대기열이 비어 있습니다.");
+  } else if (slice.length === 0) {
     lines.push("이 페이지에 표시할 곡이 없습니다.");
   } else {
     for (let i = 0; i < slice.length; i++) {
-      lines.push(formatQueueLine(guild, slice[i], start + i + 1));
+      const e = slice[i]!;
+      lines.push(formatQueueLine(guild, e.track, start + i + 1));
     }
   }
 
@@ -139,20 +150,17 @@ function buildSelectOptionsForPage(
   player: ExtendedPlayer,
   page: number,
 ): { label: string; value: string }[] {
-  const queueLen = player.queue.length;
+  const userEntries = userSoundroomQueueEntries(player);
+  const queueLen = userEntries.length;
   const totalPages = Math.max(1, Math.ceil(queueLen / SOUNDROOM_QUEUE_PAGE_SIZE));
   const safePage = Math.min(Math.max(0, page), totalPages - 1);
   const start = safePage * SOUNDROOM_QUEUE_PAGE_SIZE;
-  const slice = player.queue.slice(
-    start,
-    start + SOUNDROOM_QUEUE_PAGE_SIZE,
-  );
+  const slice = userEntries.slice(start, start + SOUNDROOM_QUEUE_PAGE_SIZE);
 
-  return slice.map((track, i) => {
-    const globalIdx = start + i;
-    const title = truncate(track.info.title ?? "제목 없음", 80);
-    const label = truncate(`${globalIdx + 1}. ${title}`, 100);
-    return { label, value: String(globalIdx) };
+  return slice.map((e, i) => {
+    const title = truncate(e.track.info.title ?? "제목 없음", 80);
+    const label = truncate(`${start + i + 1}. ${title}`, 100);
+    return { label, value: String(e.queueIndex) };
   });
 }
 
@@ -188,7 +196,7 @@ export function buildSoundroomQueuePanelPayload(
     };
   }
 
-  const queueLen = player.queue.length;
+  const queueLen = userQueueLength(player);
   const totalPages = Math.max(1, Math.ceil(queueLen / SOUNDROOM_QUEUE_PAGE_SIZE));
   const safePage = Math.min(Math.max(0, page), totalPages - 1);
   const ids = customIds(guildId, openerUserId, safePage);
@@ -291,7 +299,7 @@ async function respondUnauthorized(
   if (interaction.replied || interaction.deferred) return;
   await interaction.reply({
     flags: MessageFlags.Ephemeral,
-    content: "이 대기열 패널은 열었던 사용자만 조작할 수 있어요.",
+    content: "이 대기열 패널을 연 사용자만 조작할 수 있습니다.",
   });
 }
 
@@ -301,7 +309,7 @@ async function respondVoice(
   if (interaction.replied || interaction.deferred) return;
   await interaction.reply({
     flags: MessageFlags.Ephemeral,
-    content: "봇과 같은 음성 채널에 있어야 이 버튼을 사용할 수 있어요.",
+    content: "봇과 같은 음성 채널에 있어야 이 버튼을 사용할 수 있습니다.",
   });
 }
 
@@ -322,7 +330,7 @@ export async function handleSoundroomQueuePanelInteraction(
 
   const member = interaction.member;
   if (!member || typeof member === "string" || !("voice" in member)) {
-    await interaction.reply({ flags: MessageFlags.Ephemeral, content: "멤버 정보를 확인할 수 없어요." });
+    await interaction.reply({ flags: MessageFlags.Ephemeral, content: "멤버 정보를 확인할 수 없습니다." });
     return true;
   }
 
@@ -333,7 +341,7 @@ export async function handleSoundroomQueuePanelInteraction(
 
   const player = getPlayer(client, interaction.guildId);
   if (!player) {
-    await interaction.reply({ flags: MessageFlags.Ephemeral, content: "재생 중인 플레이어가 없어요." });
+    await interaction.reply({ flags: MessageFlags.Ephemeral, content: "재생 중인 플레이어가 없습니다." });
     return true;
   }
 
@@ -343,20 +351,17 @@ export async function handleSoundroomQueuePanelInteraction(
   if (interaction.isButton()) {
     if (kind === "p") newPage = Math.max(0, page - 1);
     else if (kind === "n") {
-      const totalPages = Math.max(
-        1,
-        Math.ceil(player.queue.length / SOUNDROOM_QUEUE_PAGE_SIZE),
-      );
+      const totalPages = Math.max(1, Math.ceil(userQueueLength(player) / SOUNDROOM_QUEUE_PAGE_SIZE));
       newPage = Math.min(totalPages - 1, page + 1);
     } else if (kind === "i") {
       await interaction.deferUpdate();
       return true;
     } else if (kind === "rv") {
-      reverseQueue(player);
+      reverseUserSoundroomQueue(player);
     } else if (kind === "sh") {
-      player.queue.shuffle();
+      shuffleUserSoundroomQueue(player);
     } else if (kind === "rf") {
-      /* refresh — same page */
+      /* 현재 페이지 새로고침 */
     } else {
       return false;
     }
@@ -381,16 +386,13 @@ export async function handleSoundroomQueuePanelInteraction(
     }
     const queueIndex = Number(val);
     if (Number.isNaN(queueIndex)) {
-      await interaction.reply({ flags: MessageFlags.Ephemeral, content: "잘못된 선택이에요." });
+      await interaction.reply({ flags: MessageFlags.Ephemeral, content: "잘못된 선택입니다." });
       return true;
     }
 
     if (kind === "rm") {
       player.queue.remove(queueIndex);
-      const totalPages = Math.max(
-        1,
-        Math.ceil(player.queue.length / SOUNDROOM_QUEUE_PAGE_SIZE),
-      );
+      const totalPages = Math.max(1, Math.ceil(userQueueLength(player) / SOUNDROOM_QUEUE_PAGE_SIZE));
       newPage = Math.min(page, totalPages - 1);
       const payload = buildSoundroomQueuePanelPayload(
         client,
@@ -448,21 +450,21 @@ export async function handleSoundroomQueueMoveModalSubmit(
   if (interaction.user.id !== openerUserId) {
     await interaction.reply({
       flags: MessageFlags.Ephemeral,
-      content: "이 양식은 열었던 사용자만 제출할 수 있어요.",
+      content: "이 양식을 연 사용자만 제출할 수 있습니다.",
     });
     return true;
   }
 
   const member = interaction.member;
   if (!member || typeof member === "string" || !("voice" in member)) {
-    await interaction.reply({ flags: MessageFlags.Ephemeral, content: "멤버 정보를 확인할 수 없어요." });
+    await interaction.reply({ flags: MessageFlags.Ephemeral, content: "멤버 정보를 확인할 수 없습니다." });
     return true;
   }
 
   if (!(await sameVoiceAsBot(member))) {
     await interaction.reply({
       flags: MessageFlags.Ephemeral,
-      content: "봇과 같은 음성 채널에 있어야 해요.",
+      content: "봇과 같은 음성 채널에 있어야 합니다.",
     });
     return true;
   }
@@ -479,20 +481,17 @@ export async function handleSoundroomQueueMoveModalSubmit(
 
   const player = getPlayer(client, interaction.guildId);
   if (!player) {
-    await interaction.reply({ flags: MessageFlags.Ephemeral, content: "재생 중인 플레이어가 없어요." });
+    await interaction.reply({ flags: MessageFlags.Ephemeral, content: "재생 중인 플레이어가 없습니다." });
     return true;
   }
 
-  const ok = moveQueueTrack(player, fromIdx, target);
+  const ok = moveUserQueueTrackByGlobalIndex(player, fromIdx, target);
   if (!ok) {
-    await interaction.reply({ flags: MessageFlags.Ephemeral, content: "해당 위치의 곡을 옮길 수 없어요." });
+    await interaction.reply({ flags: MessageFlags.Ephemeral, content: "해당 위치의 곡을 옮길 수 없습니다." });
     return true;
   }
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(player.queue.length / SOUNDROOM_QUEUE_PAGE_SIZE),
-  );
+  const totalPages = Math.max(1, Math.ceil(userQueueLength(player) / SOUNDROOM_QUEUE_PAGE_SIZE));
   const safePage = Math.min(Math.max(0, page), totalPages - 1);
   const payload = buildSoundroomQueuePanelPayload(
     client,
@@ -517,7 +516,7 @@ export async function handleSoundroomQueueMoveModalSubmit(
           panelRefreshed = true;
           scheduleQueuePanelEphemeralDelete(null, msg);
         } catch {
-          /* ignore */
+          /* 이미 닫힌 응답이면 넘어감 */
         }
       }
     }
@@ -529,7 +528,7 @@ export async function handleSoundroomQueueMoveModalSubmit(
   } else {
     await interaction.reply({
       flags: MessageFlags.Ephemeral,
-      content: "곡 위치는 옮겼어요. 패널을 갱신하려면 **대기열 새로고침**을 눌러 주세요.",
+      content: "곡 위치를 옮겼습니다. 패널을 갱신하려면 **대기열 새로고침**을 눌러 주세요.",
     });
     scheduleEphemeralReplyDelete(interaction, 10_000);
   }

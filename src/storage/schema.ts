@@ -52,7 +52,7 @@ export const guildRecentPlays = sqliteTable(
   }),
 );
 
-/** One row uses `guild_id` = `__bot_global_melon__` (see `soundroomCharts.ts`); legacy per-guild rows are ignored. */
+/** 전역 인기차트는 `guild_id`에 `__bot_global_melon__`를 넣은 한 줄만 사용합니다. */
 export const soundroomChartSource = sqliteTable("soundroom_chart_source", {
   guildId: text("guild_id").primaryKey(),
   playlistUrl: text("playlist_url").notNull(),

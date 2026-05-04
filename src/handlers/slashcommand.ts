@@ -60,7 +60,7 @@ async function resetCommandsIfRequested(rest: REST, clientId: string, guildId: s
     guildId ? `Reset guild application commands for ${guildId} before registration` : "Reset all global application commands before registration",
   );
 
-  /** 길드만 초기화하면 예전에 올려 둔 GLOBAL 명령이 그대로 남아 `/` 메뉴에 중복으로 뜸 */
+  /** 길드 명령만 비우면 글로벌 명령이 남아 `/` 메뉴에 중복으로 표시될 수 있음 */
   if (guildId) {
     await rest.put(Routes.applicationCommands(clientId), { body: [] });
     log("warn", "commands", "RESET: cleared GLOBAL application commands too (DEV_GUILD_ID was set).");
@@ -105,7 +105,7 @@ export default async function loadSlashCommands(client: MineClient): Promise<voi
     }
   }
 
-  /** 같은 `name`이 두 번 들어가면 Discord가 50035 DUPLICATE_NAME — dist에 남은 옛 .js 등으로 흔함 */
+  /** 같은 `name`이 두 번 들어가면 Discord가 50035 DUPLICATE_NAME — 빌드 산출물(dist) 중복 등 */
   const byName = new Map<string, SlashCommand>();
   for (const command of slashCommands) {
     if (byName.has(command.name)) {
@@ -160,7 +160,7 @@ export default async function loadSlashCommands(client: MineClient): Promise<voi
     log("success", "commands", `Registered ${uniqueSlash.length} guild slash commands for guild ${gid} (즉시 반영)`);
   }
 
-  // 글로벌 전부 덮어쓰기(옛 명령 제거). DEV_GUILD_ID 있어도 비우지 않음.
+  // 글로벌 명령 전체 덮어쓰기(등록 해제된 이름 제거). DEV_GUILD_ID가 있어도 글로벌은 비우지 않음.
   await cleanupOldCommands(rest, client.config.clientid, undefined, validNames);
   await rest.put(Routes.applicationCommands(client.config.clientid), { body: commandJson });
   log("success", "commands", `Registered ${uniqueSlash.length} global slash commands (전 서버, 반영 ~1h)`);

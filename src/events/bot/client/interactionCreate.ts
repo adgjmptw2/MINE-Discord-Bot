@@ -17,7 +17,7 @@ import { scheduleEphemeralReplyDelete } from "@/utils/ephemeralCleanup";
 import type { MineClient, SlashCommand } from "@/types";
 
 const SOUNDROOM_SLASH_NAME = "세팅";
-/** 예전 등록명·별칭 → 동일 핸들러 (`세팅`) */
+/** 슬래시 등록명 별칭 → `세팅`과 동일 핸들러 */
 const SOUNDROOM_SLASH_ALIASES = new Set(["노래채널", "music_lounge", "music-lounge"]);
 
 function resolveSlashCommand(client: MineClient, interaction: ChatInputCommandInteraction): SlashCommand | undefined {
@@ -226,7 +226,7 @@ export default function registerInteractionCreate(client: MineClient): void {
     if (isSoundroomTextChannel(interaction.guildId, interaction.channelId) && !isSoundroomSlashCommand(client, interaction.commandName)) {
       await interaction.reply({
         flags: MessageFlags.Ephemeral,
-        content: "이 노래 채널에서는 `/` 명령 대신 **채팅으로 검색어**만 입력해 주십시오.",
+        content: "이 노래 채널에서는 `/` 명령 대신 **채팅으로 검색어**만 입력해 주세요.",
       });
       scheduleEphemeralReplyDelete(interaction);
       return;
@@ -311,7 +311,7 @@ export default function registerInteractionCreate(client: MineClient): void {
             panel: {
               eyebrow: "음성",
               title: "음성 채널 필요",
-              description: "이 명령을 쓰려면 먼저 음성 채널에 들어가 주십시오.",
+              description: "이 명령을 쓰려면 먼저 음성 채널에 들어가 주세요.",
             },
           }),
         );

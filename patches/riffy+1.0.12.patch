@@ -1,0 +1,34 @@
+diff --git a/node_modules/riffy/build/structures/Player.js b/node_modules/riffy/build/structures/Player.js
+index a11ed51..2b2c18e 100644
+--- a/node_modules/riffy/build/structures/Player.js
++++ b/node_modules/riffy/build/structures/Player.js
+@@ -489,16 +489,24 @@ class Player extends EventEmitter {
+     trackEnd(player, track, payload) {
+         this.addToPreviousTrack(track)
+         const previousTrack = this.previous;
+-        // By using lower case We handle both Lavalink Versions(v3, v4) Smartly 😎,
+-        // If reason is replaced do nothing expect User do something hopefully else RIP.
+-        if (payload.reason.toLowerCase() === "replaced") return this.riffy.emit("trackEnd", player, track, payload);
++        // stop()/스킵으로 끊긴 뒤에도 큐가 남아 있으면 다음 곡을 이어서 재생
++        if (payload.reason.toLowerCase() === "replaced") {
++            this.riffy.emit("trackEnd", player, track, payload);
++            if (player.queue.length > 0) {
++                return player.play();
++            }
++            this.playing = false;
++            return this.riffy.emit("queueEnd", player);
++        }
+ 
+-        // Replacing & to lower case it Again Smartly 😎, Handled Both Lavalink Versions.
+-        // This avoids track that got cleaned-up or failed to load to be played again (Via Loop Mode).
++        // Lavalink 버전마다 reason 대소문자가 달라 소문자로 맞춰 비교
++        // 정리되거나 로드에 실패한 곡은 루프에서 다시 잡히지 않게 둠
+         if (["loadfailed", "cleanup"].includes(payload.reason.replace("_", "").toLowerCase())) {
+             if (player.queue.length === 0) {
+                 this.playing = false;
+                 this.riffy.emit("debug", `Player (${player.guildId}) Track-Ended(${track.info.title}) with reason: ${payload.reason}, emitting queueEnd instead of trackEnd as queue is empty/finished`);
++                this.riffy.emit("trackEnd", player, track, payload);
++                return this.riffy.emit("queueEnd", player);
+             }
+ 
+             this.riffy.emit("trackEnd", player, track, payload);

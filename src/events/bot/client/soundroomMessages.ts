@@ -2,12 +2,10 @@ import type { Message } from "discord.js";
 import { getSoundroom } from "@/storage/soundroom";
 import { ensurePlayerConnection } from "@/utils/commands";
 import { sendSoundroomAddNotification } from "@/utils/soundroomPanel";
+import { onQueueMayHaveItems, addTracksRespectingSoundroomAutoplay } from "@/utils/soundroomAutoplay";
 import type { ExtendedTrack, MineClient } from "@/types";
 
-/**
- * Plain text is passed through so Riffy can apply `defaultSearchPlatform` (same resolution as legacy play search).
- * Avoid prefixing `ytsearch:` here — double-prefix breaks Lavalink search.
- */
+/** 일반 검색어는 그대로 넘겨 Riffy의 기본 검색 설정을 타게 둡니다. */
 export function buildSoundroomResolveQuery(raw: string): string {
   const trimmed = raw.trim();
   if (!trimmed) {
@@ -22,7 +20,7 @@ export function buildSoundroomResolveQuery(raw: string): string {
   return trimmed;
 }
 
-/** 전용 playlist URL이면 true. watch+list(믹스)는 false — 채팅은 1곡만. */
+/** 재생목록 주소만 여러 곡으로 받고, watch+list 믹스는 첫 곡만 씁니다. */
 export function isExplicitFullPlaylistIntentUrl(raw: string): boolean {
   const q = raw.trim().toLowerCase();
   if (/youtube\.com\/playlist\?list=[^&\s#]+/i.test(q)) {
@@ -63,13 +61,13 @@ export async function tryHandleSoundroomMessage(client: MineClient, message: Mes
   try {
     await message.delete();
   } catch {
-    /* ignore */
+    /* 안내 메시지 삭제 실패는 무시 */
   }
 
   const member = message.member;
   const guildId = message.guildId;
   if (!guildId || !member?.voice.channel) {
-    const warn = await ch.send({ content: `<@${message.author.id}> 음성 채널에 먼저 입장해 주십시오.` });
+    const warn = await ch.send({ content: `<@${message.author.id}> 음성 채널에 먼저 입장해 주세요.` });
     setTimeout(() => void warn.delete().catch(() => undefined), 5000);
     return true;
   }
@@ -81,7 +79,7 @@ export async function tryHandleSoundroomMessage(client: MineClient, message: Mes
   const tracks = resolve.tracks as ExtendedTrack[];
 
   if (tracks.length === 0) {
-    const fail = await ch.send({ content: "검색 결과가 없습니다. 다른 키워드를 입력해 주십시오." });
+    const fail = await ch.send({ content: "검색 결과가 없습니다. 다른 키워드를 입력해 주세요." });
     setTimeout(() => void fail.delete().catch(() => undefined), 8000);
     return true;
   }
@@ -93,26 +91,28 @@ export async function tryHandleSoundroomMessage(client: MineClient, message: Mes
   if (resolve.loadType === "playlist" && isExplicitFullPlaylistIntentUrl(raw) && tracks.length > 1) {
     for (const t of tracks) {
       t.info.requester = member;
-      player.queue.add(t);
     }
+    addTracksRespectingSoundroomAutoplay(player, guildId, tracks);
     notifyTrack = tracks[0]!;
     playlistCount = tracks.length;
     playlistName = resolve.playlistInfo?.name;
   } else {
     const track = tracks[0]!;
     track.info.requester = member;
-    player.queue.add(track);
+    addTracksRespectingSoundroomAutoplay(player, guildId, [track]);
     notifyTrack = track;
   }
 
   const volPct = Math.round(player.volume ?? 100);
   await sendSoundroomAddNotification(ch, notifyTrack, volPct, playlistCount, playlistName);
 
+  onQueueMayHaveItems(guildId);
+
   if (player.queue.length > 0 && !player.playing && !player.paused) {
     try {
       await Promise.resolve(player.play());
     } catch {
-      const err = await ch.send({ content: "재생하지 못했습니다. Lavalink 연결을 확인해 주십시오." });
+      const err = await ch.send({ content: "재생하지 못했습니다. Lavalink 연결을 확인해 주세요." });
       setTimeout(() => void err.delete().catch(() => undefined), 8000);
     }
   }

@@ -9,6 +9,7 @@ import {
 } from "@/storage/playlists";
 import { ensurePlayerConnection, getPlayer } from "@/utils/commands";
 import { panelEdit, panelReply } from "@/utils/discord";
+import { onQueueMayHaveItems, addTracksRespectingSoundroomAutoplay } from "@/utils/soundroomAutoplay";
 import type { ExtendedTrack, MineClient, SlashCommand } from "@/types";
 
 const command: SlashCommand = {
@@ -129,7 +130,7 @@ const command: SlashCommand = {
         await interaction.reply(
           panelReply({
             ephemeral: true,
-            panel: { eyebrow: "플레이리스트", title: "음성 채널 필요", description: "플레이리스트를 불러오려면 먼저 음성 채널에 들어가 주십시오." },
+            panel: { eyebrow: "플레이리스트", title: "음성 채널 필요", description: "플레이리스트를 불러오려면 먼저 음성 채널에 들어가 주세요." },
           }),
         );
         return;
@@ -154,7 +155,7 @@ const command: SlashCommand = {
           continue;
         }
         resolved.info.requester = member;
-        player.queue.add(resolved);
+        addTracksRespectingSoundroomAutoplay(player, interaction.guildId, [resolved]);
         added += 1;
       }
       await interaction.editReply(
@@ -175,6 +176,9 @@ const command: SlashCommand = {
             }),
           );
         }
+      }
+      if (added > 0 && interaction.guildId) {
+        onQueueMayHaveItems(interaction.guildId);
       }
       return;
     }

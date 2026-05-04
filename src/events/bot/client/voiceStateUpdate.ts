@@ -3,6 +3,7 @@ import { panelMessage } from "@/utils/discord";
 import { getSoundroom } from "@/storage/soundroom";
 import { stopSoundroomProgress } from "@/utils/soundroomProgress";
 import { editSoundroomIdlePanel } from "@/utils/soundroomPanel";
+import { resetAutoplaySession } from "@/utils/soundroomAutoplay";
 import type { MineClient } from "@/types";
 
 const VOICE_LEAVE_NOTICE_DELETE_MS = 15_000;
@@ -36,6 +37,8 @@ export default function registerVoiceStateUpdate(client: MineClient): void {
         stopSoundroomProgress(guildId);
         player.message = undefined;
         await player.destroy();
+
+        resetAutoplaySession(guildId);
 
         if (getSoundroom(guildId)) {
           await editSoundroomIdlePanel(client, guildId).catch(() => undefined);

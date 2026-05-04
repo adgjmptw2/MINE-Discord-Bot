@@ -3,7 +3,8 @@ import { recordGuildRecentPlay } from "@/storage/guildMusicRecent";
 import { isSoundroomTextChannel } from "@/storage/soundroom";
 import { startSoundroomProgress } from "@/utils/soundroomProgress";
 import { buildPanel, formatTrackDuration, truncate } from "@/utils/discord";
-import { buildSoundroomPlayingPayload, fetchSoundroomPanelMessage } from "@/utils/soundroomPanel";
+import { buildSoundroomPlayingPayload, editSoundroomPlayingPanel, fetchSoundroomPanelMessage } from "@/utils/soundroomPanel";
+import { prefetchAutoplayNextHint } from "@/utils/soundroomAutoplay";
 import type { ExtendedPlayer, ExtendedTrack, MineClient } from "@/types";
 
 function controlsRow(paused = false): ActionRowBuilder<ButtonBuilder> {
@@ -33,6 +34,9 @@ export default function registerTrackStart(client: MineClient): void {
         player.message = msg as never;
         await msg.edit(buildSoundroomPlayingPayload(client, player));
         startSoundroomProgress(client, player.guildId);
+        void prefetchAutoplayNextHint(client, player).then(() => {
+          void editSoundroomPlayingPanel(client, player.guildId).catch(() => undefined);
+        });
         return;
       }
     }
