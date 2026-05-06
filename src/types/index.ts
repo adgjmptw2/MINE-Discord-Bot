@@ -12,8 +12,18 @@ import type { LoopOption, Riffy, RiffyNodeConfig, RiffyPlayer, RiffyTrack } from
 export interface SoundroomConfig {
   /** 임베드·패널에 쓰는 표시 이름 (기본: 마인). */
   brandName?: string;
-  /** Created channel name. */
+  /** 만들 채널 이름 */
   channelName?: string;
+}
+
+/** mock = 더미 시세, twelvedata = 나중에 붙일 실제 API */
+export type StockPriceProvider = "mock" | "twelvedata";
+
+export interface StockConfig {
+  stockPriceProvider: StockPriceProvider;
+  stockPriceRefreshIntervalMs: number;
+  /** 비어 있으면 없는 거. twelvedata 쓸 때 키 있는지는 그때 검사 */
+  twelveDataApiKey: string;
 }
 
 export interface BotConfig {
@@ -23,6 +33,7 @@ export interface BotConfig {
   developers: string[];
   nodes: RiffyNodeConfig[];
   soundroom?: SoundroomConfig;
+  stock: StockConfig;
 }
 
 export interface ExtendedTrackInfo {
