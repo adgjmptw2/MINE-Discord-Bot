@@ -19,6 +19,8 @@
 - 인기차트: **전역** 유튜브 재생목록 하나입니다. `.env`의 `DISCORD_OWNER_IDS`에 넣은 **제작자만** `/melon_chart`(또는 `/인기차트-관리`)로 등록·해제할 수 있습니다. 등록해 두면 **모든 서버**의 노래 채널 **[인기차트]** 버튼이 같은 목록을 재생합니다.
 - SQLite 저장소: 서버 설정, 최근 재생, 플레이리스트를 저장합니다. 런타임 DB는 레포 루트 **`/storage/`**에 두고, `*.sqlite`는 `.gitignore`에 포함했습니다. 저장소 파일을 커밋했다면 `git rm --cached -r --ignore-unmatch storage/*.sqlite`로 한 번 정리한 뒤 다시 커밋하면 됩니다.
 - **주식(Twelve Data Api 모의투자)** 테스트 중
+env/config/종목 상수
+Mock 가격 Provider
 
 ## 준비
 
