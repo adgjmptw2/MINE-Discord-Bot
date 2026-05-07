@@ -126,6 +126,69 @@ sqlite.exec(`
     priority_video_id TEXT,
     updated_at TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS stock_wallets (
+    guild_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    cash_balance INTEGER NOT NULL DEFAULT 0,
+    total_deposit INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (guild_id, user_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS stock_holdings (
+    guild_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    symbol TEXT NOT NULL,
+    quantity_micro INTEGER NOT NULL DEFAULT 0,
+    average_buy_price INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (guild_id, user_id, symbol)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_stock_holdings_guild_user
+    ON stock_holdings (guild_id, user_id);
+
+  CREATE INDEX IF NOT EXISTS idx_stock_holdings_symbol
+    ON stock_holdings (symbol);
+
+  CREATE TABLE IF NOT EXISTS stock_trades (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    symbol TEXT NOT NULL,
+    side TEXT NOT NULL CHECK (side IN ('BUY', 'SELL')),
+    quantity_micro INTEGER NOT NULL,
+    price INTEGER NOT NULL,
+    gross_amount INTEGER NOT NULL,
+    fee INTEGER NOT NULL,
+    net_amount INTEGER NOT NULL,
+    realized_profit INTEGER,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_stock_trades_guild_user_time
+    ON stock_trades (guild_id, user_id, created_at DESC);
+
+  CREATE INDEX IF NOT EXISTS idx_stock_trades_guild_time
+    ON stock_trades (guild_id, created_at DESC);
+
+  CREATE INDEX IF NOT EXISTS idx_stock_trades_symbol_time
+    ON stock_trades (symbol, created_at DESC);
+
+  CREATE TABLE IF NOT EXISTS stock_daily_attendance (
+    guild_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    date TEXT NOT NULL,
+    reward_amount INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (guild_id, user_id, date)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_stock_daily_attendance_guild_date
+    ON stock_daily_attendance (guild_id, date);
 `);
 
 export const db = sqlite;

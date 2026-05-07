@@ -1,4 +1,4 @@
-import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const playlists = sqliteTable(
   "playlists",
@@ -59,3 +59,75 @@ export const soundroomChartSource = sqliteTable("soundroom_chart_source", {
   priorityVideoId: text("priority_video_id"),
   updatedAt: text("updated_at").notNull(),
 });
+
+export const stockWallets = sqliteTable(
+  "stock_wallets",
+  {
+    guildId: text("guild_id").notNull(),
+    userId: text("user_id").notNull(),
+    cashBalance: integer("cash_balance").notNull().default(0),
+    totalDeposit: integer("total_deposit").notNull().default(0),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.guildId, table.userId] }),
+  }),
+);
+
+export const stockHoldings = sqliteTable(
+  "stock_holdings",
+  {
+    guildId: text("guild_id").notNull(),
+    userId: text("user_id").notNull(),
+    symbol: text("symbol").notNull(),
+    quantityMicro: integer("quantity_micro").notNull().default(0),
+    averageBuyPrice: integer("average_buy_price").notNull().default(0),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.guildId, table.userId, table.symbol] }),
+    guildUser: index("idx_stock_holdings_guild_user").on(table.guildId, table.userId),
+    symbolIdx: index("idx_stock_holdings_symbol").on(table.symbol),
+  }),
+);
+
+/** side는 DB에서 CHECK(BUY|SELL). Drizzle 스키마에는 제약 미표현(원시 DDL에만 둠). */
+export const stockTrades = sqliteTable(
+  "stock_trades",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    guildId: text("guild_id").notNull(),
+    userId: text("user_id").notNull(),
+    symbol: text("symbol").notNull(),
+    side: text("side").notNull(),
+    quantityMicro: integer("quantity_micro").notNull(),
+    price: integer("price").notNull(),
+    grossAmount: integer("gross_amount").notNull(),
+    fee: integer("fee").notNull(),
+    netAmount: integer("net_amount").notNull(),
+    realizedProfit: integer("realized_profit"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => ({
+    guildUserTime: index("idx_stock_trades_guild_user_time").on(table.guildId, table.userId, table.createdAt),
+    guildTime: index("idx_stock_trades_guild_time").on(table.guildId, table.createdAt),
+    symbolTime: index("idx_stock_trades_symbol_time").on(table.symbol, table.createdAt),
+  }),
+);
+
+export const stockDailyAttendance = sqliteTable(
+  "stock_daily_attendance",
+  {
+    guildId: text("guild_id").notNull(),
+    userId: text("user_id").notNull(),
+    date: text("date").notNull(),
+    rewardAmount: integer("reward_amount").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.guildId, table.userId, table.date] }),
+    guildDate: index("idx_stock_daily_attendance_guild_date").on(table.guildId, table.date),
+  }),
+);
