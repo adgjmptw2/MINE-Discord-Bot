@@ -8,6 +8,7 @@ import type {
 } from "discord.js";
 import { Client } from "discord.js";
 import type { LoopOption, Riffy, RiffyNodeConfig, RiffyPlayer, RiffyTrack } from "riffy";
+import type { StockMarketService } from "@/services/stock/StockMarketService";
 
 export interface SoundroomConfig {
   /** 임베드·패널에 쓰는 표시 이름 (기본: 마인). */
@@ -90,4 +91,5 @@ export class MineClient extends Client {
   public config!: BotConfig;
   public slashCommands!: Collection<string, SlashCommand>;
   public riffy!: Riffy;
+  public stockMarket?: StockMarketService;
 }

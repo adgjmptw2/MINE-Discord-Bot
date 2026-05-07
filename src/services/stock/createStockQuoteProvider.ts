@@ -1,5 +1,6 @@
 import type { StockConfig } from "@/types";
 import { MockStockQuoteProvider } from "./MockStockQuoteProvider";
+import { TwelveDataStockQuoteProvider } from "./TwelveDataStockQuoteProvider";
 import type { StockQuoteProvider } from "./StockQuoteProvider";
 
 export function createStockQuoteProvider(stock: StockConfig): StockQuoteProvider {
@@ -7,7 +8,7 @@ export function createStockQuoteProvider(stock: StockConfig): StockQuoteProvider
     case "mock":
       return new MockStockQuoteProvider();
     case "twelvedata":
-      throw new Error("Twelve Data provider is not implemented yet");
+      return new TwelveDataStockQuoteProvider(stock.twelveDataApiKey);
     default: {
       const _never: never = stock.stockPriceProvider;
       return _never;
