@@ -42,6 +42,19 @@ export interface StockAssetSummary {
   unavailableSymbols: string[];
 }
 
+/** 길드 모의투자 랭킹 한 줄 (캐시 시세 기준) */
+export interface StockRankingEntry {
+  guildId: string;
+  userId: string;
+  cashBalance: number;
+  stockValueTotal: number;
+  totalAssets: number;
+  totalDeposit: number;
+  profitLoss: number;
+  profitLossPercent: number;
+  unavailableSymbols: string[];
+}
+
 export type StockStorageErrorCode =
   | "WALLET_NOT_FOUND"
   | "INSUFFICIENT_CASH"
@@ -302,6 +315,93 @@ export function getStockAssetSummary(
     profitLossPercent,
     unavailableSymbols,
   };
+}
+
+/**
+ * 길드 내 모든 지갑·보유를 읽어 총자산 순으로 정렬한다.
+ * 총자산이 정확히 0인 행은 제외한다(미참여·빈 지갑 노이즈 감소).
+ * 클라이언트에서 지갑만 있고 입금·매수 전인 경우도 cash 0이면 제외됨.
+ */
+export function getStockRanking(guildId: string, prices: StockPrice[], limit = 10): StockRankingEntry[] {
+  const walletRows = db.all<WalletRow>(
+    `SELECT guild_id, user_id, cash_balance, total_deposit, created_at, updated_at
+     FROM stock_wallets WHERE guild_id = ?`,
+    [guildId],
+  );
+
+  const holdingRows = db.all<HoldingRow>(
+    `SELECT guild_id, user_id, symbol, quantity_micro, average_buy_price, created_at, updated_at
+     FROM stock_holdings WHERE guild_id = ? AND quantity_micro > 0`,
+    [guildId],
+  );
+
+  const priceBySymbol = new Map<string, number>();
+  for (const p of prices) {
+    priceBySymbol.set(p.symbol, p.price);
+  }
+
+  const holdingsByUser = new Map<string, HoldingRow[]>();
+  for (const row of holdingRows) {
+    const uid = row.user_id;
+    const list = holdingsByUser.get(uid);
+    if (list) {
+      list.push(row);
+    } else {
+      holdingsByUser.set(uid, [row]);
+    }
+  }
+
+  const entries: StockRankingEntry[] = [];
+
+  for (const wRow of walletRows) {
+    const wallet = mapWallet(wRow);
+    const uid = wallet.userId;
+    const rows = holdingsByUser.get(uid) ?? [];
+    const unavailableSymbols: string[] = [];
+    let stockValueTotal = 0;
+
+    for (const h of rows) {
+      const px = priceBySymbol.get(h.symbol);
+      if (px === undefined) {
+        unavailableSymbols.push(h.symbol);
+        continue;
+      }
+      const qty = Number(h.quantity_micro) / STOCK_QUANTITY_SCALE;
+      stockValueTotal += Math.round(qty * px);
+    }
+
+    const cashBalance = wallet.cashBalance;
+    const totalDeposit = wallet.totalDeposit;
+    const totalAssets = cashBalance + stockValueTotal;
+    const profitLoss = totalAssets - totalDeposit;
+    const profitLossPercent =
+      totalDeposit > 0 ? (profitLoss / totalDeposit) * 100 : 0;
+
+    if (totalAssets === 0) {
+      continue;
+    }
+
+    entries.push({
+      guildId,
+      userId: uid,
+      cashBalance,
+      stockValueTotal,
+      totalAssets,
+      totalDeposit,
+      profitLoss,
+      profitLossPercent,
+      unavailableSymbols,
+    });
+  }
+
+  entries.sort((a, b) => {
+    if (b.totalAssets !== a.totalAssets) {
+      return b.totalAssets - a.totalAssets;
+    }
+    return b.profitLossPercent - a.profitLossPercent;
+  });
+
+  return entries.slice(0, limit);
 }
 
 export function buyStock(params: BuyStockParams): BuyStockResult {

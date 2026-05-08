@@ -8,6 +8,18 @@ export function formatMine(amount: number): string {
   return `${formatKrwPrice(amount)} MINE`;
 }
 
+/** 손익 등 부호가 필요한 MINE (예: +1,234 MINE / -500 MINE) */
+export function formatSignedMine(amount: number): string {
+  const abs = formatKrwPrice(Math.abs(amount));
+  if (amount > 0) {
+    return `+${abs} MINE`;
+  }
+  if (amount < 0) {
+    return `-${abs} MINE`;
+  }
+  return `${abs} MINE`;
+}
+
 export function formatPercent(value: number | null): string {
   if (value === null) {
     return "—";
