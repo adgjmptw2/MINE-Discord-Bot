@@ -8,6 +8,9 @@ export const STOCK_TRADE_FEE_RATE = 0.001;
 /** 최소 매수 금액 (MINE) */
 export const MIN_STOCK_BUY_AMOUNT = 1_000;
 
+/** 최소 매도 금액 기준(MINE, 금액 방식일 때) */
+export const MIN_STOCK_SELL_AMOUNT = 1_000;
+
 export const DAILY_ATTENDANCE_REWARD = 10_000;
 
 export interface StockWallet {
@@ -42,7 +45,10 @@ export interface StockAssetSummary {
 export type StockStorageErrorCode =
   | "WALLET_NOT_FOUND"
   | "INSUFFICIENT_CASH"
+  | "HOLDING_NOT_FOUND"
+  | "INSUFFICIENT_HOLDING"
   | "INVALID_AMOUNT"
+  | "INVALID_PERCENT"
   | "INVALID_PRICE"
   | "QUANTITY_TOO_SMALL";
 
@@ -76,6 +82,31 @@ export interface BuyStockResult {
   netAmount: number;
   quantityMicro: number;
   totalQuantityMicro: number;
+  averageBuyPrice: number;
+}
+
+export interface SellStockParams {
+  guildId: string;
+  userId: string;
+  symbol: string;
+  price: number;
+  mode: "amount" | "percent" | "all";
+  amount?: number;
+  percent?: number;
+}
+
+export interface SellStockResult {
+  wallet: StockWallet;
+  holding: StockHolding | null;
+  tradeId: number;
+  symbol: string;
+  price: number;
+  soldQuantityMicro: number;
+  remainingQuantityMicro: number;
+  grossAmount: number;
+  fee: number;
+  netAmount: number;
+  realizedProfit: number;
   averageBuyPrice: number;
 }
 
@@ -375,6 +406,155 @@ export function buyStock(params: BuyStockParams): BuyStockResult {
       quantityMicro,
       totalQuantityMicro,
       averageBuyPrice,
+    };
+  } catch (e) {
+    db.run("ROLLBACK");
+    throw e;
+  }
+}
+
+export function sellStock(params: SellStockParams): SellStockResult {
+  const guildId = params.guildId;
+  const userId = params.userId;
+  const symbol = params.symbol.trim();
+  const priceRaw = params.price;
+
+  if (!Number.isFinite(priceRaw) || priceRaw <= 0) {
+    throw new StockStorageError("INVALID_PRICE");
+  }
+
+  const priceRounded = Math.round(priceRaw);
+
+  db.run("BEGIN IMMEDIATE");
+  try {
+    const walletRow = getWalletRow(guildId, userId);
+    if (!walletRow) {
+      throw new StockStorageError("WALLET_NOT_FOUND");
+    }
+
+    const holdingRow = getHoldingRow(guildId, userId, symbol);
+    const hq = holdingRow ? Number(holdingRow.quantity_micro) : 0;
+    if (!holdingRow || hq <= 0) {
+      throw new StockStorageError("HOLDING_NOT_FOUND");
+    }
+
+    const avgBuy = Number(holdingRow.average_buy_price);
+
+    let soldQuantityMicro: number;
+
+    if (params.mode === "all") {
+      soldQuantityMicro = hq;
+    } else if (params.mode === "percent") {
+      const p = params.percent;
+      if (p === undefined || !Number.isFinite(p)) {
+        throw new StockStorageError("INVALID_PERCENT");
+      }
+      if (!Number.isInteger(p)) {
+        throw new StockStorageError("INVALID_PERCENT");
+      }
+      if (p < 1 || p > 100) {
+        throw new StockStorageError("INVALID_PERCENT");
+      }
+      if (p === 100) {
+        soldQuantityMicro = hq;
+      } else {
+        soldQuantityMicro = Math.floor((hq * p) / 100);
+      }
+    } else {
+      const amount = params.amount;
+      if (amount === undefined || !Number.isFinite(amount)) {
+        throw new StockStorageError("INVALID_AMOUNT");
+      }
+      if (amount < MIN_STOCK_SELL_AMOUNT) {
+        throw new StockStorageError("INVALID_AMOUNT");
+      }
+      soldQuantityMicro = Math.floor((amount / priceRounded) * STOCK_QUANTITY_SCALE);
+      if (soldQuantityMicro > hq) {
+        throw new StockStorageError("INSUFFICIENT_HOLDING");
+      }
+    }
+
+    if (soldQuantityMicro <= 0) {
+      throw new StockStorageError("QUANTITY_TOO_SMALL");
+    }
+    if (soldQuantityMicro > hq) {
+      throw new StockStorageError("INSUFFICIENT_HOLDING");
+    }
+
+    const grossAmount = Math.floor((soldQuantityMicro / STOCK_QUANTITY_SCALE) * priceRounded);
+    const fee = Math.floor(grossAmount * STOCK_TRADE_FEE_RATE);
+    const netAmount = grossAmount - fee;
+    const costBasis = Math.floor((soldQuantityMicro / STOCK_QUANTITY_SCALE) * avgBuy);
+    const realizedProfit = netAmount - costBasis;
+
+    const remainingQuantityMicro = hq - soldQuantityMicro;
+
+    const now = new Date().toISOString();
+
+    db.run(
+      `UPDATE stock_holdings
+       SET quantity_micro = quantity_micro - ?, updated_at = ?
+       WHERE guild_id = ? AND user_id = ? AND symbol = ? AND quantity_micro >= ?`,
+      [soldQuantityMicro, now, guildId, userId, symbol, soldQuantityMicro],
+    );
+
+    if (getStatementChanges() === 0) {
+      throw new StockStorageError("INSUFFICIENT_HOLDING");
+    }
+
+    db.run(
+      `UPDATE stock_wallets SET cash_balance = cash_balance + ?, updated_at = ?
+       WHERE guild_id = ? AND user_id = ?`,
+      [netAmount, now, guildId, userId],
+    );
+
+    if (remainingQuantityMicro <= 0) {
+      db.run(`DELETE FROM stock_holdings WHERE guild_id = ? AND user_id = ? AND symbol = ?`, [
+        guildId,
+        userId,
+        symbol,
+      ]);
+    }
+
+    db.run(
+      `INSERT INTO stock_trades (guild_id, user_id, symbol, side, quantity_micro, price, gross_amount, fee, net_amount, realized_profit, created_at)
+       VALUES (?, ?, ?, 'SELL', ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        guildId,
+        userId,
+        symbol,
+        soldQuantityMicro,
+        priceRounded,
+        grossAmount,
+        fee,
+        netAmount,
+        realizedProfit,
+        now,
+      ],
+    );
+
+    const idRow = db.get<{ id: number }>("SELECT last_insert_rowid() AS id");
+    const tradeId = Number(idRow?.id ?? 0);
+
+    const walletAfter = getWalletRow(guildId, userId)!;
+    const holdingAfter =
+      remainingQuantityMicro <= 0 ? null : getHoldingRow(guildId, userId, symbol)!;
+
+    db.run("COMMIT");
+
+    return {
+      wallet: mapWallet(walletAfter),
+      holding: holdingAfter ? mapHolding(holdingAfter) : null,
+      tradeId,
+      symbol,
+      price: priceRounded,
+      soldQuantityMicro,
+      remainingQuantityMicro: remainingQuantityMicro <= 0 ? 0 : remainingQuantityMicro,
+      grossAmount,
+      fee,
+      netAmount,
+      realizedProfit,
+      averageBuyPrice: avgBuy,
     };
   } catch (e) {
     db.run("ROLLBACK");
