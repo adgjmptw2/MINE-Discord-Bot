@@ -44,19 +44,35 @@ export class StockMarketService {
 
   async refreshAll(): Promise<void> {
     const symbols = getSupportedStockSymbols().map((s) => s.symbol);
-    try {
-      const list = await this.provider.getPrices(symbols);
-      this.prices.clear();
-      for (const p of list) {
-        this.prices.set(p.symbol, p);
+    const results = await Promise.allSettled(symbols.map((sym) => this.provider.getPrice(sym)));
+
+    const failures: string[] = [];
+    let successCount = 0;
+
+    for (let i = 0; i < results.length; i += 1) {
+      const r = results[i]!;
+      const sym = symbols[i]!;
+      if (r.status === "fulfilled") {
+        this.prices.set(r.value.symbol, r.value);
+        successCount += 1;
+      } else {
+        const reason = r.reason instanceof Error ? r.reason.message : String(r.reason);
+        failures.push(`${sym}: ${reason}`);
       }
+    }
+
+    if (successCount > 0) {
       this.lastRefreshAt = new Date();
+      const detail =
+        successCount === symbols.length ? `${successCount} symbols` : `${successCount}/${symbols.length} symbols`;
+      log("debug", "stock", `Stock quotes refreshed: ${detail}`);
+    }
+
+    if (failures.length > 0) {
+      this.lastError = failures.join("; ");
+      log("warn", "stock", `Stock quote refresh failures: ${this.lastError}`);
+    } else {
       this.lastError = null;
-      log("debug", "stock", `Stock quotes refreshed: ${list.length} symbols`);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      this.lastError = msg;
-      log("warn", "stock", `Failed to refresh stock quotes: ${msg}`);
     }
   }
 

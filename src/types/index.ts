@@ -17,7 +17,11 @@ export interface SoundroomConfig {
   channelName?: string;
 }
 
-/** mock = 더미, twelvedata = Twelve Data, yahoo = 국장 MVP용 demo·지연 시세(Yahoo chart, 비공식) */
+/**
+ * mock = 개발용 더미 시세
+ * twelvedata = Twelve Data API
+ * yahoo = 국내주식 demo/delayed quote provider
+ */
 export type StockPriceProvider = "mock" | "twelvedata" | "yahoo";
 
 export interface StockConfig {
