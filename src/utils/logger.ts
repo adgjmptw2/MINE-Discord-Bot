@@ -18,7 +18,12 @@ function clock(): string {
   return `${z(d.getHours())}:${z(d.getMinutes())}:${z(d.getSeconds())}.${z(d.getMilliseconds(), 3)}`;
 }
 
-export function log(level: LogLevel, scope: string, message: string, extra?: unknown): void {
+export function log(
+  level: LogLevel,
+  scope: string,
+  message: string,
+  extra?: unknown,
+): void {
   const { glyph, color } = levelStyle[level];
   const t = `${dim}${clock()}${reset}`;
   const g = `${bold}${color}${glyph}${reset}`;
@@ -41,7 +46,9 @@ export function printBanner(): void {
 
   console.log("");
   console.log(bar);
-  console.log(`  ${brand}mine${reset}${tag}-soundroom${reset}   ${dim}music / queue / voice${reset}`);
+  console.log(
+    `  ${brand}mine${reset}${tag}-soundroom${reset}   ${dim}music / queue / voice${reset}`,
+  );
   console.log(`  ${dim}ready.${reset}`);
   console.log(bar);
   console.log("");

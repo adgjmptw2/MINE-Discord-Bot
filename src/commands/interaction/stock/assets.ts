@@ -16,7 +16,10 @@ const command: SlashCommand = {
 
   async run(client: MineClient, interaction) {
     if (!interaction.inGuild()) {
-      await interaction.reply({ content: "서버에서만 사용할 수 있습니다.", flags: MessageFlags.Ephemeral });
+      await interaction.reply({
+        content: "서버에서만 사용할 수 있습니다.",
+        flags: MessageFlags.Ephemeral,
+      });
       scheduleEphemeralReplyDelete(interaction);
       return;
     }
@@ -46,10 +49,10 @@ const command: SlashCommand = {
     }
 
     const lines: string[] = [
-      `현금: **${fmt(summary.cashTotal)}** MINE`,
-      `주식 평가액: **${fmt(summary.stockValueTotal)}** MINE`,
-      `총자산: **${fmt(summary.totalAssets)}** MINE`,
-      `누적 입금: **${fmt(summary.wallet.totalDeposit)}** MINE`,
+      `현금: **${fmt(summary.cashTotal)}** 코인`,
+      `주식 평가액: **${fmt(summary.stockValueTotal)}** 코인`,
+      `총자산: **${fmt(summary.totalAssets)}** 코인`,
+      `누적 입금: **${fmt(summary.wallet.totalDeposit)}** 코인`,
       `수익률: **${summary.profitLossPercent.toFixed(2)}%**`,
     ];
 
@@ -66,7 +69,10 @@ const command: SlashCommand = {
     if (cacheEmpty) {
       lines.push("", "_시세 캐시 준비 중일 수 있습니다._");
     } else if (summary.unavailableSymbols.length > 0) {
-      lines.push("", `_일부 종목 시세 없음: ${summary.unavailableSymbols.join(", ")}_`);
+      lines.push(
+        "",
+        `_일부 종목 시세 없음: ${summary.unavailableSymbols.join(", ")}_`,
+      );
     }
 
     lines.push("", "※ 모의투자 게임입니다. 실제 투자가 아닙니다.");

@@ -7,7 +7,13 @@ import type {
   PermissionResolvable,
 } from "discord.js";
 import { Client } from "discord.js";
-import type { LoopOption, Riffy, RiffyNodeConfig, RiffyPlayer, RiffyTrack } from "riffy";
+import type {
+  LoopOption,
+  Riffy,
+  RiffyNodeConfig,
+  RiffyPlayer,
+  RiffyTrack,
+} from "riffy";
 import type { StockMarketService } from "@/services/stock/StockMarketService";
 
 export interface SoundroomConfig {
@@ -57,7 +63,10 @@ export interface ExtendedTrack extends Omit<RiffyTrack, "info"> {
   info: ExtendedTrackInfo;
 }
 
-export interface ExtendedPlayer extends Omit<RiffyPlayer, "current" | "previous" | "queue" | "autoplay" | "message" | "loop"> {
+export interface ExtendedPlayer extends Omit<
+  RiffyPlayer,
+  "current" | "previous" | "queue" | "autoplay" | "message" | "loop"
+> {
   current?: ExtendedTrack;
   previous?: ExtendedTrack;
   loop: LoopOption;
@@ -85,8 +94,12 @@ export interface BaseCommandOptions {
   usage?: string;
 }
 
-export interface SlashCommand extends ChatInputApplicationCommandData, BaseCommandOptions {
-  run: (client: MineClient, interaction: ChatInputCommandInteraction) => Promise<unknown>;
+export interface SlashCommand
+  extends ChatInputApplicationCommandData, BaseCommandOptions {
+  run: (
+    client: MineClient,
+    interaction: ChatInputCommandInteraction,
+  ) => Promise<unknown>;
 }
 
 export type BotEventHandler = (client: MineClient) => void | Promise<void>;

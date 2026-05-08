@@ -71,7 +71,10 @@ export class YahooStockQuoteProvider implements StockQuoteProvider {
     return found;
   }
 
-  private parseChartResponse(raw: unknown, meta: StockSymbol): Omit<StockPrice, "symbol" | "code" | "nameKo" | "nameEn" | "exchange"> {
+  private parseChartResponse(
+    raw: unknown,
+    meta: StockSymbol,
+  ): Omit<StockPrice, "symbol" | "code" | "nameKo" | "nameEn" | "exchange"> {
     if (!isRecord(raw)) {
       throw new Error(`Yahoo [${meta.symbol}]: JSON 객체가 아님`);
     }
@@ -82,7 +85,9 @@ export class YahooStockQuoteProvider implements StockQuoteProvider {
     }
 
     if (chart.error != null) {
-      throw new Error(`Yahoo [${meta.symbol}]: chart.error — ${formatChartError(chart.error)}`);
+      throw new Error(
+        `Yahoo [${meta.symbol}]: chart.error — ${formatChartError(chart.error)}`,
+      );
     }
 
     const result = chart.result;
@@ -124,7 +129,8 @@ export class YahooStockQuoteProvider implements StockQuoteProvider {
     }
 
     const prevClose =
-      parseFiniteNumber(chartMeta.chartPreviousClose) ?? parseFiniteNumber(chartMeta.previousClose);
+      parseFiniteNumber(chartMeta.chartPreviousClose) ??
+      parseFiniteNumber(chartMeta.previousClose);
 
     let changePercent: number | null = null;
     if (prevClose !== null && prevClose !== 0) {
@@ -157,7 +163,9 @@ export class YahooStockQuoteProvider implements StockQuoteProvider {
     try {
       res = await fetch(url);
     } catch (e) {
-      throw new Error(`Yahoo [${meta.symbol}]: 네트워크 오류 — ${e instanceof Error ? e.message : String(e)}`);
+      throw new Error(
+        `Yahoo [${meta.symbol}]: 네트워크 오류 — ${e instanceof Error ? e.message : String(e)}`,
+      );
     }
 
     let raw: unknown;
@@ -168,7 +176,10 @@ export class YahooStockQuoteProvider implements StockQuoteProvider {
     }
 
     if (!res.ok) {
-      const hint = isRecord(raw) && typeof raw.message === "string" ? raw.message : res.statusText;
+      const hint =
+        isRecord(raw) && typeof raw.message === "string"
+          ? raw.message
+          : res.statusText;
       throw new Error(`Yahoo [${meta.symbol}]: HTTP ${res.status} — ${hint}`);
     }
 

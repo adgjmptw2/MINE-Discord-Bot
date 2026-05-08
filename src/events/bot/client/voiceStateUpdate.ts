@@ -17,18 +17,28 @@ export default function registerVoiceStateUpdate(client: MineClient): void {
     }
 
     const textChannel = client.channels.cache.get(player.textChannel);
-    if (!textChannel || !("send" in textChannel) || typeof textChannel.send !== "function") {
+    if (
+      !textChannel ||
+      !("send" in textChannel) ||
+      typeof textChannel.send !== "function"
+    ) {
       return;
     }
 
-    if (oldState.id === client.user.id && oldState.channelId && !newState.channelId) {
+    if (
+      oldState.id === client.user.id &&
+      oldState.channelId &&
+      !newState.channelId
+    ) {
       return;
     }
 
     const previousBotChannel = oldState.guild.members.me?.voice.channel;
 
     if (previousBotChannel && oldState.channelId === previousBotChannel.id) {
-      const listeners = previousBotChannel.members.filter((member) => !member.user.bot);
+      const listeners = previousBotChannel.members.filter(
+        (member) => !member.user.bot,
+      );
 
       if (listeners.size === 0) {
         const guildId = oldState.guild.id;

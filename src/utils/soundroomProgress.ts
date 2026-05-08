@@ -8,7 +8,10 @@ const inFlightGuilds = new Set<string>();
 
 const TICK_MS = 8000;
 
-export function startSoundroomProgress(client: MineClient, guildId: string): void {
+export function startSoundroomProgress(
+  client: MineClient,
+  guildId: string,
+): void {
   stopSoundroomProgress(guildId);
 
   const id = setInterval(() => {

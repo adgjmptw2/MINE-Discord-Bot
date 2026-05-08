@@ -40,13 +40,19 @@ function volumeLabel(volume: number): string {
   return "🔊 일반";
 }
 
-const footerTimeFormat = new Intl.DateTimeFormat("ko-KR", { hour: "numeric", minute: "2-digit", hour12: true });
+const footerTimeFormat = new Intl.DateTimeFormat("ko-KR", {
+  hour: "numeric",
+  minute: "2-digit",
+  hour12: true,
+});
 
 function koreanFooterTime(): string {
   return `오늘 ${footerTimeFormat.format(new Date())}`;
 }
 
-export function buildSoundroomIdlePayload(client: MineClient): BaseMessageOptions {
+export function buildSoundroomIdlePayload(
+  client: MineClient,
+): BaseMessageOptions {
   const thumb = client.user?.displayAvatarURL({ size: 256 }) ?? undefined;
   const b = brand(client);
 
@@ -61,8 +67,14 @@ export function buildSoundroomIdlePayload(client: MineClient): BaseMessageOption
   }
 
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId("sr_recent").setLabel("최근 재생").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId("sr_melon").setLabel("인기차트").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId("sr_recent")
+      .setLabel("최근 재생")
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId("sr_melon")
+      .setLabel("인기차트")
+      .setStyle(ButtonStyle.Secondary),
   );
 
   return {
@@ -71,7 +83,10 @@ export function buildSoundroomIdlePayload(client: MineClient): BaseMessageOption
   };
 }
 
-export function buildSoundroomPlayingPayload(client: MineClient, player: ExtendedPlayer): BaseMessageOptions {
+export function buildSoundroomPlayingPayload(
+  client: MineClient,
+  player: ExtendedPlayer,
+): BaseMessageOptions {
   const track = player.current!;
   const pos = player.position ?? 0;
   const len = track.info.length || 1;
@@ -102,7 +117,8 @@ export function buildSoundroomPlayingPayload(client: MineClient, player: Extende
   if (ap.enabled) {
     if (userQueued === 0) {
       const nextAp = player.queue.find(isSoundroomAutoplayTrack);
-      const hintTitle = nextAp?.info.title?.trim() || ap.autoplayNextHintTitle?.trim() || "";
+      const hintTitle =
+        nextAp?.info.title?.trim() || ap.autoplayNextHintTitle?.trim() || "";
       const hintLine = hintTitle ? truncate(hintTitle, 90) : "—";
       embed.addFields({
         name: "대기열",
@@ -113,7 +129,8 @@ export function buildSoundroomPlayingPayload(client: MineClient, player: Extende
   } else if (userQueued === 0 && player.queue.length === 0) {
     embed.addFields({
       name: "대기열",
-      value: "다음 곡이 없습니다. 재생이 끝난 뒤 1분이 지나면 음성 채널에서 나갑니다.",
+      value:
+        "다음 곡이 없습니다. 재생이 끝난 뒤 1분이 지나면 음성 채널에서 나갑니다.",
       inline: false,
     });
   }
@@ -122,11 +139,26 @@ export function buildSoundroomPlayingPayload(client: MineClient, player: Extende
   }
 
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId("sr_stop").setLabel("정지").setStyle(ButtonStyle.Danger),
-    new ButtonBuilder().setCustomId("sr_seek").setLabel("구간 이동").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId("sr_pause").setLabel(player.paused ? "재생" : "일시정지").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId("sr_skip").setLabel("스킵").setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId("sr_queue").setLabel("대기열").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId("sr_stop")
+      .setLabel("정지")
+      .setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
+      .setCustomId("sr_seek")
+      .setLabel("구간 이동")
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId("sr_pause")
+      .setLabel(player.paused ? "재생" : "일시정지")
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId("sr_skip")
+      .setLabel("스킵")
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId("sr_queue")
+      .setLabel("대기열")
+      .setStyle(ButtonStyle.Secondary),
   );
 
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -142,14 +174,19 @@ export function buildSoundroomPlayingPayload(client: MineClient, player: Extende
   };
 }
 
-export async function fetchSoundroomPanelMessage(client: MineClient, guildId: string): Promise<Message | null> {
+export async function fetchSoundroomPanelMessage(
+  client: MineClient,
+  guildId: string,
+): Promise<Message | null> {
   const room = getSoundroom(guildId);
   if (!room) {
     return null;
   }
 
   const cachedChannel = client.channels.cache.get(room.channelId);
-  const channel = cachedChannel ?? (await client.channels.fetch(room.channelId).catch(() => null));
+  const channel =
+    cachedChannel ??
+    (await client.channels.fetch(room.channelId).catch(() => null));
   if (!channel?.isTextBased() || channel.isDMBased()) {
     return null;
   }
@@ -162,7 +199,10 @@ export async function fetchSoundroomPanelMessage(client: MineClient, guildId: st
   return channel.messages.fetch(room.panelMessageId).catch(() => null);
 }
 
-export async function editSoundroomIdlePanel(client: MineClient, guildId: string): Promise<void> {
+export async function editSoundroomIdlePanel(
+  client: MineClient,
+  guildId: string,
+): Promise<void> {
   const msg = await fetchSoundroomPanelMessage(client, guildId);
   if (!msg?.editable) {
     return;
@@ -171,7 +211,10 @@ export async function editSoundroomIdlePanel(client: MineClient, guildId: string
   await msg.edit(buildSoundroomIdlePayload(client));
 }
 
-export async function editSoundroomPlayingPanel(client: MineClient, guildId: string): Promise<void> {
+export async function editSoundroomPlayingPanel(
+  client: MineClient,
+  guildId: string,
+): Promise<void> {
   const player = getPlayer(client, guildId);
   if (!player?.current) {
     return;
@@ -194,28 +237,43 @@ export async function sendSoundroomAddNotification(
   /** Lavalink가 알려 준 재생목록 이름 (없으면 제목만 숫자로 표시) */
   playlistName?: string | null,
 ): Promise<void> {
-  const isPlaylist = playlistTotalTracks !== undefined && playlistTotalTracks > 1;
+  const isPlaylist =
+    playlistTotalTracks !== undefined && playlistTotalTracks > 1;
   const name = playlistName?.trim();
 
   const embed = new EmbedBuilder().setColor(0x5865f2);
 
   if (isPlaylist) {
     embed
-      .setTitle(name ? `${name} · ${playlistTotalTracks}곡` : `재생 목록 · ${playlistTotalTracks}곡`)
-      .setDescription(`**첫 곡:** [${track.info.title}](${track.info.uri}) (${formatDuration(track.info.length)})`);
+      .setTitle(
+        name
+          ? `${name} · ${playlistTotalTracks}곡`
+          : `재생 목록 · ${playlistTotalTracks}곡`,
+      )
+      .setDescription(
+        `**첫 곡:** [${track.info.title}](${track.info.uri}) (${formatDuration(track.info.length)})`,
+      );
   } else {
     embed
       .setTitle("재생 목록에 추가됨")
-      .setDescription(`[${track.info.title}](${track.info.uri}) (${formatDuration(track.info.length)})`);
+      .setDescription(
+        `[${track.info.title}](${track.info.uri}) (${formatDuration(track.info.length)})`,
+      );
   }
 
-  embed
-    .setThumbnail(track.info.thumbnail ?? null)
-    .setFooter({ text: `재생이 끊기면 Lavalink·네트워크 설정을 확인해 주세요. | 볼륨: ${volumePercent}%` });
+  embed.setThumbnail(track.info.thumbnail ?? null).setFooter({
+    text: `재생이 끊기면 Lavalink·네트워크 설정을 확인해 주세요. | 볼륨: ${volumePercent}%`,
+  });
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId("sr_pick_alt").setLabel("다른 결과").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId("sr_error_log").setLabel("오류 기록").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId("sr_pick_alt")
+      .setLabel("다른 결과")
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId("sr_error_log")
+      .setLabel("오류 기록")
+      .setStyle(ButtonStyle.Secondary),
   );
 
   const sent = await channel.send({ embeds: [embed], components: [row] });

@@ -19,9 +19,16 @@ export default function registerQueueEnd(client: MineClient): void {
 
     await new Promise((resolve) => setTimeout(resolve, 400));
 
-    const player = (client.riffy.players.get(initialPlayer.guildId) as ExtendedPlayer | undefined) ?? initialPlayer;
+    const player =
+      (client.riffy.players.get(initialPlayer.guildId) as
+        | ExtendedPlayer
+        | undefined) ?? initialPlayer;
     const channel = client.channels.cache.get(player.textChannel);
-    if (!channel || !("send" in channel) || typeof channel.send !== "function") {
+    if (
+      !channel ||
+      !("send" in channel) ||
+      typeof channel.send !== "function"
+    ) {
       return;
     }
 
@@ -39,7 +46,9 @@ export default function registerQueueEnd(client: MineClient): void {
         setLastEndedTrack(guildId, ended);
         ensureSeedTrack(guildId, ended);
       }
-      const ok = await tryEnqueueAutoplayPlaylist(client, player).catch(() => false);
+      const ok = await tryEnqueueAutoplayPlaylist(client, player).catch(
+        () => false,
+      );
       if (ok) {
         return;
       }
@@ -50,7 +59,9 @@ export default function registerQueueEnd(client: MineClient): void {
 
       armIdleLeaveTimer(guildId, IDLE_LEAVE_MS, () => {
         void (async () => {
-          const p = client.riffy.players.get(guildId) as ExtendedPlayer | undefined;
+          const p = client.riffy.players.get(guildId) as
+            | ExtendedPlayer
+            | undefined;
           if (!p) {
             resetAutoplaySession(guildId);
             return;
@@ -61,7 +72,9 @@ export default function registerQueueEnd(client: MineClient): void {
           stopSoundroomProgress(guildId);
           p.message = undefined;
           if (getSoundroom(guildId)) {
-            await editSoundroomIdlePanel(client, guildId).catch(() => undefined);
+            await editSoundroomIdlePanel(client, guildId).catch(
+              () => undefined,
+            );
           }
           try {
             await Promise.resolve(p.destroy());

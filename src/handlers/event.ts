@@ -4,7 +4,10 @@ import type { BotEventHandler, MineClient } from "@/types";
 import { log } from "@/utils/logger";
 
 /** Helper-only modules under `events/bot/client` (no `default` event handler). */
-const SKIP_BOT_EVENT_FILES = new Set(["soundroomMessages.js", "musicLoungeMessages.js"]);
+const SKIP_BOT_EVENT_FILES = new Set([
+  "soundroomMessages.js",
+  "musicLoungeMessages.js",
+]);
 
 export default async function loadEvents(client: MineClient): Promise<void> {
   let eventCount = 0;
@@ -12,15 +15,20 @@ export default async function loadEvents(client: MineClient): Promise<void> {
 
   for (const directory of readdirSync(basePath)) {
     const directoryPath = path.join(basePath, directory);
-    const eventFiles = readdirSync(directoryPath).filter((file) => file.endsWith(".js"));
+    const eventFiles = readdirSync(directoryPath).filter((file) =>
+      file.endsWith(".js"),
+    );
 
     for (const file of eventFiles) {
       if (SKIP_BOT_EVENT_FILES.has(file)) {
         continue;
       }
       try {
-        const imported = require(path.join(directoryPath, file)) as { default?: BotEventHandler } | BotEventHandler;
-        const handler = typeof imported === "function" ? imported : imported.default;
+        const imported = require(path.join(directoryPath, file)) as
+          | { default?: BotEventHandler }
+          | BotEventHandler;
+        const handler =
+          typeof imported === "function" ? imported : imported.default;
 
         if (typeof handler !== "function") {
           log("warn", "events", `${file} does not export a function`);

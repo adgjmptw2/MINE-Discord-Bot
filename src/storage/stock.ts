@@ -5,10 +5,10 @@ export const STOCK_QUANTITY_SCALE = 1_000_000;
 
 export const STOCK_TRADE_FEE_RATE = 0.001;
 
-/** 최소 매수 금액 (MINE) */
+/** 최소 매수 금액 (코인) */
 export const MIN_STOCK_BUY_AMOUNT = 1_000;
 
-/** 최소 매도 금액 기준(MINE, 금액 방식일 때) */
+/** 최소 매도 금액 기준(코인, 금액 방식일 때) */
 export const MIN_STOCK_SELL_AMOUNT = 1_000;
 
 export const DAILY_ATTENDANCE_REWARD = 10_000;
@@ -173,7 +173,11 @@ function getWalletRow(guildId: string, userId: string): WalletRow | undefined {
   );
 }
 
-function getHoldingRow(guildId: string, userId: string, symbol: string): HoldingRow | undefined {
+function getHoldingRow(
+  guildId: string,
+  userId: string,
+  symbol: string,
+): HoldingRow | undefined {
   return db.get<HoldingRow>(
     `SELECT guild_id, user_id, symbol, quantity_micro, average_buy_price, created_at, updated_at
      FROM stock_holdings WHERE guild_id = ? AND user_id = ? AND symbol = ?`,
@@ -186,7 +190,11 @@ function getStatementChanges(): number {
   return Number(row?.n ?? 0);
 }
 
-function ensureWalletRow(guildId: string, userId: string, nowIso: string): WalletRow {
+function ensureWalletRow(
+  guildId: string,
+  userId: string,
+  nowIso: string,
+): WalletRow {
   let row = getWalletRow(guildId, userId);
   if (row) {
     return row;
@@ -203,18 +211,27 @@ function ensureWalletRow(guildId: string, userId: string, nowIso: string): Walle
   return row;
 }
 
-export function getStockWallet(guildId: string, userId: string): StockWallet | null {
+export function getStockWallet(
+  guildId: string,
+  userId: string,
+): StockWallet | null {
   const row = getWalletRow(guildId, userId);
   return row ? mapWallet(row) : null;
 }
 
-export function getOrCreateStockWallet(guildId: string, userId: string): StockWallet {
+export function getOrCreateStockWallet(
+  guildId: string,
+  userId: string,
+): StockWallet {
   const now = new Date().toISOString();
   const row = ensureWalletRow(guildId, userId, now);
   return mapWallet(row);
 }
 
-export function listStockHoldings(guildId: string, userId: string): StockHolding[] {
+export function listStockHoldings(
+  guildId: string,
+  userId: string,
+): StockHolding[] {
   const rows = db.all<HoldingRow>(
     `SELECT guild_id, user_id, symbol, quantity_micro, average_buy_price, created_at, updated_at
      FROM stock_holdings
@@ -303,8 +320,7 @@ export function getStockAssetSummary(
   const cashTotal = wallet.cashBalance;
   const totalAssets = cashTotal + stockValueTotal;
   const td = wallet.totalDeposit;
-  const profitLossPercent =
-    td > 0 ? ((totalAssets - td) / td) * 100 : 0;
+  const profitLossPercent = td > 0 ? ((totalAssets - td) / td) * 100 : 0;
 
   return {
     wallet,
@@ -322,7 +338,11 @@ export function getStockAssetSummary(
  * 총자산이 정확히 0인 행은 제외한다(미참여·빈 지갑 노이즈 감소).
  * 클라이언트에서 지갑만 있고 입금·매수 전인 경우도 cash 0이면 제외됨.
  */
-export function getStockRanking(guildId: string, prices: StockPrice[], limit = 10): StockRankingEntry[] {
+export function getStockRanking(
+  guildId: string,
+  prices: StockPrice[],
+  limit = 10,
+): StockRankingEntry[] {
   const walletRows = db.all<WalletRow>(
     `SELECT guild_id, user_id, cash_balance, total_deposit, created_at, updated_at
      FROM stock_wallets WHERE guild_id = ?`,
@@ -421,7 +441,9 @@ export function buyStock(params: BuyStockParams): BuyStockResult {
   const priceRounded = Math.round(priceRaw);
   const fee = Math.floor(amount * STOCK_TRADE_FEE_RATE);
   const netAmount = amount + fee;
-  const quantityMicro = Math.floor((amount / priceRounded) * STOCK_QUANTITY_SCALE);
+  const quantityMicro = Math.floor(
+    (amount / priceRounded) * STOCK_QUANTITY_SCALE,
+  );
 
   if (quantityMicro <= 0) {
     throw new StockStorageError("QUANTITY_TOO_SMALL");
@@ -461,14 +483,24 @@ export function buyStock(params: BuyStockParams): BuyStockResult {
       const totalCostBefore = (oldQty / STOCK_QUANTITY_SCALE) * oldAvg;
       const totalCostAfter = totalCostBefore + amount;
       totalQuantityMicro = oldQty + quantityMicro;
-      averageBuyPrice = Math.round(totalCostAfter / (totalQuantityMicro / STOCK_QUANTITY_SCALE));
+      averageBuyPrice = Math.round(
+        totalCostAfter / (totalQuantityMicro / STOCK_QUANTITY_SCALE),
+      );
     }
 
     if (!existing) {
       db.run(
         `INSERT INTO stock_holdings (guild_id, user_id, symbol, quantity_micro, average_buy_price, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [guildId, userId, symbol, totalQuantityMicro, averageBuyPrice, now, now],
+        [
+          guildId,
+          userId,
+          symbol,
+          totalQuantityMicro,
+          averageBuyPrice,
+          now,
+          now,
+        ],
       );
     } else {
       db.run(
@@ -482,7 +514,17 @@ export function buyStock(params: BuyStockParams): BuyStockResult {
     db.run(
       `INSERT INTO stock_trades (guild_id, user_id, symbol, side, quantity_micro, price, gross_amount, fee, net_amount, realized_profit, created_at)
        VALUES (?, ?, ?, 'BUY', ?, ?, ?, ?, ?, NULL, ?)`,
-      [guildId, userId, symbol, quantityMicro, priceRounded, amount, fee, netAmount, now],
+      [
+        guildId,
+        userId,
+        symbol,
+        quantityMicro,
+        priceRounded,
+        amount,
+        fee,
+        netAmount,
+        now,
+      ],
     );
 
     const idRow = db.get<{ id: number }>("SELECT last_insert_rowid() AS id");
@@ -568,7 +610,9 @@ export function sellStock(params: SellStockParams): SellStockResult {
       if (amount < MIN_STOCK_SELL_AMOUNT) {
         throw new StockStorageError("INVALID_AMOUNT");
       }
-      soldQuantityMicro = Math.floor((amount / priceRounded) * STOCK_QUANTITY_SCALE);
+      soldQuantityMicro = Math.floor(
+        (amount / priceRounded) * STOCK_QUANTITY_SCALE,
+      );
       if (soldQuantityMicro > hq) {
         throw new StockStorageError("INSUFFICIENT_HOLDING");
       }
@@ -581,10 +625,14 @@ export function sellStock(params: SellStockParams): SellStockResult {
       throw new StockStorageError("INSUFFICIENT_HOLDING");
     }
 
-    const grossAmount = Math.floor((soldQuantityMicro / STOCK_QUANTITY_SCALE) * priceRounded);
+    const grossAmount = Math.floor(
+      (soldQuantityMicro / STOCK_QUANTITY_SCALE) * priceRounded,
+    );
     const fee = Math.floor(grossAmount * STOCK_TRADE_FEE_RATE);
     const netAmount = grossAmount - fee;
-    const costBasis = Math.floor((soldQuantityMicro / STOCK_QUANTITY_SCALE) * avgBuy);
+    const costBasis = Math.floor(
+      (soldQuantityMicro / STOCK_QUANTITY_SCALE) * avgBuy,
+    );
     const realizedProfit = netAmount - costBasis;
 
     const remainingQuantityMicro = hq - soldQuantityMicro;
@@ -609,11 +657,10 @@ export function sellStock(params: SellStockParams): SellStockResult {
     );
 
     if (remainingQuantityMicro <= 0) {
-      db.run(`DELETE FROM stock_holdings WHERE guild_id = ? AND user_id = ? AND symbol = ?`, [
-        guildId,
-        userId,
-        symbol,
-      ]);
+      db.run(
+        `DELETE FROM stock_holdings WHERE guild_id = ? AND user_id = ? AND symbol = ?`,
+        [guildId, userId, symbol],
+      );
     }
 
     db.run(
@@ -638,7 +685,9 @@ export function sellStock(params: SellStockParams): SellStockResult {
 
     const walletAfter = getWalletRow(guildId, userId)!;
     const holdingAfter =
-      remainingQuantityMicro <= 0 ? null : getHoldingRow(guildId, userId, symbol)!;
+      remainingQuantityMicro <= 0
+        ? null
+        : getHoldingRow(guildId, userId, symbol)!;
 
     db.run("COMMIT");
 
@@ -649,7 +698,8 @@ export function sellStock(params: SellStockParams): SellStockResult {
       symbol,
       price: priceRounded,
       soldQuantityMicro,
-      remainingQuantityMicro: remainingQuantityMicro <= 0 ? 0 : remainingQuantityMicro,
+      remainingQuantityMicro:
+        remainingQuantityMicro <= 0 ? 0 : remainingQuantityMicro,
       grossAmount,
       fee,
       netAmount,

@@ -11,7 +11,9 @@ import { MineClient } from "@/types";
 const token = process.env.TOKEN?.trim();
 
 if (!token) {
-  throw new Error("Missing TOKEN in environment. Set TOKEN in .env before running the bot.");
+  throw new Error(
+    "Missing TOKEN in environment. Set TOKEN in .env before running the bot.",
+  );
 }
 
 const parsedShardList = process.env.SHARD_LIST
@@ -20,8 +22,13 @@ const parsedShardList = process.env.SHARD_LIST
       .filter((value) => Number.isInteger(value) && value >= 0)
   : [];
 
-const parsedShardCount = process.env.SHARD_COUNT ? Number(process.env.SHARD_COUNT.trim()) : undefined;
-const shardCount = Number.isInteger(parsedShardCount) && (parsedShardCount as number) >= 1 ? (parsedShardCount as number) : 1;
+const parsedShardCount = process.env.SHARD_COUNT
+  ? Number(process.env.SHARD_COUNT.trim())
+  : undefined;
+const shardCount =
+  Number.isInteger(parsedShardCount) && (parsedShardCount as number) >= 1
+    ? (parsedShardCount as number)
+    : 1;
 
 const client = new MineClient({
   intents: [
@@ -75,7 +82,11 @@ client.riffy.on("nodeError", (node, error) => {
   log("error", "riffy", `Node ${nodeName} reported an error`, error);
 });
 
-void Promise.all([loadEvents(client), loadRiffyEvents(client), loadSlashCommands(client)]).then(() => {
+void Promise.all([
+  loadEvents(client),
+  loadRiffyEvents(client),
+  loadSlashCommands(client),
+]).then(() => {
   void client.login(token);
 });
 

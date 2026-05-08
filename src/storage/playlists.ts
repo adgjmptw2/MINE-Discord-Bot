@@ -22,7 +22,10 @@ interface PlaylistRow {
   created_at: string;
 }
 
-function getPlaylistRow(ownerId: string, name: string): PlaylistRow | undefined {
+function getPlaylistRow(
+  ownerId: string,
+  name: string,
+): PlaylistRow | undefined {
   const nameKey = key(name);
   return db.get<PlaylistRow>(
     `
@@ -66,7 +69,10 @@ export function createPlaylist(ownerId: string, name: string): PlaylistRecord {
   return { ownerId, createdAt, tracks: [] };
 }
 
-export function getPlaylist(ownerId: string, name: string): PlaylistRecord | undefined {
+export function getPlaylist(
+  ownerId: string,
+  name: string,
+): PlaylistRecord | undefined {
   const row = getPlaylistRow(ownerId, name);
   if (!row) {
     return undefined;
@@ -93,7 +99,11 @@ export function listPlaylists(ownerId: string): string[] {
     .map((row) => row.display_name);
 }
 
-export function addTrackToPlaylist(ownerId: string, name: string, track: PlaylistEntry): PlaylistRecord {
+export function addTrackToPlaylist(
+  ownerId: string,
+  name: string,
+  track: PlaylistEntry,
+): PlaylistRecord {
   const row = getPlaylistRow(ownerId, name);
 
   if (!row) {
@@ -121,7 +131,11 @@ export function addTrackToPlaylist(ownerId: string, name: string, track: Playlis
   };
 }
 
-export function removeTrackFromPlaylist(ownerId: string, name: string, position: number): PlaylistRecord {
+export function removeTrackFromPlaylist(
+  ownerId: string,
+  name: string,
+  position: number,
+): PlaylistRecord {
   const row = getPlaylistRow(ownerId, name);
 
   if (!row) {

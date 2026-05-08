@@ -2,7 +2,11 @@ import { MessageFlags } from "discord.js";
 import { getStockRanking } from "@/storage/stock";
 import { panelReply } from "@/utils/discord";
 import { scheduleEphemeralReplyDelete } from "@/utils/ephemeralCleanup";
-import { formatMine, formatPercent, formatSignedMine } from "@/utils/stockFormat";
+import {
+  formatMine,
+  formatPercent,
+  formatSignedMine,
+} from "@/utils/stockFormat";
 import type { MineClient, SlashCommand } from "@/types";
 
 const RANKING_LIMIT = 10;
@@ -15,7 +19,10 @@ const command: SlashCommand = {
 
   async run(client: MineClient, interaction) {
     if (!interaction.inGuild()) {
-      await interaction.reply({ content: "서버에서만 사용할 수 있습니다.", flags: MessageFlags.Ephemeral });
+      await interaction.reply({
+        content: "서버에서만 사용할 수 있습니다.",
+        flags: MessageFlags.Ephemeral,
+      });
       scheduleEphemeralReplyDelete(interaction);
       return;
     }
@@ -46,7 +53,8 @@ const command: SlashCommand = {
           ephemeral: true,
           panel: {
             title: "주식랭킹",
-            description: "아직 랭킹에 표시할 사용자가 없습니다. `/출석`으로 시작해보세요.",
+            description:
+              "아직 랭킹에 표시할 사용자가 없습니다. `/출석`으로 시작해보세요.",
           },
         }),
       );
@@ -78,7 +86,10 @@ const command: SlashCommand = {
     lines.push("", "※ 모의투자 게임용 랭킹입니다. 실제 투자와 무관합니다.");
 
     if (anyUnavailable) {
-      lines.push("", "_일부 종목은 시세 준비 중이라 평가액에서 제외될 수 있습니다._");
+      lines.push(
+        "",
+        "_일부 종목은 시세 준비 중이라 평가액에서 제외될 수 있습니다._",
+      );
     }
 
     await interaction.reply(

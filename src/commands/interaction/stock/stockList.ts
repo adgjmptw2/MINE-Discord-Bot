@@ -2,7 +2,11 @@ import { MessageFlags } from "discord.js";
 import { getSupportedStockSymbols } from "@/settings/stockSymbols";
 import { panelReply } from "@/utils/discord";
 import { scheduleEphemeralReplyDelete } from "@/utils/ephemeralCleanup";
-import { formatMine, formatPercent, formatStockRefreshTime } from "@/utils/stockFormat";
+import {
+  formatMine,
+  formatPercent,
+  formatStockRefreshTime,
+} from "@/utils/stockFormat";
 import type { MineClient, SlashCommand } from "@/types";
 
 const command: SlashCommand = {
@@ -13,7 +17,10 @@ const command: SlashCommand = {
 
   async run(client: MineClient, interaction) {
     if (!interaction.inGuild()) {
-      await interaction.reply({ content: "서버에서만 사용할 수 있습니다.", flags: MessageFlags.Ephemeral });
+      await interaction.reply({
+        content: "서버에서만 사용할 수 있습니다.",
+        flags: MessageFlags.Ephemeral,
+      });
       scheduleEphemeralReplyDelete(interaction);
       return;
     }
@@ -30,7 +37,9 @@ const command: SlashCommand = {
     for (const s of symbols) {
       const p = market?.getCachedPrice(s.symbol);
       if (p) {
-        lines.push(`${s.nameKo} (${s.code}) — ${formatMine(p.price)} / ${formatPercent(p.changePercent)}`);
+        lines.push(
+          `${s.nameKo} (${s.code}) — ${formatMine(p.price)} / ${formatPercent(p.changePercent)}`,
+        );
       } else {
         lines.push(`${s.nameKo} (${s.code}) — 시세 준비 중`);
       }
@@ -41,7 +50,9 @@ const command: SlashCommand = {
     const lastErr = market?.getLastError();
 
     lines.push("", `마지막 갱신: ${formatStockRefreshTime(lastAt)}`);
-    lines.push(`시세 출처: ${provider}${lastErr ? ` · 마지막 오류: ${lastErr}` : ""}`);
+    lines.push(
+      `시세 출처: ${provider}${lastErr ? ` · 마지막 오류: ${lastErr}` : ""}`,
+    );
 
     lines.push("", "※ 모의투자 게임용 시세이며 실제 투자용이 아닙니다.");
 

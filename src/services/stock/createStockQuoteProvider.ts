@@ -4,7 +4,9 @@ import { TwelveDataStockQuoteProvider } from "./TwelveDataStockQuoteProvider";
 import { YahooStockQuoteProvider } from "./YahooStockQuoteProvider";
 import type { StockQuoteProvider } from "./StockQuoteProvider";
 
-export function createStockQuoteProvider(stock: StockConfig): StockQuoteProvider {
+export function createStockQuoteProvider(
+  stock: StockConfig,
+): StockQuoteProvider {
   switch (stock.stockPriceProvider) {
     case "mock":
       return new MockStockQuoteProvider();

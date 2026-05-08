@@ -1,5 +1,8 @@
 import { ApplicationCommandOptionType, MessageFlags } from "discord.js";
-import { findStockSymbol, getSupportedStockSymbols } from "@/settings/stockSymbols";
+import {
+  findStockSymbol,
+  getSupportedStockSymbols,
+} from "@/settings/stockSymbols";
 import {
   MIN_STOCK_SELL_AMOUNT,
   sellStock,
@@ -43,7 +46,10 @@ const command: SlashCommand = {
 
   async run(client: MineClient, interaction) {
     if (!interaction.inGuild()) {
-      await interaction.reply({ content: "서버에서만 사용할 수 있습니다.", flags: MessageFlags.Ephemeral });
+      await interaction.reply({
+        content: "서버에서만 사용할 수 있습니다.",
+        flags: MessageFlags.Ephemeral,
+      });
       scheduleEphemeralReplyDelete(interaction);
       return;
     }
@@ -63,7 +69,11 @@ const command: SlashCommand = {
           ephemeral: true,
           panel: {
             title: "매도",
-            lines: ["지원하지 않는 종목입니다. 아래에서 다시 선택해 주세요.", "", hint],
+            lines: [
+              "지원하지 않는 종목입니다. 아래에서 다시 선택해 주세요.",
+              "",
+              hint,
+            ],
           },
         }),
       );
@@ -80,7 +90,8 @@ const command: SlashCommand = {
           ephemeral: true,
           panel: {
             title: "매도",
-            description: "매도 방식을 알 수 없습니다. 예: `5000`, `50%`, `전부`",
+            description:
+              "매도 방식을 알 수 없습니다. 예: `5000`, `50%`, `전부`",
           },
         }),
       );
@@ -181,11 +192,12 @@ const command: SlashCommand = {
         } else if (e.code === "INSUFFICIENT_HOLDING") {
           description = "보유 수량이 부족합니다.";
         } else if (e.code === "INVALID_AMOUNT") {
-          description = `최소 매도 금액은 ${MIN_STOCK_SELL_AMOUNT.toLocaleString("ko-KR")} MINE입니다.`;
+          description = `최소 매도 금액은 ${MIN_STOCK_SELL_AMOUNT.toLocaleString("ko-KR")} 코인입니다.`;
         } else if (e.code === "INVALID_PERCENT") {
           description = "퍼센트는 1~100 사이로 입력해주세요.";
         } else if (e.code === "QUANTITY_TOO_SMALL") {
-          description = "매도 수량이 너무 작습니다. 금액이나 비율을 조정해 주세요.";
+          description =
+            "매도 수량이 너무 작습니다. 금액이나 비율을 조정해 주세요.";
         } else if (e.code === "INVALID_PRICE") {
           description = "시세 준비 중입니다.";
         }
@@ -201,7 +213,10 @@ const command: SlashCommand = {
         );
       } else {
         await interaction.reply({
-          content: e instanceof Error ? e.message : "매도 처리 중 오류가 발생했습니다.",
+          content:
+            e instanceof Error
+              ? e.message
+              : "매도 처리 중 오류가 발생했습니다.",
           flags: MessageFlags.Ephemeral,
         });
       }

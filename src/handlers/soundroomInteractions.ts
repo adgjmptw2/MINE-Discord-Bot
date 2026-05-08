@@ -13,14 +13,26 @@ import {
 import { listGuildRecentPlays } from "@/storage/guildMusicRecent";
 import { getSoundroom } from "@/storage/soundroom";
 import { getMelonChartSource } from "@/storage/soundroomCharts";
-import { ensurePlayerConnection, getActivePlayer, getPlayer, hasCurrentTrack } from "@/utils/commands";
+import {
+  ensurePlayerConnection,
+  getActivePlayer,
+  getPlayer,
+  hasCurrentTrack,
+} from "@/utils/commands";
 import { convertHmsToMs } from "@/utils/convert";
 import { formatDuration, truncate } from "@/utils/discord";
 import { stopSoundroomProgress } from "@/utils/soundroomProgress";
-import { editSoundroomIdlePanel, editSoundroomPlayingPanel, sendSoundroomAddNotification } from "@/utils/soundroomPanel";
+import {
+  editSoundroomIdlePanel,
+  editSoundroomPlayingPanel,
+  sendSoundroomAddNotification,
+} from "@/utils/soundroomPanel";
 import { prioritizeYoutubeTracks } from "@/utils/youtubePlaylist";
 import { buildSoundroomQueuePanelPayload } from "@/handlers/soundroomQueuePanel";
-import { scheduleEphemeralReplyDelete, scheduleQueuePanelEphemeralDelete } from "@/utils/ephemeralCleanup";
+import {
+  scheduleEphemeralReplyDelete,
+  scheduleQueuePanelEphemeralDelete,
+} from "@/utils/ephemeralCleanup";
 import {
   onQueueMayHaveItems,
   addTracksRespectingSoundroomAutoplay,
@@ -36,7 +48,11 @@ async function resolveSoundroomChannel(
   channelId: string,
   fallback?: ButtonInteraction["channel"],
 ): Promise<GuildTextBasedChannel | null> {
-  if (fallback?.isTextBased() && !fallback.isDMBased() && fallback.id === channelId) {
+  if (
+    fallback?.isTextBased() &&
+    !fallback.isDMBased() &&
+    fallback.id === channelId
+  ) {
     return fallback;
   }
 
@@ -58,7 +74,10 @@ async function requirePlayerSameVoice(
   const member = interaction.member as GuildMember;
   const player = getActivePlayer(client, guildId);
   if (!player) {
-    await interaction.reply({ content: "활성화된 플레이어가 없습니다.", flags: MessageFlags.Ephemeral });
+    await interaction.reply({
+      content: "활성화된 플레이어가 없습니다.",
+      flags: MessageFlags.Ephemeral,
+    });
     scheduleEphemeralReplyDelete(interaction);
     return null;
   }
@@ -66,7 +85,10 @@ async function requirePlayerSameVoice(
   const memberChannelId = member.voice.channelId;
   const botChannelId = guild.members.me?.voice.channelId ?? null;
   if (!memberChannelId || (botChannelId && memberChannelId !== botChannelId)) {
-    await interaction.reply({ content: "봇과 같은 음성 채널에 있어야 합니다.", flags: MessageFlags.Ephemeral });
+    await interaction.reply({
+      content: "봇과 같은 음성 채널에 있어야 합니다.",
+      flags: MessageFlags.Ephemeral,
+    });
     scheduleEphemeralReplyDelete(interaction);
     return null;
   }
@@ -74,7 +96,10 @@ async function requirePlayerSameVoice(
   return getPlayer(client, guildId)!;
 }
 
-export async function handleSoundroomButton(client: MineClient, interaction: ButtonInteraction): Promise<boolean> {
+export async function handleSoundroomButton(
+  client: MineClient,
+  interaction: ButtonInteraction,
+): Promise<boolean> {
   if (!interaction.customId.startsWith("sr_")) {
     return false;
   }
@@ -86,18 +111,27 @@ export async function handleSoundroomButton(client: MineClient, interaction: But
 
   const lounge = getSoundroom(guildId);
   if (!lounge) {
-    await interaction.reply({ content: "노래 채널이 설정되어 있지 않습니다.", flags: MessageFlags.Ephemeral });
+    await interaction.reply({
+      content: "노래 채널이 설정되어 있지 않습니다.",
+      flags: MessageFlags.Ephemeral,
+    });
     scheduleEphemeralReplyDelete(interaction);
     return true;
   }
 
   if (interaction.channelId !== lounge.channelId) {
-    await interaction.reply({ content: "노래 채널에서만 버튼을 사용할 수 있습니다.", flags: MessageFlags.Ephemeral });
+    await interaction.reply({
+      content: "노래 채널에서만 버튼을 사용할 수 있습니다.",
+      flags: MessageFlags.Ephemeral,
+    });
     scheduleEphemeralReplyDelete(interaction);
     return true;
   }
 
-  if (interaction.customId === "sr_pick_alt" || interaction.customId === "sr_error_log") {
+  if (
+    interaction.customId === "sr_pick_alt" ||
+    interaction.customId === "sr_error_log"
+  ) {
     const text =
       interaction.customId === "sr_pick_alt"
         ? "채팅에는 한 곡만 반영됩니다. 이어 듣기는 재생 패널에서 자동 재생을 켜 주세요."
@@ -126,7 +160,8 @@ export async function handleSoundroomButton(client: MineClient, interaction: But
     const lines = rows.map((r, i) => {
       const t = truncate(r.title, 56);
       const a = r.author ? ` — ${truncate(r.author, 28)}` : "";
-      const linkable = r.uri.startsWith("http://") || r.uri.startsWith("https://");
+      const linkable =
+        r.uri.startsWith("http://") || r.uri.startsWith("https://");
       const titlePart = linkable ? `[${t}](${r.uri})` : t;
       return `${i + 1}. ${titlePart}${a}`;
     });
@@ -162,14 +197,24 @@ export async function handleSoundroomButton(client: MineClient, interaction: But
 
     const member = interaction.member as GuildMember;
     if (!member.voice.channel) {
-      await interaction.editReply({ content: "음성 채널에 먼저 들어가 주세요." });
+      await interaction.editReply({
+        content: "음성 채널에 먼저 들어가 주세요.",
+      });
       scheduleEphemeralReplyDelete(interaction);
       return true;
     }
 
-    const player = await ensurePlayerConnection(client, guildId, member.voice.channel.id, lounge.channelId);
+    const player = await ensurePlayerConnection(
+      client,
+      guildId,
+      member.voice.channel.id,
+      lounge.channelId,
+    );
     try {
-      const resolve = await client.riffy.resolve({ query: stored.playlistUrl, requester: member });
+      const resolve = await client.riffy.resolve({
+        query: stored.playlistUrl,
+        requester: member,
+      });
       const rawTracks = resolve.tracks as ExtendedTrack[];
 
       if (rawTracks.length === 0) {
@@ -182,7 +227,9 @@ export async function handleSoundroomButton(client: MineClient, interaction: But
       }
 
       const tracks =
-        resolve.loadType === "playlist" ? prioritizeYoutubeTracks(rawTracks, stored.priorityVideoId) : rawTracks;
+        resolve.loadType === "playlist"
+          ? prioritizeYoutubeTracks(rawTracks, stored.priorityVideoId)
+          : rawTracks;
 
       if (resolve.loadType === "playlist") {
         for (const t of tracks) {
@@ -195,12 +242,26 @@ export async function handleSoundroomButton(client: MineClient, interaction: But
         addTracksRespectingSoundroomAutoplay(player, guildId, [t]);
       }
 
-      const ch = await resolveSoundroomChannel(client, lounge.channelId, interaction.channel);
+      const ch = await resolveSoundroomChannel(
+        client,
+        lounge.channelId,
+        interaction.channel,
+      );
       const first = tracks[0]!;
       if (ch) {
-        const playlistCount = resolve.loadType === "playlist" ? tracks.length : undefined;
-        const playlistName = resolve.loadType === "playlist" ? resolve.playlistInfo?.name : undefined;
-        await sendSoundroomAddNotification(ch, first, Math.round(player.volume ?? 100), playlistCount, playlistName);
+        const playlistCount =
+          resolve.loadType === "playlist" ? tracks.length : undefined;
+        const playlistName =
+          resolve.loadType === "playlist"
+            ? resolve.playlistInfo?.name
+            : undefined;
+        await sendSoundroomAddNotification(
+          ch,
+          first,
+          Math.round(player.volume ?? 100),
+          playlistCount,
+          playlistName,
+        );
       }
 
       if (player.queue.length > 0 && !player.playing && !player.paused) {
@@ -239,7 +300,9 @@ export async function handleSoundroomButton(client: MineClient, interaction: But
       await editSoundroomPlayingPanel(client, guildId).catch(() => undefined);
       if (enabled) {
         void prefetchAutoplayNextHint(client, pl).then(() => {
-          void editSoundroomPlayingPanel(client, guildId).catch(() => undefined);
+          void editSoundroomPlayingPanel(client, guildId).catch(
+            () => undefined,
+          );
         });
       }
     }
@@ -252,7 +315,9 @@ export async function handleSoundroomButton(client: MineClient, interaction: But
       return true;
     }
 
-    const modal = new ModalBuilder().setCustomId("sr_seek_modal").setTitle("구간 이동");
+    const modal = new ModalBuilder()
+      .setCustomId("sr_seek_modal")
+      .setTitle("구간 이동");
 
     const input = new TextInputBuilder()
       .setCustomId("sr_seek_input")
@@ -261,7 +326,9 @@ export async function handleSoundroomButton(client: MineClient, interaction: But
       .setRequired(true)
       .setMaxLength(12);
 
-    modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
+    modal.addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(input),
+    );
     await interaction.showModal(modal);
     return true;
   }
@@ -269,7 +336,10 @@ export async function handleSoundroomButton(client: MineClient, interaction: But
   if (interaction.customId === "sr_queue") {
     const player = getPlayer(client, guildId);
     if (!player || (!player.current && player.queue.length === 0)) {
-      await interaction.reply({ content: "재생 중인 곡도, 대기열도 없습니다.", flags: MessageFlags.Ephemeral });
+      await interaction.reply({
+        content: "재생 중인 곡도, 대기열도 없습니다.",
+        flags: MessageFlags.Ephemeral,
+      });
       scheduleEphemeralReplyDelete(interaction);
       return true;
     }
@@ -290,7 +360,11 @@ export async function handleSoundroomButton(client: MineClient, interaction: But
     return true;
   }
 
-  if (interaction.customId !== "sr_stop" && interaction.customId !== "sr_pause" && interaction.customId !== "sr_skip") {
+  if (
+    interaction.customId !== "sr_stop" &&
+    interaction.customId !== "sr_pause" &&
+    interaction.customId !== "sr_skip"
+  ) {
     await interaction.reply({
       content:
         "지원하지 않는 버튼입니다. `/세팅`으로 노래 채널을 다시 만들거나, 채팅에 검색어·유튜브 링크를 입력해 주세요.",
@@ -314,34 +388,49 @@ export async function handleSoundroomButton(client: MineClient, interaction: But
     if (getSoundroom(guildId)) {
       await editSoundroomIdlePanel(client, guildId).catch(() => undefined);
     }
-    await interaction.reply({ content: "재생을 종료했습니다.", flags: MessageFlags.Ephemeral });
+    await interaction.reply({
+      content: "재생을 종료했습니다.",
+      flags: MessageFlags.Ephemeral,
+    });
     scheduleEphemeralReplyDelete(interaction);
     return true;
   }
 
   if (interaction.customId === "sr_pause") {
     if (!hasCurrentTrack(player)) {
-      await interaction.reply({ content: "재생 중인 곡이 없습니다.", flags: MessageFlags.Ephemeral });
+      await interaction.reply({
+        content: "재생 중인 곡이 없습니다.",
+        flags: MessageFlags.Ephemeral,
+      });
       scheduleEphemeralReplyDelete(interaction);
       return true;
     }
 
     await player.pause(!player.paused);
     await editSoundroomPlayingPanel(client, guildId);
-    await interaction.reply({ content: player.paused ? "일시정지했습니다." : "다시 재생했습니다.", flags: MessageFlags.Ephemeral });
+    await interaction.reply({
+      content: player.paused ? "일시정지했습니다." : "다시 재생했습니다.",
+      flags: MessageFlags.Ephemeral,
+    });
     scheduleEphemeralReplyDelete(interaction);
     return true;
   }
 
   if (interaction.customId === "sr_skip") {
     if (!hasCurrentTrack(player)) {
-      await interaction.reply({ content: "건너뛸 곡이 없습니다.", flags: MessageFlags.Ephemeral });
+      await interaction.reply({
+        content: "건너뛸 곡이 없습니다.",
+        flags: MessageFlags.Ephemeral,
+      });
       scheduleEphemeralReplyDelete(interaction);
       return true;
     }
 
     await player.stop();
-    await interaction.reply({ content: "다음 곡으로 넘겼습니다.", flags: MessageFlags.Ephemeral });
+    await interaction.reply({
+      content: "다음 곡으로 넘겼습니다.",
+      flags: MessageFlags.Ephemeral,
+    });
     scheduleEphemeralReplyDelete(interaction);
     return true;
   }
@@ -349,7 +438,10 @@ export async function handleSoundroomButton(client: MineClient, interaction: But
   return true;
 }
 
-export async function handleSoundroomModal(client: MineClient, interaction: ModalSubmitInteraction): Promise<boolean> {
+export async function handleSoundroomModal(
+  client: MineClient,
+  interaction: ModalSubmitInteraction,
+): Promise<boolean> {
   const guildId = interaction.guildId ?? interaction.guild?.id;
   if (!guildId) {
     return false;
@@ -362,7 +454,10 @@ export async function handleSoundroomModal(client: MineClient, interaction: Moda
     }
 
     if (!hasCurrentTrack(player)) {
-      await interaction.reply({ content: "재생 중인 곡이 없습니다.", flags: MessageFlags.Ephemeral });
+      await interaction.reply({
+        content: "재생 중인 곡이 없습니다.",
+        flags: MessageFlags.Ephemeral,
+      });
       scheduleEphemeralReplyDelete(interaction);
       return true;
     }
@@ -382,7 +477,10 @@ export async function handleSoundroomModal(client: MineClient, interaction: Moda
 
     player.seek(position);
     await editSoundroomPlayingPanel(client, guildId);
-    await interaction.reply({ content: `이동했습니다: ${raw}`, flags: MessageFlags.Ephemeral });
+    await interaction.reply({
+      content: `이동했습니다: ${raw}`,
+      flags: MessageFlags.Ephemeral,
+    });
     scheduleEphemeralReplyDelete(interaction);
     return true;
   }

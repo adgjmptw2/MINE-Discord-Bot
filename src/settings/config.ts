@@ -40,7 +40,11 @@ function parseStockPriceProvider(raw: string): StockPriceProvider {
   if (v === "") {
     return "mock";
   }
-  log("warn", "config", `STOCK_PRICE_PROVIDER 값 이상함("${raw.trim()}") → mock으로 감`);
+  log(
+    "warn",
+    "config",
+    `STOCK_PRICE_PROVIDER 값 이상함("${raw.trim()}") → mock으로 감`,
+  );
   return "mock";
 }
 
@@ -51,11 +55,19 @@ function envStockPriceRefreshIntervalMs(): number {
   }
   const n = Number(raw);
   if (!Number.isFinite(n)) {
-    log("warn", "config", `STOCK_PRICE_REFRESH_INTERVAL_MS 숫자 아님("${raw}") → 기본 ${STOCK_REFRESH_MS_DEFAULT}ms`);
+    log(
+      "warn",
+      "config",
+      `STOCK_PRICE_REFRESH_INTERVAL_MS 숫자 아님("${raw}") → 기본 ${STOCK_REFRESH_MS_DEFAULT}ms`,
+    );
     return STOCK_REFRESH_MS_DEFAULT;
   }
   if (n < STOCK_REFRESH_MS_MIN) {
-    log("warn", "config", `STOCK_PRICE_REFRESH_INTERVAL_MS=${n}ms 너무 짧음 → 최소 ${STOCK_REFRESH_MS_MIN}ms로 맞춤`);
+    log(
+      "warn",
+      "config",
+      `STOCK_PRICE_REFRESH_INTERVAL_MS=${n}ms 너무 짧음 → 최소 ${STOCK_REFRESH_MS_MIN}ms로 맞춤`,
+    );
     return STOCK_REFRESH_MS_MIN;
   }
   return n;
@@ -108,7 +120,9 @@ const config: BotConfig = {
   },
   // 모의주식 — 지금은 설정만 씀
   stock: {
-    stockPriceProvider: parseStockPriceProvider(envValue("STOCK_PRICE_PROVIDER")),
+    stockPriceProvider: parseStockPriceProvider(
+      envValue("STOCK_PRICE_PROVIDER"),
+    ),
     stockPriceRefreshIntervalMs: envStockPriceRefreshIntervalMs(),
     twelveDataApiKey: envTwelveDataApiKey(),
   },

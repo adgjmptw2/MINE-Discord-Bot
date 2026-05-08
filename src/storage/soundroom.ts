@@ -17,7 +17,10 @@ export function getSoundroom(guildId: string): SoundroomRecord | undefined {
     channel_id: string;
     panel_message_id: string;
     updated_at: string;
-  }>("SELECT guild_id, channel_id, panel_message_id, updated_at FROM soundroom WHERE guild_id = ?", [guildId]);
+  }>(
+    "SELECT guild_id, channel_id, panel_message_id, updated_at FROM soundroom WHERE guild_id = ?",
+    [guildId],
+  );
 
   if (!row) {
     return undefined;
@@ -31,7 +34,11 @@ export function getSoundroom(guildId: string): SoundroomRecord | undefined {
   };
 }
 
-export function setSoundroom(guildId: string, channelId: string, panelMessageId: string): void {
+export function setSoundroom(
+  guildId: string,
+  channelId: string,
+  panelMessageId: string,
+): void {
   const t = nowIso();
   db.run(
     `INSERT INTO soundroom (guild_id, channel_id, panel_message_id, updated_at)
@@ -48,7 +55,10 @@ export function clearSoundroom(guildId: string): void {
   db.run("DELETE FROM soundroom WHERE guild_id = ?", [guildId]);
 }
 
-export function isSoundroomTextChannel(guildId: string, channelId: string): boolean {
+export function isSoundroomTextChannel(
+  guildId: string,
+  channelId: string,
+): boolean {
   const row = getSoundroom(guildId);
   return Boolean(row && row.channelId === channelId);
 }

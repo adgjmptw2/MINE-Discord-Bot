@@ -21,7 +21,10 @@ type BunDatabaseLike = {
   query: (sql: string) => QueryExecutor;
 };
 type BunSqliteModule = {
-  Database: new (filename: string, options?: { create?: boolean }) => BunDatabaseLike;
+  Database: new (
+    filename: string,
+    options?: { create?: boolean },
+  ) => BunDatabaseLike;
 };
 
 interface SqliteAdapter {
@@ -33,7 +36,9 @@ interface SqliteAdapter {
 
 function createAdapter(): SqliteAdapter {
   const runtimeRequire = eval("require") as NodeRequire;
-  const isBunRuntime = typeof (globalThis as typeof globalThis & { Bun?: unknown }).Bun !== "undefined";
+  const isBunRuntime =
+    typeof (globalThis as typeof globalThis & { Bun?: unknown }).Bun !==
+    "undefined";
 
   if (isBunRuntime) {
     const { Database } = runtimeRequire("bun:sqlite") as BunSqliteModule;
@@ -55,7 +60,9 @@ function createAdapter(): SqliteAdapter {
     };
   }
 
-  const Database = runtimeRequire("better-sqlite3") as typeof import("better-sqlite3");
+  const Database = runtimeRequire(
+    "better-sqlite3",
+  ) as typeof import("better-sqlite3");
   const sqlite = new Database(storageFile);
 
   return {

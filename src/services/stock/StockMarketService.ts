@@ -44,7 +44,9 @@ export class StockMarketService {
 
   async refreshAll(): Promise<void> {
     const symbols = getSupportedStockSymbols().map((s) => s.symbol);
-    const results = await Promise.allSettled(symbols.map((sym) => this.provider.getPrice(sym)));
+    const results = await Promise.allSettled(
+      symbols.map((sym) => this.provider.getPrice(sym)),
+    );
 
     const failures: string[] = [];
     let successCount = 0;
@@ -56,7 +58,8 @@ export class StockMarketService {
         this.prices.set(r.value.symbol, r.value);
         successCount += 1;
       } else {
-        const reason = r.reason instanceof Error ? r.reason.message : String(r.reason);
+        const reason =
+          r.reason instanceof Error ? r.reason.message : String(r.reason);
         failures.push(`${sym}: ${reason}`);
       }
     }
@@ -64,7 +67,9 @@ export class StockMarketService {
     if (successCount > 0) {
       this.lastRefreshAt = new Date();
       const detail =
-        successCount === symbols.length ? `${successCount} symbols` : `${successCount}/${symbols.length} symbols`;
+        successCount === symbols.length
+          ? `${successCount} symbols`
+          : `${successCount}/${symbols.length} symbols`;
       log("debug", "stock", `Stock quotes refreshed: ${detail}`);
     }
 

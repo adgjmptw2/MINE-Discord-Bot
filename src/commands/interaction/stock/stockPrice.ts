@@ -1,8 +1,15 @@
 import { ApplicationCommandOptionType, MessageFlags } from "discord.js";
-import { findStockSymbol, getSupportedStockSymbols } from "@/settings/stockSymbols";
+import {
+  findStockSymbol,
+  getSupportedStockSymbols,
+} from "@/settings/stockSymbols";
 import { panelReply } from "@/utils/discord";
 import { scheduleEphemeralReplyDelete } from "@/utils/ephemeralCleanup";
-import { formatMine, formatPercent, formatStockRefreshTime } from "@/utils/stockFormat";
+import {
+  formatMine,
+  formatPercent,
+  formatStockRefreshTime,
+} from "@/utils/stockFormat";
 import type { MineClient, SlashCommand } from "@/types";
 
 const command: SlashCommand = {
@@ -22,7 +29,10 @@ const command: SlashCommand = {
 
   async run(client: MineClient, interaction) {
     if (!interaction.inGuild()) {
-      await interaction.reply({ content: "서버에서만 사용할 수 있습니다.", flags: MessageFlags.Ephemeral });
+      await interaction.reply({
+        content: "서버에서만 사용할 수 있습니다.",
+        flags: MessageFlags.Ephemeral,
+      });
       scheduleEphemeralReplyDelete(interaction);
       return;
     }
@@ -39,7 +49,11 @@ const command: SlashCommand = {
           ephemeral: true,
           panel: {
             title: "시세",
-            lines: ["알 수 없는 입력입니다. 아래 지원 종목 중에서 다시 입력해 주세요.", "", hint],
+            lines: [
+              "알 수 없는 입력입니다. 아래 지원 종목 중에서 다시 입력해 주세요.",
+              "",
+              hint,
+            ],
           },
         }),
       );
@@ -57,7 +71,11 @@ const command: SlashCommand = {
           panel: {
             title: "시세",
             description: "시세 준비 중입니다. 잠시 후 다시 시도해주세요.",
-            lines: [`**${sym.nameKo}** (${sym.code})`, "", "※ 모의투자 게임용이며 실제 투자용이 아닙니다."],
+            lines: [
+              `**${sym.nameKo}** (${sym.code})`,
+              "",
+              "※ 모의투자 게임용이며 실제 투자용이 아닙니다.",
+            ],
           },
         }),
       );

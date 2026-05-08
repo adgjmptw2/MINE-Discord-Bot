@@ -1,18 +1,39 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } from "discord.js";
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  MessageFlags,
+} from "discord.js";
 import { recordGuildRecentPlay } from "@/storage/guildMusicRecent";
 import { isSoundroomTextChannel } from "@/storage/soundroom";
 import { startSoundroomProgress } from "@/utils/soundroomProgress";
 import { buildPanel, formatTrackDuration, truncate } from "@/utils/discord";
-import { buildSoundroomPlayingPayload, editSoundroomPlayingPanel, fetchSoundroomPanelMessage } from "@/utils/soundroomPanel";
+import {
+  buildSoundroomPlayingPayload,
+  editSoundroomPlayingPanel,
+  fetchSoundroomPanelMessage,
+} from "@/utils/soundroomPanel";
 import { prefetchAutoplayNextHint } from "@/utils/soundroomAutoplay";
 import type { ExtendedPlayer, ExtendedTrack, MineClient } from "@/types";
 
 function controlsRow(paused = false): ActionRowBuilder<ButtonBuilder> {
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId("player_toggle_pause").setLabel(paused ? "재개" : "일시정지").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId("player_skip").setLabel("건너뛰기").setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId("player_stop").setLabel("정지").setStyle(ButtonStyle.Danger),
-    new ButtonBuilder().setCustomId("player_queue").setLabel("대기열").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId("player_toggle_pause")
+      .setLabel(paused ? "재개" : "일시정지")
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId("player_skip")
+      .setLabel("건너뛰기")
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId("player_stop")
+      .setLabel("정지")
+      .setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
+      .setCustomId("player_queue")
+      .setLabel("대기열")
+      .setStyle(ButtonStyle.Secondary),
   );
 }
 
@@ -35,7 +56,9 @@ export default function registerTrackStart(client: MineClient): void {
         await msg.edit(buildSoundroomPlayingPayload(client, player));
         startSoundroomProgress(client, player.guildId);
         void prefetchAutoplayNextHint(client, player).then(() => {
-          void editSoundroomPlayingPanel(client, player.guildId).catch(() => undefined);
+          void editSoundroomPlayingPanel(client, player.guildId).catch(
+            () => undefined,
+          );
         });
         return;
       }
@@ -43,7 +66,11 @@ export default function registerTrackStart(client: MineClient): void {
 
     const channel = client.channels.cache.get(player.textChannel);
 
-    if (!channel || !("send" in channel) || typeof channel.send !== "function") {
+    if (
+      !channel ||
+      !("send" in channel) ||
+      typeof channel.send !== "function"
+    ) {
       return;
     }
 

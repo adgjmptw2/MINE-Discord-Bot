@@ -13,7 +13,10 @@ export function convertTime(duration: number): string {
     .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 }
 
-export function convertNumber(value: number, decimalPlaces: number): string | number {
+export function convertNumber(
+  value: number,
+  decimalPlaces: number,
+): string | number {
   const precision = 10 ** decimalPlaces;
   const abbreviations = ["K", "M", "B", "T"];
   let output: string | number = value;

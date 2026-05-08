@@ -75,7 +75,12 @@ export function findStockSymbol(input: string): StockSymbol | undefined {
   const lower = q.toLowerCase();
 
   for (const s of SUPPORTED) {
-    if (s.code === q || s.symbol === q || s.twelveDataSymbol === q || s.yahooSymbol === q) {
+    if (
+      s.code === q ||
+      s.symbol === q ||
+      s.twelveDataSymbol === q ||
+      s.yahooSymbol === q
+    ) {
       return s;
     }
     if (s.nameKo === q) {

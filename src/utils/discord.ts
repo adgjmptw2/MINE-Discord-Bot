@@ -37,7 +37,9 @@ export interface PanelEditOptions {
 }
 
 export function formatTrackDuration(track: ExtendedTrack): string {
-  return track.info.isStream ? "Live stream" : formatDuration(track.info.length);
+  return track.info.isStream
+    ? "Live stream"
+    : formatDuration(track.info.length);
 }
 
 export function formatDuration(durationMs: number): string {
@@ -53,7 +55,11 @@ export function formatDuration(durationMs: number): string {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
-export function progressBar(currentMs: number, totalMs: number, size = 18): string {
+export function progressBar(
+  currentMs: number,
+  totalMs: number,
+  size = 18,
+): string {
   if (totalMs <= 0) {
     return `[${"-".repeat(size)}]`;
   }
@@ -75,7 +81,9 @@ export function progressBar(currentMs: number, totalMs: number, size = 18): stri
 }
 
 export function truncate(value: string, maxLength: number): string {
-  return value.length > maxLength ? `${value.slice(0, maxLength - 3)}...` : value;
+  return value.length > maxLength
+    ? `${value.slice(0, maxLength - 3)}...`
+    : value;
 }
 
 export function buildPanel(options: PanelOptions): ContainerBuilder {
@@ -84,49 +92,89 @@ export function buildPanel(options: PanelOptions): ContainerBuilder {
   const eyebrow = options.eyebrow ? `### ${options.eyebrow}\n` : "";
   const header = `${eyebrow}## ${options.title}`;
 
-  container.addTextDisplayComponents(new TextDisplayBuilder().setContent(header));
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(header),
+  );
 
   if (!options.subtle) {
-    container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    container.addSeparatorComponents(
+      new SeparatorBuilder()
+        .setDivider(true)
+        .setSpacing(SeparatorSpacingSize.Small),
+    );
   }
 
-  const mainText = [options.description, ...bodyLines].filter(Boolean).join("\n\n");
+  const mainText = [options.description, ...bodyLines]
+    .filter(Boolean)
+    .join("\n\n");
 
   if (options.imageUrl) {
     const section = new SectionBuilder();
-    section.addTextDisplayComponents(new TextDisplayBuilder().setContent(mainText || " "));
-    section.setThumbnailAccessory(new ThumbnailBuilder().setURL(options.imageUrl));
+    section.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(mainText || " "),
+    );
+    section.setThumbnailAccessory(
+      new ThumbnailBuilder().setURL(options.imageUrl),
+    );
     container.addSectionComponents(section);
   } else if (mainText) {
-    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(mainText));
+    container.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(mainText),
+    );
   }
 
   return container;
 }
 
-export function panelReply(options: PanelMessageOptions): InteractionReplyOptions {
+export function panelReply(
+  options: PanelMessageOptions,
+): InteractionReplyOptions {
   return {
-    flags: options.ephemeral ? MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral : MessageFlags.IsComponentsV2,
-    components: [buildPanel(options.panel), ...(options.components ?? [])] as any,
+    flags: options.ephemeral
+      ? MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral
+      : MessageFlags.IsComponentsV2,
+    components: [
+      buildPanel(options.panel),
+      ...(options.components ?? []),
+    ] as any,
   };
 }
 
-export function panelEdit(options: PanelEditOptions): InteractionUpdateOptions & MessageEditOptions {
+export function panelEdit(
+  options: PanelEditOptions,
+): InteractionUpdateOptions & MessageEditOptions {
   return {
     flags: MessageFlags.IsComponentsV2,
-    components: [buildPanel(options.panel), ...(options.components ?? [])] as any,
+    components: [
+      buildPanel(options.panel),
+      ...(options.components ?? []),
+    ] as any,
   };
 }
 
-export function panelMessage(options: PanelMessageOptions): MessageReplyOptions {
+export function panelMessage(
+  options: PanelMessageOptions,
+): MessageReplyOptions {
   return {
-    flags: options.ephemeral ? MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral : MessageFlags.IsComponentsV2,
-    components: [buildPanel(options.panel), ...(options.components ?? [])] as any,
+    flags: options.ephemeral
+      ? MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral
+      : MessageFlags.IsComponentsV2,
+    components: [
+      buildPanel(options.panel),
+      ...(options.components ?? []),
+    ] as any,
   };
 }
 
-export function isSendableChannel(channel: unknown): channel is { send: (options: object) => Promise<unknown> } {
-  return typeof channel === "object" && channel !== null && "send" in channel && typeof channel.send === "function";
+export function isSendableChannel(
+  channel: unknown,
+): channel is { send: (options: object) => Promise<unknown> } {
+  return (
+    typeof channel === "object" &&
+    channel !== null &&
+    "send" in channel &&
+    typeof channel.send === "function"
+  );
 }
 
 export function requesterName(track: ExtendedTrack): string {

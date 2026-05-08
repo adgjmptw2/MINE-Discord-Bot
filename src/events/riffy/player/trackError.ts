@@ -48,7 +48,11 @@ export default function registerTrackError(client: MineClient): void {
     const track = rawTrack as ExtendedTrack | undefined;
     const channel = client.channels.cache.get(player.textChannel);
 
-    if (!channel || !("send" in channel) || typeof channel.send !== "function") {
+    if (
+      !channel ||
+      !("send" in channel) ||
+      typeof channel.send !== "function"
+    ) {
       return;
     }
 
@@ -58,15 +62,19 @@ export default function registerTrackError(client: MineClient): void {
 
     const detail = truncate(formatTrackErrorPayload(errorPayload), 900);
 
-    await channel.send(
-      panelMessage({
-        panel: {
-          eyebrow: "마인 노래 봇",
-          title: "재생 오류",
-          lines: [`곡: ${track?.info.title ?? "알 수 없는 곡"}`, `내용: ${detail}`],
-        },
-      }),
-    ).catch(() => undefined);
+    await channel
+      .send(
+        panelMessage({
+          panel: {
+            eyebrow: "마인 노래 봇",
+            title: "재생 오류",
+            lines: [
+              `곡: ${track?.info.title ?? "알 수 없는 곡"}`,
+              `내용: ${detail}`,
+            ],
+          },
+        }),
+      )
+      .catch(() => undefined);
   });
 }
-

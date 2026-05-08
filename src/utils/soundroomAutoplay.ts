@@ -64,7 +64,11 @@ export function cancelIdleLeaveTimer(guildId: string): void {
   s.idleLeaveTimer = null;
 }
 
-export function armIdleLeaveTimer(guildId: string, ms: number, fn: () => void): void {
+export function armIdleLeaveTimer(
+  guildId: string,
+  ms: number,
+  fn: () => void,
+): void {
   cancelIdleLeaveTimer(guildId);
   const s = getOrCreate(guildId);
   s.idleLeaveTimer = setTimeout(() => {
@@ -78,14 +82,19 @@ export function onQueueMayHaveItems(guildId: string): void {
 }
 
 export function isSoundroomAutoplayTrack(track: ExtendedTrack): boolean {
-  return Boolean((track as unknown as { __mineAutoplay?: boolean }).__mineAutoplay);
+  return Boolean(
+    (track as unknown as { __mineAutoplay?: boolean }).__mineAutoplay,
+  );
 }
 
 export function markAutoplayTrack(track: ExtendedTrack): void {
   (track as unknown as { __mineAutoplay?: boolean }).__mineAutoplay = true;
 }
 
-export function setLastEndedTrack(guildId: string, track: ExtendedTrack | undefined): void {
+export function setLastEndedTrack(
+  guildId: string,
+  track: ExtendedTrack | undefined,
+): void {
   if (!track?.info.uri) {
     return;
   }
@@ -145,7 +154,10 @@ export function removeAutoplayTracksFromQueue(player: ExtendedPlayer): void {
 }
 
 /** 사용자가 넣은 곡은 자동재생 예약보다 앞에 둡니다. */
-export function addSoundroomUserTracks(player: ExtendedPlayer, tracks: ExtendedTrack[]): void {
+export function addSoundroomUserTracks(
+  player: ExtendedPlayer,
+  tracks: ExtendedTrack[],
+): void {
   const { user, autoplay } = splitSoundroomQueue(player);
   setSoundroomQueueUserThenAutoplay(player, [...user, ...tracks], autoplay);
 }
@@ -160,7 +172,9 @@ export function countUserSoundroomQueue(player: ExtendedPlayer): number {
   return n;
 }
 
-export function userSoundroomQueueEntries(player: ExtendedPlayer): { track: ExtendedTrack; queueIndex: number }[] {
+export function userSoundroomQueueEntries(
+  player: ExtendedPlayer,
+): { track: ExtendedTrack; queueIndex: number }[] {
   const out: { track: ExtendedTrack; queueIndex: number }[] = [];
   player.queue.forEach((t, i) => {
     if (!isSoundroomAutoplayTrack(t)) {
@@ -187,7 +201,10 @@ export function addTracksRespectingSoundroomAutoplay(
 }
 
 /** 큐에 자동재생 예약 곡이 있으면 패널 힌트를 맞춥니다. */
-export function syncAutoplayHintFromQueue(guildId: string, player: ExtendedPlayer): void {
+export function syncAutoplayHintFromQueue(
+  guildId: string,
+  player: ExtendedPlayer,
+): void {
   const s = states.get(guildId);
   if (!s?.enabled) {
     return;
@@ -197,7 +214,10 @@ export function syncAutoplayHintFromQueue(guildId: string, player: ExtendedPlaye
 }
 
 /** 지금 곡 기준으로 다음 자동재생 후보 제목만 미리 가져옵니다. */
-export async function prefetchAutoplayNextHint(client: MineClient, player: ExtendedPlayer): Promise<void> {
+export async function prefetchAutoplayNextHint(
+  client: MineClient,
+  player: ExtendedPlayer,
+): Promise<void> {
   const guildId = player.guildId;
   const s = states.get(guildId);
   if (!s?.enabled) {
@@ -231,7 +251,10 @@ export async function prefetchAutoplayNextHint(client: MineClient, player: Exten
   }
 }
 
-async function pickVoiceRequester(client: MineClient, player: ExtendedPlayer): Promise<GuildMember | null> {
+async function pickVoiceRequester(
+  client: MineClient,
+  player: ExtendedPlayer,
+): Promise<GuildMember | null> {
   const guild = client.guilds.cache.get(player.guildId);
   if (!guild) {
     return null;
@@ -259,7 +282,11 @@ function extractYoutubeVideoId(uri: string): string | null {
       const id = u.pathname.replace(/^\//, "").split("/")[0] ?? "";
       return /^[\w-]{6,}$/.test(id) ? id : null;
     }
-    if (host === "youtube.com" || host === "m.youtube.com" || host === "music.youtube.com") {
+    if (
+      host === "youtube.com" ||
+      host === "m.youtube.com" ||
+      host === "music.youtube.com"
+    ) {
       const v = u.searchParams.get("v");
       return v && /^[\w-]{6,}$/.test(v) ? v : null;
     }
@@ -339,7 +366,10 @@ async function resolveAutoplayTracks(
 }
 
 /** 대기열이 비었을 때 연관곡을 자동재생 큐에 넣고 바로 재생합니다. */
-export async function tryEnqueueAutoplayPlaylist(client: MineClient, player: ExtendedPlayer): Promise<boolean> {
+export async function tryEnqueueAutoplayPlaylist(
+  client: MineClient,
+  player: ExtendedPlayer,
+): Promise<boolean> {
   const guildId = player.guildId;
   const s = getOrCreate(guildId);
   if (!s.enabled) {

@@ -9,15 +9,17 @@ export interface GuildRecentPlayRow {
 
 const MAX_ROWS_PER_GUILD = 400;
 
-export function recordGuildRecentPlay(guildId: string, title: string, uri: string, author: string): void {
+export function recordGuildRecentPlay(
+  guildId: string,
+  title: string,
+  uri: string,
+  author: string,
+): void {
   const playedAt = new Date().toISOString();
-  db.run(`INSERT INTO music_guild_recent_play (guild_id, title, uri, author, played_at) VALUES (?, ?, ?, ?, ?)`, [
-    guildId,
-    title,
-    uri,
-    author,
-    playedAt,
-  ]);
+  db.run(
+    `INSERT INTO music_guild_recent_play (guild_id, title, uri, author, played_at) VALUES (?, ?, ?, ?, ?)`,
+    [guildId, title, uri, author, playedAt],
+  );
   db.run(
     `DELETE FROM music_guild_recent_play
       WHERE guild_id = ?
@@ -32,7 +34,10 @@ export function recordGuildRecentPlay(guildId: string, title: string, uri: strin
   );
 }
 
-export function listGuildRecentPlays(guildId: string, limit = 20): GuildRecentPlayRow[] {
+export function listGuildRecentPlays(
+  guildId: string,
+  limit = 20,
+): GuildRecentPlayRow[] {
   return db.all<GuildRecentPlayRow>(
     `SELECT title, uri, author, played_at FROM music_guild_recent_play WHERE guild_id = ? ORDER BY played_at DESC LIMIT ?`,
     [guildId, limit],

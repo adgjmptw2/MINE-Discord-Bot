@@ -126,12 +126,18 @@ declare module "riffy" {
     public readonly players: Collection<Snowflake, RiffyPlayer>;
     public readonly nodes: Collection<string, RiffyNode>;
 
-    public constructor(client: unknown, nodes: RiffyNodeConfig[], options: RiffyOptions);
+    public constructor(
+      client: unknown,
+      nodes: RiffyNodeConfig[],
+      options: RiffyOptions,
+    );
 
     public on(event: string, listener: (...args: unknown[]) => void): this;
     public init(userId: Snowflake): void;
     public updateVoiceState(payload: unknown): void;
-    public createConnection(options: RiffyConnectionOptions): Promise<RiffyPlayer>;
+    public createConnection(
+      options: RiffyConnectionOptions,
+    ): Promise<RiffyPlayer>;
     public resolve(options: RiffyResolveOptions): Promise<RiffyResolveResponse>;
   }
 }

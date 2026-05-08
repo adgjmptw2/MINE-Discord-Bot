@@ -7,12 +7,19 @@ const maxAttempts = 12;
 
 export default function registerNodeDisconnect(client: MineClient): void {
   client.riffy.on("nodeDisconnect", (node, reason) => {
-    const reconnectableNode = node as { options?: { identifier?: string }; connect?: () => Promise<void> | void };
+    const reconnectableNode = node as {
+      options?: { identifier?: string };
+      connect?: () => Promise<void> | void;
+    };
     const identifier = reconnectableNode.options?.identifier ?? "unknown";
     log("warn", "riffy", `Node disconnected: ${identifier}`, reason);
 
     if (typeof reconnectableNode.connect !== "function") {
-      log("warn", "riffy", `Node ${identifier} does not expose connect(); skipping auto-reconnect.`);
+      log(
+        "warn",
+        "riffy",
+        `Node ${identifier} does not expose connect(); skipping auto-reconnect.`,
+      );
       return;
     }
 
@@ -30,16 +37,29 @@ export default function registerNodeDisconnect(client: MineClient): void {
 
         try {
           await reconnectableNode.connect?.();
-          log("success", "riffy", `Node reconnect successful: ${identifier} (attempt ${attempt})`);
+          log(
+            "success",
+            "riffy",
+            `Node reconnect successful: ${identifier} (attempt ${attempt})`,
+          );
           reconnectTimers.delete(identifier);
           return;
         } catch (error) {
-          log("warn", "riffy", `Node reconnect failed: ${identifier} (attempt ${attempt})`, error);
+          log(
+            "warn",
+            "riffy",
+            `Node reconnect failed: ${identifier} (attempt ${attempt})`,
+            error,
+          );
         }
 
         if (attempt >= maxAttempts) {
           reconnectTimers.delete(identifier);
-          log("error", "riffy", `Node reconnect exhausted for ${identifier} after ${maxAttempts} attempts`);
+          log(
+            "error",
+            "riffy",
+            `Node reconnect exhausted for ${identifier} after ${maxAttempts} attempts`,
+          );
           return;
         }
 

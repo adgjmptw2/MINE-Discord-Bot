@@ -24,10 +24,18 @@ function isTwelveDataErrorPayload(data: Record<string, unknown>): boolean {
   return data.status === "error";
 }
 
-function buildQuoteErrorMessage(symbol: string, data: Record<string, unknown>): string {
+function buildQuoteErrorMessage(
+  symbol: string,
+  data: Record<string, unknown>,
+): string {
   const msg = typeof data.message === "string" ? data.message : "unknown error";
-  const code = typeof data.code === "number" || typeof data.code === "string" ? String(data.code) : "";
-  return code ? `Twelve Data [${symbol}]: ${msg} (code: ${code})` : `Twelve Data [${symbol}]: ${msg}`;
+  const code =
+    typeof data.code === "number" || typeof data.code === "string"
+      ? String(data.code)
+      : "";
+  return code
+    ? `Twelve Data [${symbol}]: ${msg} (code: ${code})`
+    : `Twelve Data [${symbol}]: ${msg}`;
 }
 
 function pickClosePrice(data: Record<string, unknown>, symbol: string): number {
@@ -37,7 +45,9 @@ function pickClosePrice(data: Record<string, unknown>, symbol: string): number {
       return Math.round(n);
     }
   }
-  throw new Error(`Twelve Data [${symbol}]: 유효한 가격 필드(close 등)가 없습니다`);
+  throw new Error(
+    `Twelve Data [${symbol}]: 유효한 가격 필드(close 등)가 없습니다`,
+  );
 }
 
 function pickPercentChange(data: Record<string, unknown>): number | null {
@@ -62,7 +72,9 @@ function parseUpdatedAt(data: Record<string, unknown>): Date {
 export class TwelveDataStockQuoteProvider implements StockQuoteProvider {
   constructor(private readonly apiKey: string) {
     if (!apiKey.trim()) {
-      throw new Error("TWELVE_DATA_API_KEY is required when STOCK_PRICE_PROVIDER=twelvedata");
+      throw new Error(
+        "TWELVE_DATA_API_KEY is required when STOCK_PRICE_PROVIDER=twelvedata",
+      );
     }
   }
 
@@ -89,7 +101,9 @@ export class TwelveDataStockQuoteProvider implements StockQuoteProvider {
     try {
       res = await fetch(url);
     } catch (e) {
-      throw new Error(`Twelve Data [${meta.symbol}]: 네트워크 오류 — ${e instanceof Error ? e.message : String(e)}`);
+      throw new Error(
+        `Twelve Data [${meta.symbol}]: 네트워크 오류 — ${e instanceof Error ? e.message : String(e)}`,
+      );
     }
 
     let raw: unknown;
@@ -106,8 +120,11 @@ export class TwelveDataStockQuoteProvider implements StockQuoteProvider {
       throw new Error(buildQuoteErrorMessage(meta.symbol, raw));
     }
     if (!res.ok) {
-      const hint = typeof raw.message === "string" ? raw.message : res.statusText;
-      throw new Error(`Twelve Data [${meta.symbol}]: HTTP ${res.status} — ${hint}`);
+      const hint =
+        typeof raw.message === "string" ? raw.message : res.statusText;
+      throw new Error(
+        `Twelve Data [${meta.symbol}]: HTTP ${res.status} — ${hint}`,
+      );
     }
 
     const price = pickClosePrice(raw, meta.symbol);

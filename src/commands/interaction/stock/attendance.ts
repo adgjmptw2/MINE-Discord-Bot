@@ -1,5 +1,8 @@
 import { MessageFlags } from "discord.js";
-import { DAILY_ATTENDANCE_REWARD, recordStockAttendance } from "@/storage/stock";
+import {
+  DAILY_ATTENDANCE_REWARD,
+  recordStockAttendance,
+} from "@/storage/stock";
 import { getKstDateString } from "@/utils/date";
 import { panelReply } from "@/utils/discord";
 import { scheduleEphemeralReplyDelete } from "@/utils/ephemeralCleanup";
@@ -13,7 +16,10 @@ const command: SlashCommand = {
 
   async run(_client, interaction) {
     if (!interaction.inGuild()) {
-      await interaction.reply({ content: "서버에서만 사용할 수 있습니다.", flags: MessageFlags.Ephemeral });
+      await interaction.reply({
+        content: "서버에서만 사용할 수 있습니다.",
+        flags: MessageFlags.Ephemeral,
+      });
       scheduleEphemeralReplyDelete(interaction);
       return;
     }
@@ -22,7 +28,12 @@ const command: SlashCommand = {
     const userId = interaction.user.id;
     const today = getKstDateString();
 
-    const result = recordStockAttendance(guildId, userId, today, DAILY_ATTENDANCE_REWARD);
+    const result = recordStockAttendance(
+      guildId,
+      userId,
+      today,
+      DAILY_ATTENDANCE_REWARD,
+    );
     const cash = result.wallet.cashBalance.toLocaleString("ko-KR");
 
     if (result.alreadyClaimed) {
@@ -32,7 +43,7 @@ const command: SlashCommand = {
           panel: {
             title: "출석",
             description: "오늘은 이미 출석했습니다.",
-            lines: [`현금 잔고: **${cash}** MINE`],
+            lines: [`현금 잔고: **${cash}** 코인`],
           },
         }),
       );
@@ -42,8 +53,8 @@ const command: SlashCommand = {
           ephemeral: true,
           panel: {
             title: "출석",
-            description: `+${result.rewardAmount.toLocaleString("ko-KR")} MINE 지급`,
-            lines: [`현금 잔고: **${cash}** MINE`],
+            description: `+${result.rewardAmount.toLocaleString("ko-KR")} 코인 지급`,
+            lines: [`현금 잔고: **${cash}** 코인`],
           },
         }),
       );

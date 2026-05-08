@@ -1,4 +1,11 @@
-import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import {
+  index,
+  integer,
+  primaryKey,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core";
 
 export const playlists = sqliteTable(
   "playlists",
@@ -10,7 +17,10 @@ export const playlists = sqliteTable(
     createdAt: text("created_at").notNull(),
   },
   (table) => ({
-    ownerNameUnique: uniqueIndex("playlists_owner_name_unique").on(table.ownerId, table.nameKey),
+    ownerNameUnique: uniqueIndex("playlists_owner_name_unique").on(
+      table.ownerId,
+      table.nameKey,
+    ),
   }),
 );
 
@@ -25,7 +35,10 @@ export const playlistTracks = sqliteTable(
     orderIndex: integer("order_index").notNull(),
   },
   (table) => ({
-    playlistOrder: index("idx_playlist_tracks_playlist_order").on(table.playlistId, table.orderIndex),
+    playlistOrder: index("idx_playlist_tracks_playlist_order").on(
+      table.playlistId,
+      table.orderIndex,
+    ),
   }),
 );
 
@@ -47,8 +60,14 @@ export const guildRecentPlays = sqliteTable(
     playedAt: text("played_at").notNull(),
   },
   (table) => ({
-    guildPlayedAt: index("idx_music_guild_recent_guild_time").on(table.guildId, table.playedAt),
-    guildIdDesc: index("idx_music_guild_recent_guild_id").on(table.guildId, table.id),
+    guildPlayedAt: index("idx_music_guild_recent_guild_time").on(
+      table.guildId,
+      table.playedAt,
+    ),
+    guildIdDesc: index("idx_music_guild_recent_guild_id").on(
+      table.guildId,
+      table.id,
+    ),
   }),
 );
 
@@ -88,7 +107,10 @@ export const stockHoldings = sqliteTable(
   },
   (table) => ({
     pk: primaryKey({ columns: [table.guildId, table.userId, table.symbol] }),
-    guildUser: index("idx_stock_holdings_guild_user").on(table.guildId, table.userId),
+    guildUser: index("idx_stock_holdings_guild_user").on(
+      table.guildId,
+      table.userId,
+    ),
     symbolIdx: index("idx_stock_holdings_symbol").on(table.symbol),
   }),
 );
@@ -111,9 +133,19 @@ export const stockTrades = sqliteTable(
     createdAt: text("created_at").notNull(),
   },
   (table) => ({
-    guildUserTime: index("idx_stock_trades_guild_user_time").on(table.guildId, table.userId, table.createdAt),
-    guildTime: index("idx_stock_trades_guild_time").on(table.guildId, table.createdAt),
-    symbolTime: index("idx_stock_trades_symbol_time").on(table.symbol, table.createdAt),
+    guildUserTime: index("idx_stock_trades_guild_user_time").on(
+      table.guildId,
+      table.userId,
+      table.createdAt,
+    ),
+    guildTime: index("idx_stock_trades_guild_time").on(
+      table.guildId,
+      table.createdAt,
+    ),
+    symbolTime: index("idx_stock_trades_symbol_time").on(
+      table.symbol,
+      table.createdAt,
+    ),
   }),
 );
 
@@ -128,6 +160,9 @@ export const stockDailyAttendance = sqliteTable(
   },
   (table) => ({
     pk: primaryKey({ columns: [table.guildId, table.userId, table.date] }),
-    guildDate: index("idx_stock_daily_attendance_guild_date").on(table.guildId, table.date),
+    guildDate: index("idx_stock_daily_attendance_guild_date").on(
+      table.guildId,
+      table.date,
+    ),
   }),
 );

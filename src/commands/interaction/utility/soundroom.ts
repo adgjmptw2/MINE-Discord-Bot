@@ -1,5 +1,9 @@
 import { ChannelType, MessageFlags, PermissionFlagsBits } from "discord.js";
-import { getSoundroom, setSoundroom, clearSoundroom } from "@/storage/soundroom";
+import {
+  getSoundroom,
+  setSoundroom,
+  clearSoundroom,
+} from "@/storage/soundroom";
 import { buildSoundroomIdlePayload } from "@/utils/soundroomPanel";
 import { scheduleEphemeralReplyDelete } from "@/utils/ephemeralCleanup";
 import type { SlashCommand } from "@/types";
@@ -16,12 +20,17 @@ function sanitizeGuildTextChannelName(raw: string): string {
 const command: SlashCommand = {
   name: COMMAND_NAME,
   description: "Create a dedicated soundroom channel with a control panel.",
-  descriptionLocalizations: { ko: "전용 음악 채널(노래 채널)과 패널 메시지를 만듭니다." },
+  descriptionLocalizations: {
+    ko: "전용 음악 채널(노래 채널)과 패널 메시지를 만듭니다.",
+  },
   category: "utility",
 
   async run(client, interaction) {
     if (!interaction.inGuild()) {
-      await interaction.reply({ content: "서버에서만 사용할 수 있습니다.", flags: MessageFlags.Ephemeral });
+      await interaction.reply({
+        content: "서버에서만 사용할 수 있습니다.",
+        flags: MessageFlags.Ephemeral,
+      });
       scheduleEphemeralReplyDelete(interaction);
       return;
     }
@@ -29,8 +38,17 @@ const command: SlashCommand = {
     const guild = interaction.guild!;
     const me =
       guild.members.me ??
-      (await guild.members.fetch({ user: client.user!.id, force: true }).catch(() => null));
-    if (!me?.permissions.has([PermissionFlagsBits.ManageChannels, PermissionFlagsBits.ManageMessages, PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks])) {
+      (await guild.members
+        .fetch({ user: client.user!.id, force: true })
+        .catch(() => null));
+    if (
+      !me?.permissions.has([
+        PermissionFlagsBits.ManageChannels,
+        PermissionFlagsBits.ManageMessages,
+        PermissionFlagsBits.SendMessages,
+        PermissionFlagsBits.EmbedLinks,
+      ])
+    ) {
       await interaction.reply({
         flags: MessageFlags.Ephemeral,
         content:
@@ -42,7 +60,9 @@ const command: SlashCommand = {
 
     const existing = getSoundroom(guild.id);
     if (existing) {
-      const ch = guild.channels.cache.get(existing.channelId) ?? (await guild.channels.fetch(existing.channelId).catch(() => null));
+      const ch =
+        guild.channels.cache.get(existing.channelId) ??
+        (await guild.channels.fetch(existing.channelId).catch(() => null));
       if (ch?.isTextBased()) {
         await interaction.reply({
           flags: MessageFlags.Ephemeral,
@@ -69,7 +89,13 @@ const command: SlashCommand = {
         permissionOverwrites: [
           {
             id: guild.id,
-            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.AttachFiles, PermissionFlagsBits.EmbedLinks],
+            allow: [
+              PermissionFlagsBits.ViewChannel,
+              PermissionFlagsBits.SendMessages,
+              PermissionFlagsBits.ReadMessageHistory,
+              PermissionFlagsBits.AttachFiles,
+              PermissionFlagsBits.EmbedLinks,
+            ],
           },
           {
             id: client.user!.id,
