@@ -21,6 +21,7 @@
 - **주식(Twelve Data Api 모의투자)** 테스트 중
 env/config/종목 상수
 Mock 가격 Provider
+Yahoo provider는 국내주식 MVP 검증을 위한 demo/delayed 시세입니다. 실제 투자용 데이터가 아니며, 운영에서는 정식 라이선스가 있는 데이터 Provider로 교체할 수 있도록 `StockQuoteProvider` 인터페이스로 분리되어 있습니다.
 
 ## 준비
 

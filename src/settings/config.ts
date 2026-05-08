@@ -34,7 +34,7 @@ const STOCK_REFRESH_MS_MIN = 60_000;
 
 function parseStockPriceProvider(raw: string): StockPriceProvider {
   const v = raw.trim().toLowerCase();
-  if (v === "mock" || v === "twelvedata") {
+  if (v === "mock" || v === "twelvedata" || v === "yahoo") {
     return v;
   }
   if (v === "") {

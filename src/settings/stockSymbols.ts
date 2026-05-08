@@ -8,6 +8,8 @@ export type StockSymbol = {
   exchange: "KRX";
   /** Twelve Data 넘길 때 쓸 문자열. 아직은 코드 그대로 씀 */
   twelveDataSymbol: string;
+  /** Yahoo Finance chart API용 티커 (예: 005930.KS) */
+  yahooSymbol: string;
 };
 
 const SUPPORTED: readonly StockSymbol[] = [
@@ -19,6 +21,7 @@ const SUPPORTED: readonly StockSymbol[] = [
     nameEn: "Samsung Electronics",
     exchange: "KRX",
     twelveDataSymbol: "005930",
+    yahooSymbol: "005930.KS",
   },
   {
     symbol: "000660",
@@ -27,6 +30,7 @@ const SUPPORTED: readonly StockSymbol[] = [
     nameEn: "SK hynix",
     exchange: "KRX",
     twelveDataSymbol: "000660",
+    yahooSymbol: "000660.KS",
   },
   {
     symbol: "035420",
@@ -35,6 +39,7 @@ const SUPPORTED: readonly StockSymbol[] = [
     nameEn: "NAVER",
     exchange: "KRX",
     twelveDataSymbol: "035420",
+    yahooSymbol: "035420.KS",
   },
   {
     symbol: "035720",
@@ -43,6 +48,7 @@ const SUPPORTED: readonly StockSymbol[] = [
     nameEn: "Kakao",
     exchange: "KRX",
     twelveDataSymbol: "035720",
+    yahooSymbol: "035720.KS",
   },
   {
     symbol: "005380",
@@ -51,6 +57,7 @@ const SUPPORTED: readonly StockSymbol[] = [
     nameEn: "Hyundai Motor",
     exchange: "KRX",
     twelveDataSymbol: "005380",
+    yahooSymbol: "005380.KS",
   },
 ] as const;
 
@@ -68,13 +75,16 @@ export function findStockSymbol(input: string): StockSymbol | undefined {
   const lower = q.toLowerCase();
 
   for (const s of SUPPORTED) {
-    if (s.code === q || s.symbol === q || s.twelveDataSymbol === q) {
+    if (s.code === q || s.symbol === q || s.twelveDataSymbol === q || s.yahooSymbol === q) {
       return s;
     }
     if (s.nameKo === q) {
       return s;
     }
     if (s.nameEn.toLowerCase() === lower || s.nameKo.toLowerCase() === lower) {
+      return s;
+    }
+    if (s.yahooSymbol.toLowerCase() === lower) {
       return s;
     }
   }
