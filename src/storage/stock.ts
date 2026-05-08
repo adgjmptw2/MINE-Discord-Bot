@@ -3,6 +3,11 @@ import type { StockPrice } from "@/services/stock/types";
 
 export const STOCK_QUANTITY_SCALE = 1_000_000;
 
+export const STOCK_TRADE_FEE_RATE = 0.001;
+
+/** 최소 매수 금액 (MINE) */
+export const MIN_STOCK_BUY_AMOUNT = 1_000;
+
 export const DAILY_ATTENDANCE_REWARD = 10_000;
 
 export interface StockWallet {
@@ -32,6 +37,46 @@ export interface StockAssetSummary {
   totalAssets: number;
   profitLossPercent: number;
   unavailableSymbols: string[];
+}
+
+export type StockStorageErrorCode =
+  | "WALLET_NOT_FOUND"
+  | "INSUFFICIENT_CASH"
+  | "INVALID_AMOUNT"
+  | "INVALID_PRICE"
+  | "QUANTITY_TOO_SMALL";
+
+export class StockStorageError extends Error {
+  readonly code: StockStorageErrorCode;
+
+  constructor(code: StockStorageErrorCode, message?: string) {
+    super(message ?? code);
+    this.name = "StockStorageError";
+    this.code = code;
+  }
+}
+
+export interface BuyStockParams {
+  guildId: string;
+  userId: string;
+  symbol: string;
+  price: number;
+  amount: number;
+}
+
+export interface BuyStockResult {
+  wallet: StockWallet;
+  holding: StockHolding;
+  tradeId: number;
+  symbol: string;
+  price: number;
+  amount: number;
+  fee: number;
+  grossAmount: number;
+  netAmount: number;
+  quantityMicro: number;
+  totalQuantityMicro: number;
+  averageBuyPrice: number;
 }
 
 interface WalletRow {
@@ -82,6 +127,19 @@ function getWalletRow(guildId: string, userId: string): WalletRow | undefined {
      FROM stock_wallets WHERE guild_id = ? AND user_id = ?`,
     [guildId, userId],
   );
+}
+
+function getHoldingRow(guildId: string, userId: string, symbol: string): HoldingRow | undefined {
+  return db.get<HoldingRow>(
+    `SELECT guild_id, user_id, symbol, quantity_micro, average_buy_price, created_at, updated_at
+     FROM stock_holdings WHERE guild_id = ? AND user_id = ? AND symbol = ?`,
+    [guildId, userId, symbol],
+  );
+}
+
+function getStatementChanges(): number {
+  const row = db.get<{ n: number }>("SELECT changes() AS n");
+  return Number(row?.n ?? 0);
 }
 
 function ensureWalletRow(guildId: string, userId: string, nowIso: string): WalletRow {
@@ -213,4 +271,113 @@ export function getStockAssetSummary(
     profitLossPercent,
     unavailableSymbols,
   };
+}
+
+export function buyStock(params: BuyStockParams): BuyStockResult {
+  const guildId = params.guildId;
+  const userId = params.userId;
+  const symbol = params.symbol.trim();
+  const priceRaw = params.price;
+  const amount = params.amount;
+
+  if (!Number.isFinite(amount) || amount < MIN_STOCK_BUY_AMOUNT) {
+    throw new StockStorageError("INVALID_AMOUNT");
+  }
+  if (!Number.isFinite(priceRaw) || priceRaw <= 0) {
+    throw new StockStorageError("INVALID_PRICE");
+  }
+
+  const priceRounded = Math.round(priceRaw);
+  const fee = Math.floor(amount * STOCK_TRADE_FEE_RATE);
+  const netAmount = amount + fee;
+  const quantityMicro = Math.floor((amount / priceRounded) * STOCK_QUANTITY_SCALE);
+
+  if (quantityMicro <= 0) {
+    throw new StockStorageError("QUANTITY_TOO_SMALL");
+  }
+
+  db.run("BEGIN IMMEDIATE");
+  try {
+    const walletRow = getWalletRow(guildId, userId);
+    if (!walletRow) {
+      throw new StockStorageError("WALLET_NOT_FOUND");
+    }
+
+    const now = new Date().toISOString();
+
+    db.run(
+      `UPDATE stock_wallets
+       SET cash_balance = cash_balance - ?, updated_at = ?
+       WHERE guild_id = ? AND user_id = ? AND cash_balance >= ?`,
+      [netAmount, now, guildId, userId, netAmount],
+    );
+
+    if (getStatementChanges() === 0) {
+      throw new StockStorageError("INSUFFICIENT_CASH");
+    }
+
+    const existing = getHoldingRow(guildId, userId, symbol);
+    const oldQty = existing ? Number(existing.quantity_micro) : 0;
+    const oldAvg = existing ? Number(existing.average_buy_price) : 0;
+
+    let totalQuantityMicro: number;
+    let averageBuyPrice: number;
+
+    if (oldQty <= 0) {
+      totalQuantityMicro = quantityMicro;
+      averageBuyPrice = priceRounded;
+    } else {
+      const totalCostBefore = (oldQty / STOCK_QUANTITY_SCALE) * oldAvg;
+      const totalCostAfter = totalCostBefore + amount;
+      totalQuantityMicro = oldQty + quantityMicro;
+      averageBuyPrice = Math.round(totalCostAfter / (totalQuantityMicro / STOCK_QUANTITY_SCALE));
+    }
+
+    if (!existing) {
+      db.run(
+        `INSERT INTO stock_holdings (guild_id, user_id, symbol, quantity_micro, average_buy_price, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [guildId, userId, symbol, totalQuantityMicro, averageBuyPrice, now, now],
+      );
+    } else {
+      db.run(
+        `UPDATE stock_holdings
+         SET quantity_micro = ?, average_buy_price = ?, updated_at = ?
+         WHERE guild_id = ? AND user_id = ? AND symbol = ?`,
+        [totalQuantityMicro, averageBuyPrice, now, guildId, userId, symbol],
+      );
+    }
+
+    db.run(
+      `INSERT INTO stock_trades (guild_id, user_id, symbol, side, quantity_micro, price, gross_amount, fee, net_amount, realized_profit, created_at)
+       VALUES (?, ?, ?, 'BUY', ?, ?, ?, ?, ?, NULL, ?)`,
+      [guildId, userId, symbol, quantityMicro, priceRounded, amount, fee, netAmount, now],
+    );
+
+    const idRow = db.get<{ id: number }>("SELECT last_insert_rowid() AS id");
+    const tradeId = Number(idRow?.id ?? 0);
+
+    const walletAfter = getWalletRow(guildId, userId)!;
+    const holdingAfter = getHoldingRow(guildId, userId, symbol)!;
+
+    db.run("COMMIT");
+
+    return {
+      wallet: mapWallet(walletAfter),
+      holding: mapHolding(holdingAfter),
+      tradeId,
+      symbol,
+      price: priceRounded,
+      amount,
+      fee,
+      grossAmount: amount,
+      netAmount,
+      quantityMicro,
+      totalQuantityMicro,
+      averageBuyPrice,
+    };
+  } catch (e) {
+    db.run("ROLLBACK");
+    throw e;
+  }
 }
