@@ -17,6 +17,16 @@ Soundroom 전용 채널은 서버 설정에 따라 일부 슬래시가 제한될
 - [ ] npm run build 성공
 - [ ] npm run start:bot 성공
 
+## 시세 갱신 모드 (interval / scheduled-close)
+
+- [ ] `STOCK_PRICE_REFRESH_MODE=interval`에서 시작 시 1회 갱신 후 `STOCK_PRICE_REFRESH_INTERVAL_MS`마다 갱신되는지 확인
+- [ ] `STOCK_PRICE_REFRESH_MODE=scheduled-close`에서 봇 시작 시 1회 `refreshAll`(시세 준비) 확인
+- [ ] scheduled-close 모드에서 `Stock market service started: … mode=scheduled-close, times=… KST` 로그 확인
+- [ ] 예약 시각(KST 평일)에 `Scheduled stock quote refresh started: HH:mm KST` 로그 확인
+- [ ] 잘못된 `STOCK_SCHEDULED_CLOSE_REFRESH_TIMES_KST`(예: `abc`, `99:99`) 입력 시 설정 경고 후 기본 시각(15:31,15:35,15:40,16:00)으로 동작하는지 확인
+- [ ] 주말(KST)에는 예약 갱신 로그가 나오지 않음(시작 시 1회 갱신만 있을 수 있음)
+- [ ] 예약 분이 아닌 시간에는 `Scheduled stock quote refresh` 없이 불필요한 반복 갱신이 없음(디버그 로그 과다 없음)
+
 ## Mock provider 테스트
 
 - [ ] STOCK_PRICE_PROVIDER=mock 설정
@@ -83,6 +93,13 @@ Soundroom 전용 채널은 서버 설정에 따라 일부 슬래시가 제한될
 테스트 중 재현된 버그만 체크한다.
 
 제품 한계는 [stock-investing.md](./stock-investing.md)의 **Known issues (문서화, 코드 미수정)** 섹션을 참고한다.
+
+### 문서화된 한계 (이 단계에서 버그로 다루지 않음)
+
+- KST 기준 공휴일·임시 휴장일은 scheduled-close·평일 판별에 반영하지 않음
+- 시세를 DB(`stock_quotes` 등)에 저장하지 않음. 메모리 캐시만 사용
+- 봇 재시작 후 시세는 Provider·갱신 정책에 따라 다시 채워짐
+- Yahoo provider는 demo/delayed 성격으로 실패·지연 가능
 
 - [ ] 없음
 
