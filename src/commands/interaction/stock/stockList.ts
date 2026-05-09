@@ -3,9 +3,9 @@ import { getSupportedStockSymbols } from "@/settings/stockSymbols";
 import { panelReply } from "@/utils/discord";
 import { scheduleEphemeralReplyDelete } from "@/utils/ephemeralCleanup";
 import {
-  formatMine,
-  formatPercent,
+  formatAnsiQuoteLine,
   formatStockRefreshTime,
+  wrapAnsiCodeBlock,
 } from "@/utils/stockFormat";
 import type { MineClient, SlashCommand } from "@/types";
 
@@ -26,47 +26,39 @@ const command: SlashCommand = {
     }
 
     const market = client.stockMarket;
-    const cacheReady = market?.isReady() ?? false;
     const symbols = getSupportedStockSymbols();
 
     const lines: string[] = [];
-    if (!market || !cacheReady) {
-      lines.push("_시세 캐시 준비 중입니다._", "");
-    }
 
-    for (const s of symbols) {
-      const p = market?.getCachedPrice(s.symbol);
-      if (p) {
-        lines.push(
-          `${s.nameKo} (${s.code}) — ${formatMine(p.price)} / ${formatPercent(p.changePercent)}`,
-        );
-      } else {
-        lines.push(`${s.nameKo} (${s.code}) — 시세 준비 중`);
-      }
-    }
+    // 종목 블록을 한 덩어리로 두고 사이는 \n만 둔다. buildPanel이 항목마다 \n\n을 넣어
+    // 코드블록 아래 빈 줄이 겹쳐 두 줄처럼 보이는 것을 막는다.
+    const stockSection = symbols
+      .map((s, index) => {
+        const i = index + 1;
+        const p = market?.getCachedPrice(s.symbol);
+        const inner = p
+          ? formatAnsiQuoteLine(p.price, p.changePercent)
+          : "시세 준비 중";
+        return `📊 ${i}. ${s.nameKo}\n${wrapAnsiCodeBlock(inner)}`;
+      })
+      .join("\n");
 
-    const provider = client.config.stock.stockPriceProvider;
+    lines.push(stockSection);
+
     const lastAt = market?.getLastRefreshAt() ?? null;
-    const lastErr = market?.getLastError();
 
-    lines.push("", `마지막 갱신: ${formatStockRefreshTime(lastAt)}`);
-    lines.push(
-      `시세 출처: ${provider}${lastErr ? ` · 마지막 오류: ${lastErr}` : ""}`,
-    );
-
-    lines.push("", "※ 모의투자 게임용 시세이며 실제 투자용이 아닙니다.");
+    lines.push(`마지막 갱신: ${formatStockRefreshTime(lastAt)}`);
+    lines.push("시세는 모의투자 게임용이며 실제 투자용이 아닙니다.");
 
     await interaction.reply(
       panelReply({
-        ephemeral: true,
+        ephemeral: false,
         panel: {
-          title: "주식목록",
+          title: "📋 모의투자 종목",
           lines,
         },
       }),
     );
-
-    scheduleEphemeralReplyDelete(interaction);
   },
 };
 

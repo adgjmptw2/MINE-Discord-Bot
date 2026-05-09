@@ -1,21 +1,23 @@
 import { MessageFlags } from "discord.js";
-import { getStockAssetSummary, STOCK_QUANTITY_SCALE } from "@/storage/stock";
+import { getStockAssetSummary } from "@/storage/stock";
 import { panelReply } from "@/utils/discord";
 import { scheduleEphemeralReplyDelete } from "@/utils/ephemeralCleanup";
 import type { MineClient, SlashCommand } from "@/types";
 
-function fmt(n: number): string {
+function fmtPlain(n: number): string {
   return n.toLocaleString("ko-KR");
 }
 
+const NO_MENTION = { parse: [] as const };
+
 const command: SlashCommand = {
   name: "자산",
-  description: "내 모의투자 자산을 확인합니다.",
+  description: "내 총 잔액을 공개 메시지로 확인합니다.",
   category: "stock",
   guildOnly: true,
 
   async run(client: MineClient, interaction) {
-    if (!interaction.inGuild()) {
+    if (!interaction.inGuild() || !interaction.guild) {
       await interaction.reply({
         content: "서버에서만 사용할 수 있습니다.",
         flags: MessageFlags.Ephemeral,
@@ -36,58 +38,36 @@ const command: SlashCommand = {
     if (!summary) {
       await interaction.reply(
         panelReply({
-          ephemeral: true,
+          ephemeral: false,
           panel: {
-            title: "자산",
-            description: "아직 지갑이 없습니다. `/출석`으로 시작하세요.",
-            lines: ["※ 모의투자 게임입니다. 실제 투자가 아닙니다."],
+            title: "잔액",
+            description:
+              "아직 잔액이 없습니다. `/출석`으로 시작해보세요.",
           },
+          allowedMentions: NO_MENTION,
         }),
       );
-      scheduleEphemeralReplyDelete(interaction);
       return;
     }
 
-    const lines: string[] = [
-      `현금: **${fmt(summary.cashTotal)}** 코인`,
-      `주식 평가액: **${fmt(summary.stockValueTotal)}** 코인`,
-      `총자산: **${fmt(summary.totalAssets)}** 코인`,
-      `누적 입금: **${fmt(summary.wallet.totalDeposit)}** 코인`,
-      `수익률: **${summary.profitLossPercent.toFixed(2)}%**`,
-    ];
+    const title = `<@${userId}>님의 잔액`;
 
-    if (summary.holdings.length === 0) {
-      lines.push("", "보유 종목 없음");
-    } else {
-      const holdingLines = summary.holdings.map((h) => {
-        const qty = h.quantityMicro / STOCK_QUANTITY_SCALE;
-        return `• **${h.symbol}** — 수량 ${qty.toLocaleString("ko-KR", { maximumFractionDigits: 6 })}`;
-      });
-      lines.push("", "**보유 종목**", ...holdingLines);
+    const lines: string[] = [`\`${fmtPlain(summary.totalAssets)} 코인\``];
+
+    if (cacheEmpty || summary.unavailableSymbols.length > 0) {
+      lines.push("", "_일부 시세는 준비 중입니다._");
     }
-
-    if (cacheEmpty) {
-      lines.push("", "_시세 캐시 준비 중일 수 있습니다._");
-    } else if (summary.unavailableSymbols.length > 0) {
-      lines.push(
-        "",
-        `_일부 종목 시세 없음: ${summary.unavailableSymbols.join(", ")}_`,
-      );
-    }
-
-    lines.push("", "※ 모의투자 게임입니다. 실제 투자가 아닙니다.");
 
     await interaction.reply(
       panelReply({
-        ephemeral: true,
+        ephemeral: false,
         panel: {
-          title: "자산",
+          title,
           lines,
         },
+        allowedMentions: NO_MENTION,
       }),
     );
-
-    scheduleEphemeralReplyDelete(interaction);
   },
 };
 

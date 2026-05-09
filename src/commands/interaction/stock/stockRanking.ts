@@ -1,29 +1,24 @@
-import { MessageFlags } from "discord.js";
 import { getStockRanking } from "@/storage/stock";
 import { panelReply } from "@/utils/discord";
-import { scheduleEphemeralReplyDelete } from "@/utils/ephemeralCleanup";
-import {
-  formatMine,
-  formatPercent,
-  formatSignedMine,
-} from "@/utils/stockFormat";
+import { formatCoin } from "@/utils/stockFormat";
 import type { MineClient, SlashCommand } from "@/types";
 
 const RANKING_LIMIT = 10;
 
+const NO_MENTION = { parse: [] as const };
+
 const command: SlashCommand = {
-  name: "주식랭킹",
-  description: "이 서버의 모의투자 자산 랭킹을 확인합니다.",
+  name: "랭킹",
+  description: "서버 코인 랭킹을 확인합니다.",
   category: "stock",
   guildOnly: true,
 
   async run(client: MineClient, interaction) {
-    if (!interaction.inGuild()) {
+    if (!interaction.inGuild() || !interaction.guild) {
       await interaction.reply({
         content: "서버에서만 사용할 수 있습니다.",
-        flags: MessageFlags.Ephemeral,
+        allowedMentions: NO_MENTION,
       });
-      scheduleEphemeralReplyDelete(interaction);
       return;
     }
 
@@ -33,14 +28,14 @@ const command: SlashCommand = {
     if (!market || !market.isReady()) {
       await interaction.reply(
         panelReply({
-          ephemeral: true,
+          ephemeral: false,
           panel: {
-            title: "주식랭킹",
+            title: "🏆 서버 코인 랭킹",
             description: "시세 캐시가 아직 준비되지 않았습니다.",
           },
+          allowedMentions: NO_MENTION,
         }),
       );
-      scheduleEphemeralReplyDelete(interaction);
       return;
     }
 
@@ -50,59 +45,47 @@ const command: SlashCommand = {
     if (ranking.length === 0) {
       await interaction.reply(
         panelReply({
-          ephemeral: true,
+          ephemeral: false,
           panel: {
-            title: "주식랭킹",
+            title: "🏆 서버 코인 랭킹",
             description:
-              "아직 랭킹에 표시할 사용자가 없습니다. `/출석`으로 시작해보세요.",
+              "아직 랭킹에 표시할 사용자가 없습니다. `/출석`으로 시작해 보세요.",
           },
+          allowedMentions: NO_MENTION,
         }),
       );
-      scheduleEphemeralReplyDelete(interaction);
       return;
     }
 
-    const lines: string[] = [];
     let anyUnavailable = false;
-
-    for (let i = 0; i < ranking.length; i += 1) {
-      const e = ranking[i]!;
+    const rankLines = ranking.map((e, index) => {
       if (e.unavailableSymbols.length > 0) {
         anyUnavailable = true;
       }
-      const rank = i + 1;
-      lines.push(
-        `${rank}위. <@${e.userId}>`,
-        `총자산: ${formatMine(e.totalAssets)}`,
-        `손익: ${formatSignedMine(e.profitLoss)} (${formatPercent(e.profitLossPercent)})`,
-        "",
-      );
-    }
+      const rank = index + 1;
+      return `${rank}위 <@${e.userId}> ${formatCoin(e.totalAssets)}`;
+    });
 
-    while (lines.length > 0 && lines[lines.length - 1] === "") {
-      lines.pop();
-    }
+    const rankBlock = rankLines.join("\n");
 
-    lines.push("", "※ 모의투자 게임용 랭킹입니다. 실제 투자와 무관합니다.");
+    const lines: string[] = [rankBlock, "서버 코인 랭킹입니다."];
 
     if (anyUnavailable) {
       lines.push(
-        "",
         "_일부 종목은 시세 준비 중이라 평가액에서 제외될 수 있습니다._",
       );
     }
 
     await interaction.reply(
       panelReply({
-        ephemeral: true,
+        ephemeral: false,
         panel: {
-          title: "주식랭킹",
+          title: "🏆 서버 코인 랭킹",
           lines,
         },
+        allowedMentions: NO_MENTION,
       }),
     );
-
-    scheduleEphemeralReplyDelete(interaction);
   },
 };
 

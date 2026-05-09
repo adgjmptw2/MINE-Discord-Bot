@@ -7,19 +7,13 @@ import {
   buyStock,
   MIN_STOCK_BUY_AMOUNT,
   StockStorageError,
-  STOCK_QUANTITY_SCALE,
 } from "@/storage/stock";
 import { panelReply } from "@/utils/discord";
 import { scheduleEphemeralReplyDelete } from "@/utils/ephemeralCleanup";
-import { formatMine } from "@/utils/stockFormat";
+import { formatCoin, formatStockQuantity } from "@/utils/stockFormat";
 import type { MineClient, SlashCommand } from "@/types";
 
 // TODO: 정규장 거래 시간 제한은 추후 설정값으로 추가 가능
-
-function formatShares(quantityMicro: number): string {
-  const shares = quantityMicro / STOCK_QUANTITY_SCALE;
-  return shares.toLocaleString("ko-KR", { maximumFractionDigits: 6 });
-}
 
 const command: SlashCommand = {
   name: "매수",
@@ -124,15 +118,15 @@ const command: SlashCommand = {
       });
 
       const lines = [
-        `**${symMeta.nameKo}** (${symMeta.code})`,
-        `체결가: ${formatMine(r.price)}`,
-        `매수금액: ${formatMine(r.amount)}`,
-        `수수료: ${formatMine(r.fee)}`,
-        `실제 차감: ${formatMine(r.netAmount)}`,
-        `이번 매수 수량: ${formatShares(r.quantityMicro)}주`,
-        `총 보유 수량: ${formatShares(r.totalQuantityMicro)}주`,
-        `평균 매수가: ${formatMine(r.averageBuyPrice)}`,
-        `남은 현금: ${formatMine(r.wallet.cashBalance)}`,
+        `📌 **${symMeta.nameKo}** (${symMeta.code})`,
+        `💵 체결가: ${formatCoin(r.price)}`,
+        `🛒 매수금액: ${formatCoin(r.amount)}`,
+        `📎 수수료: ${formatCoin(r.fee)}`,
+        `💸 실제 차감: ${formatCoin(r.netAmount)}`,
+        `📊 이번 매수 수량: ${formatStockQuantity(r.quantityMicro)}`,
+        `📈 총 보유 수량: ${formatStockQuantity(r.totalQuantityMicro)}`,
+        `📉 평균 매수가: ${formatCoin(r.averageBuyPrice)}`,
+        `💰 남은 현금: ${formatCoin(r.wallet.cashBalance)}`,
         "",
         "※ 모의투자 게임용 거래입니다. 실제 투자와 무관합니다.",
       ];
@@ -141,7 +135,7 @@ const command: SlashCommand = {
         panelReply({
           ephemeral: true,
           panel: {
-            title: "매수 체결",
+            title: "✅ 매수 체결",
             lines,
           },
         }),

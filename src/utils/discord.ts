@@ -11,6 +11,7 @@ import {
   type InteractionUpdateOptions,
   type MessageActionRowComponentBuilder,
   type MessageEditOptions,
+  type MessageMentionOptions,
   type MessageReplyOptions,
   type Snowflake,
 } from "discord.js";
@@ -29,6 +30,8 @@ export interface PanelMessageOptions {
   panel: PanelOptions;
   components?: ActionRowBuilder<MessageActionRowComponentBuilder>[];
   ephemeral?: boolean;
+  /** Reply 시 멘션 파싱 제어 (예: `{ parse: [] }`로 본문의 `<@id>` 알림 방지) */
+  allowedMentions?: MessageMentionOptions;
 }
 
 export interface PanelEditOptions {
@@ -129,7 +132,7 @@ export function buildPanel(options: PanelOptions): ContainerBuilder {
 export function panelReply(
   options: PanelMessageOptions,
 ): InteractionReplyOptions {
-  return {
+  const reply: InteractionReplyOptions = {
     flags: options.ephemeral
       ? MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral
       : MessageFlags.IsComponentsV2,
@@ -138,6 +141,10 @@ export function panelReply(
       ...(options.components ?? []),
     ] as any,
   };
+  if (options.allowedMentions !== undefined) {
+    reply.allowedMentions = options.allowedMentions;
+  }
+  return reply;
 }
 
 export function panelEdit(
@@ -155,7 +162,7 @@ export function panelEdit(
 export function panelMessage(
   options: PanelMessageOptions,
 ): MessageReplyOptions {
-  return {
+  const msg: MessageReplyOptions = {
     flags: options.ephemeral
       ? MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral
       : MessageFlags.IsComponentsV2,
@@ -164,6 +171,10 @@ export function panelMessage(
       ...(options.components ?? []),
     ] as any,
   };
+  if (options.allowedMentions !== undefined) {
+    msg.allowedMentions = options.allowedMentions;
+  }
+  return msg;
 }
 
 export function isSendableChannel(

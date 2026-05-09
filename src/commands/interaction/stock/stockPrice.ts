@@ -6,9 +6,9 @@ import {
 import { panelReply } from "@/utils/discord";
 import { scheduleEphemeralReplyDelete } from "@/utils/ephemeralCleanup";
 import {
-  formatMine,
-  formatPercent,
+  formatAnsiQuoteLine,
   formatStockRefreshTime,
+  wrapAnsiCodeBlock,
 } from "@/utils/stockFormat";
 import type { MineClient, SlashCommand } from "@/types";
 
@@ -48,7 +48,7 @@ const command: SlashCommand = {
         panelReply({
           ephemeral: true,
           panel: {
-            title: "시세",
+            title: "📈 종목 시세",
             lines: [
               "알 수 없는 입력입니다. 아래 지원 종목 중에서 다시 입력해 주세요.",
               "",
@@ -69,8 +69,8 @@ const command: SlashCommand = {
         panelReply({
           ephemeral: true,
           panel: {
-            title: "시세",
-            description: "시세 준비 중입니다. 잠시 후 다시 시도해주세요.",
+            title: "📈 종목 시세",
+            description: "시세 준비 중입니다. 잠시 후 다시 시도해 주세요.",
             lines: [
               `**${sym.nameKo}** (${sym.code})`,
               "",
@@ -87,13 +87,15 @@ const command: SlashCommand = {
       panelReply({
         ephemeral: true,
         panel: {
-          title: "시세",
+          title: "📈 종목 시세",
           lines: [
             `**${p.nameKo}** (${p.code})`,
-            `현재가: ${formatMine(p.price)}`,
-            `등락률: ${formatPercent(p.changePercent)}`,
-            `마지막 갱신: ${formatStockRefreshTime(p.updatedAt)}`,
-            `시세 출처: ${p.provider}`,
+            wrapAnsiCodeBlock(
+              formatAnsiQuoteLine(p.price, p.changePercent),
+            ),
+            "",
+            `🕐 마지막 갱신: ${formatStockRefreshTime(p.updatedAt)}`,
+            `📡 시세 출처: ${p.provider}`,
             "",
             "※ 모의투자 게임용이며 실제 투자용이 아닙니다.",
           ],
