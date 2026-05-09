@@ -1,5 +1,6 @@
-import type { BotConfig, StockPriceProvider } from "@/types";
+import type { BotConfig, StockPriceProvider, StockPriceRefreshMode } from "@/types";
 import { log } from "@/utils/logger";
+import { parseKstTimeToMinutes } from "@/utils/date";
 
 function envValue(name: string, fallback = ""): string {
   return process.env[name]?.trim() || fallback;
@@ -73,6 +74,50 @@ function envStockPriceRefreshIntervalMs(): number {
   return n;
 }
 
+const DEFAULT_SCHEDULED_CLOSE_TIMES_STR = "15:31,15:35,15:40,16:00";
+const DEFAULT_SCHEDULED_CLOSE_MINUTES = [931, 935, 940, 960];
+
+function parseStockPriceRefreshMode(raw: string): StockPriceRefreshMode {
+  const v = raw.trim().toLowerCase();
+  if (v === "interval" || v === "scheduled-close") {
+    return v;
+  }
+  if (v === "") {
+    return "interval";
+  }
+  log(
+    "warn",
+    "config",
+    `STOCK_PRICE_REFRESH_MODE 값 이상함("${raw.trim()}") → interval로 감`,
+  );
+  return "interval";
+}
+
+function parseStockScheduledCloseRefreshTimesKst(raw: string): number[] {
+  const source = raw.trim() === "" ? DEFAULT_SCHEDULED_CLOSE_TIMES_STR : raw;
+  const tokens = source
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean);
+  if (tokens.length === 0) {
+    return [...DEFAULT_SCHEDULED_CLOSE_MINUTES];
+  }
+  const parsed: number[] = [];
+  for (const t of tokens) {
+    const m = parseKstTimeToMinutes(t);
+    if (!Number.isFinite(m)) {
+      log(
+        "warn",
+        "config",
+        `STOCK_SCHEDULED_CLOSE_REFRESH_TIMES_KST에 잘못된 항목("${t}") → 기본 ${DEFAULT_SCHEDULED_CLOSE_TIMES_STR} 사용`,
+      );
+      return [...DEFAULT_SCHEDULED_CLOSE_MINUTES];
+    }
+    parsed.push(m);
+  }
+  return [...new Set(parsed)].sort((a, b) => a - b);
+}
+
 function envTwelveDataApiKey(): string {
   // 나중에 twelvedata 모드일 때 없으면 그때 에러 내면 됨
   return envValue("TWELVE_DATA_API_KEY");
@@ -124,6 +169,12 @@ const config: BotConfig = {
       envValue("STOCK_PRICE_PROVIDER"),
     ),
     stockPriceRefreshIntervalMs: envStockPriceRefreshIntervalMs(),
+    stockPriceRefreshMode: parseStockPriceRefreshMode(
+      envValue("STOCK_PRICE_REFRESH_MODE"),
+    ),
+    stockScheduledCloseRefreshTimesKst: parseStockScheduledCloseRefreshTimesKst(
+      envValue("STOCK_SCHEDULED_CLOSE_REFRESH_TIMES_KST"),
+    ),
     twelveDataApiKey: envTwelveDataApiKey(),
   },
 };

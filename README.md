@@ -65,7 +65,9 @@ mock / yahoo / twelvedata 등으로 교체할 수 있습니다.
 | 변수 | 설명 |
 | --- | --- |
 | STOCK_PRICE_PROVIDER | mock, yahoo, twelvedata 중 하나 |
-| STOCK_PRICE_REFRESH_INTERVAL_MS | 기본 300000ms, 5분 |
+| STOCK_PRICE_REFRESH_INTERVAL_MS | 기본 300000ms, 5분 (`interval` 모드에서 사용) |
+| STOCK_PRICE_REFRESH_MODE | `interval`(기본) 또는 `scheduled-close` |
+| STOCK_SCHEDULED_CLOSE_REFRESH_TIMES_KST | `scheduled-close`일 때만 사용. 쉼표로 구분한 KST `HH:mm` 목록 |
 | TWELVE_DATA_API_KEY | twelvedata 사용 시 필요 |
 
 ### 개발·테스트 순서
@@ -81,6 +83,16 @@ mock / yahoo / twelvedata 등으로 교체할 수 있습니다.
 9. /자산
 10. /매도 종목:삼성전자 매도:50%
 11. /주식랭킹
+
+### 시세 갱신 모드
+
+- 기본은 **interval**: `STOCK_PRICE_REFRESH_INTERVAL_MS`마다 메모리 캐시를 갱신한다.
+
+- **scheduled-close**: KST 평일에만, 지정 시각(기본 15:31, 15:35, 15:40, 16:00)마다 갱신을 시도한다.
+
+- 정규장 마감 직후 반영 지연을 고려한 선택 모드이며, 공휴일·임시 휴장은 아직 반영하지 않는다.
+
+- 시세는 demo/delayed 등으로 지연·누락될 수 있으며 실제 투자용이 아니다.
 
 ### Provider·시세 구조
 

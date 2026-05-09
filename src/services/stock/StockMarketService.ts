@@ -1,4 +1,12 @@
 import { getSupportedStockSymbols } from "@/settings/stockSymbols";
+import type { StockConfig } from "@/types";
+import {
+  formatKstMinutesAsClock,
+  getKstDateString,
+  getKstMinutesOfDay,
+  isKstWeekday,
+  msUntilNextKstMinuteEdge,
+} from "@/utils/date";
 import { log } from "@/utils/logger";
 import type { StockQuoteProvider } from "./StockQuoteProvider";
 import type { StockPrice } from "./types";
@@ -6,7 +14,7 @@ import type { StockPrice } from "./types";
 export class StockMarketService {
   readonly provider: StockQuoteProvider;
 
-  private readonly refreshIntervalMs: number;
+  private readonly stock: StockConfig;
 
   private readonly prices = new Map<string, StockPrice>();
 
@@ -14,13 +22,21 @@ export class StockMarketService {
 
   private lastError: string | null = null;
 
-  private timer: NodeJS.Timeout | null = null;
+  private intervalTimer: NodeJS.Timeout | null = null;
+
+  private scheduleTickTimer: NodeJS.Timeout | null = null;
 
   private started = false;
 
-  constructor(provider: StockQuoteProvider, refreshIntervalMs: number) {
+  private isRefreshing = false;
+
+  private executedScheduledRefreshKeys = new Set<string>();
+
+  private lastScheduleTickKstDate: string | null = null;
+
+  constructor(provider: StockQuoteProvider, stock: StockConfig) {
     this.provider = provider;
-    this.refreshIntervalMs = refreshIntervalMs;
+    this.stock = stock;
   }
 
   start(): void {
@@ -28,21 +44,112 @@ export class StockMarketService {
       return;
     }
     this.started = true;
-    void this.refreshAll();
-    this.timer = setInterval(() => {
+
+    const providerName = this.stock.stockPriceProvider;
+
+    if (this.stock.stockPriceRefreshMode === "interval") {
+      log(
+        "info",
+        "stock",
+        `Stock market service started: provider=${providerName}, mode=interval, interval=${this.stock.stockPriceRefreshIntervalMs}ms`,
+      );
       void this.refreshAll();
-    }, this.refreshIntervalMs);
+      this.intervalTimer = setInterval(() => {
+        void this.refreshAll();
+      }, this.stock.stockPriceRefreshIntervalMs);
+      return;
+    }
+
+    const times = this.stock.stockScheduledCloseRefreshTimesKst
+      .map((m) => formatKstMinutesAsClock(m))
+      .join(",");
+    log(
+      "info",
+      "stock",
+      `Stock market service started: provider=${providerName}, mode=scheduled-close, times=${times} KST`,
+    );
+
+    void this.refreshAll();
+
+    const delay = msUntilNextKstMinuteEdge();
+    this.scheduleTickTimer = setTimeout(() => {
+      void this.onScheduledCloseTick();
+      this.scheduleTickTimer = setInterval(() => {
+        void this.onScheduledCloseTick();
+      }, 60_000);
+    }, delay);
   }
 
   stop(): void {
-    if (this.timer !== null) {
-      clearInterval(this.timer);
-      this.timer = null;
+    if (this.intervalTimer !== null) {
+      clearInterval(this.intervalTimer);
+      this.intervalTimer = null;
+    }
+    if (this.scheduleTickTimer !== null) {
+      clearTimeout(this.scheduleTickTimer);
+      clearInterval(this.scheduleTickTimer);
+      this.scheduleTickTimer = null;
     }
     this.started = false;
   }
 
+  private async onScheduledCloseTick(): Promise<void> {
+    const now = new Date();
+    const dateStr = getKstDateString(now);
+
+    if (this.lastScheduleTickKstDate !== dateStr) {
+      this.executedScheduledRefreshKeys.clear();
+      this.lastScheduleTickKstDate = dateStr;
+    }
+
+    if (!isKstWeekday(now)) {
+      return;
+    }
+
+    const minuteNow = getKstMinutesOfDay(now);
+
+    for (const targetMin of this.stock.stockScheduledCloseRefreshTimesKst) {
+      if (targetMin !== minuteNow) {
+        continue;
+      }
+      const key = `${dateStr}:${targetMin}`;
+      if (this.executedScheduledRefreshKeys.has(key)) {
+        continue;
+      }
+      this.executedScheduledRefreshKeys.add(key);
+
+      const label = formatKstMinutesAsClock(targetMin);
+      log(
+        "info",
+        "stock",
+        `Scheduled stock quote refresh started: ${label} KST`,
+      );
+
+      try {
+        await this.refreshAll();
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        log("warn", "stock", `Failed to refresh stock quotes: ${msg}`);
+      }
+    }
+  }
+
   async refreshAll(): Promise<void> {
+    if (this.isRefreshing) {
+      return;
+    }
+    this.isRefreshing = true;
+    try {
+      await this.runRefreshAllInternal();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      log("warn", "stock", `Failed to refresh stock quotes: ${msg}`);
+    } finally {
+      this.isRefreshing = false;
+    }
+  }
+
+  private async runRefreshAllInternal(): Promise<void> {
     const symbols = getSupportedStockSymbols().map((s) => s.symbol);
     const results = await Promise.allSettled(
       symbols.map((sym) => this.provider.getPrice(sym)),

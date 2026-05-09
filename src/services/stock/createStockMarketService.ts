@@ -6,5 +6,5 @@ export function createStockMarketService(
   stock: StockConfig,
 ): StockMarketService {
   const provider = createStockQuoteProvider(stock);
-  return new StockMarketService(provider, stock.stockPriceRefreshIntervalMs);
+  return new StockMarketService(provider, stock);
 }

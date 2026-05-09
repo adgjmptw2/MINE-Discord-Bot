@@ -30,9 +30,15 @@ export interface SoundroomConfig {
  */
 export type StockPriceProvider = "mock" | "twelvedata" | "yahoo";
 
+/** 시세 메모리 캐시 갱신 정책 */
+export type StockPriceRefreshMode = "interval" | "scheduled-close";
+
 export interface StockConfig {
   stockPriceProvider: StockPriceProvider;
   stockPriceRefreshIntervalMs: number;
+  stockPriceRefreshMode: StockPriceRefreshMode;
+  /** KST 평일 장 마감 후 예약 갱신 시각(분 단위, 0–1439). scheduled-close 모드에서만 사용 */
+  stockScheduledCloseRefreshTimesKst: number[];
   /** 비어 있으면 없는 거. twelvedata 쓸 때 키 있는지는 그때 검사 */
   twelveDataApiKey: string;
 }
