@@ -99,7 +99,10 @@ export function estimateChangeAmount(
   return Math.round(price - prev);
 }
 
-/** 상승·하락 색이 들어간 `(±x.xx% | ±N 코인)` 조각 (RESET 포함) */
+/**
+ * 상승·하락 색이 들어간 변동 괄호 (RESET 포함).
+ * 표시 순서: `(퍼센트 | 변동 코인)` — 계산식 변경 금지.
+ */
 export function formatAnsiStockChange(
   price: number,
   changePercent: number | null,

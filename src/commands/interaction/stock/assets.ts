@@ -1,7 +1,5 @@
-import { MessageFlags } from "discord.js";
 import { getStockAssetSummary } from "@/storage/stock";
 import { panelReply } from "@/utils/discord";
-import { scheduleEphemeralReplyDelete } from "@/utils/ephemeralCleanup";
 import type { MineClient, SlashCommand } from "@/types";
 
 function fmtPlain(n: number): string {
@@ -20,9 +18,8 @@ const command: SlashCommand = {
     if (!interaction.inGuild() || !interaction.guild) {
       await interaction.reply({
         content: "서버에서만 사용할 수 있습니다.",
-        flags: MessageFlags.Ephemeral,
+        allowedMentions: NO_MENTION,
       });
-      scheduleEphemeralReplyDelete(interaction);
       return;
     }
 
@@ -52,7 +49,7 @@ const command: SlashCommand = {
 
     const title = `<@${userId}>님의 잔액`;
 
-    const lines: string[] = [`\`${fmtPlain(summary.totalAssets)} 코인\``];
+    const lines: string[] = [`${fmtPlain(summary.totalAssets)} 코인`];
 
     if (cacheEmpty || summary.unavailableSymbols.length > 0) {
       lines.push("", "_일부 시세는 준비 중입니다._");
