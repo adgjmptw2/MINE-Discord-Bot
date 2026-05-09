@@ -55,6 +55,14 @@ export interface StockRankingEntry {
   unavailableSymbols: string[];
 }
 
+/** 관리자 초기화 결과 건수 */
+export interface StockResetCounts {
+  deletedWallets: number;
+  deletedHoldings: number;
+  deletedTrades: number;
+  deletedAttendances: number;
+}
+
 export type StockStorageErrorCode =
   | "WALLET_NOT_FOUND"
   | "INSUFFICIENT_CASH"
@@ -784,6 +792,73 @@ export function removeCoinsFromWallet(
     const updated = getWalletRow(guildId, userId)!;
     db.run("COMMIT");
     return mapWallet(updated);
+  } catch (e) {
+    db.run("ROLLBACK");
+    throw e;
+  }
+}
+
+/** 특정 유저의 길드 내 모의투자 데이터 삭제 (거래 → 보유 → 출석 → 지갑 순). */
+export function resetStockUserData(
+  guildId: string,
+  userId: string,
+): StockResetCounts {
+  db.run("BEGIN IMMEDIATE");
+  try {
+    db.run(
+      `DELETE FROM stock_trades WHERE guild_id = ? AND user_id = ?`,
+      [guildId, userId],
+    );
+    const deletedTrades = getStatementChanges();
+    db.run(
+      `DELETE FROM stock_holdings WHERE guild_id = ? AND user_id = ?`,
+      [guildId, userId],
+    );
+    const deletedHoldings = getStatementChanges();
+    db.run(
+      `DELETE FROM stock_daily_attendance WHERE guild_id = ? AND user_id = ?`,
+      [guildId, userId],
+    );
+    const deletedAttendances = getStatementChanges();
+    db.run(
+      `DELETE FROM stock_wallets WHERE guild_id = ? AND user_id = ?`,
+      [guildId, userId],
+    );
+    const deletedWallets = getStatementChanges();
+    db.run("COMMIT");
+    return {
+      deletedWallets,
+      deletedHoldings,
+      deletedTrades,
+      deletedAttendances,
+    };
+  } catch (e) {
+    db.run("ROLLBACK");
+    throw e;
+  }
+}
+
+/** 길드 전체 모의투자 데이터 삭제 (거래 → 보유 → 출석 → 지갑 순). */
+export function resetStockGuildData(guildId: string): StockResetCounts {
+  db.run("BEGIN IMMEDIATE");
+  try {
+    db.run(`DELETE FROM stock_trades WHERE guild_id = ?`, [guildId]);
+    const deletedTrades = getStatementChanges();
+    db.run(`DELETE FROM stock_holdings WHERE guild_id = ?`, [guildId]);
+    const deletedHoldings = getStatementChanges();
+    db.run(`DELETE FROM stock_daily_attendance WHERE guild_id = ?`, [
+      guildId,
+    ]);
+    const deletedAttendances = getStatementChanges();
+    db.run(`DELETE FROM stock_wallets WHERE guild_id = ?`, [guildId]);
+    const deletedWallets = getStatementChanges();
+    db.run("COMMIT");
+    return {
+      deletedWallets,
+      deletedHoldings,
+      deletedTrades,
+      deletedAttendances,
+    };
   } catch (e) {
     db.run("ROLLBACK");
     throw e;
