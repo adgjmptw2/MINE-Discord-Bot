@@ -711,3 +711,81 @@ export function sellStock(params: SellStockParams): SellStockResult {
     throw e;
   }
 }
+
+/** 관리자 코인 지급/차감 상한 (코인) */
+export const MAX_ADMIN_COIN_ADJUSTMENT = 1_000_000_000;
+
+function validateAdminCoinAmount(amount: number): void {
+  if (
+    !Number.isInteger(amount) ||
+    amount < 1 ||
+    amount > MAX_ADMIN_COIN_ADJUSTMENT
+  ) {
+    throw new StockStorageError("INVALID_AMOUNT");
+  }
+}
+
+/**
+ * 관리자 지급: 지갑이 없으면 생성 후 cash·total_deposit 증가.
+ */
+export function addCoinsToWallet(
+  guildId: string,
+  userId: string,
+  amount: number,
+): StockWallet {
+  validateAdminCoinAmount(amount);
+  const now = new Date().toISOString();
+  db.run("BEGIN IMMEDIATE");
+  try {
+    ensureWalletRow(guildId, userId, now);
+    db.run(
+      `UPDATE stock_wallets
+       SET cash_balance = cash_balance + ?,
+           total_deposit = total_deposit + ?,
+           updated_at = ?
+       WHERE guild_id = ? AND user_id = ?`,
+      [amount, amount, now, guildId, userId],
+    );
+    const row = getWalletRow(guildId, userId)!;
+    db.run("COMMIT");
+    return mapWallet(row);
+  } catch (e) {
+    db.run("ROLLBACK");
+    throw e;
+  }
+}
+
+/**
+ * 관리자 차감: 지갑 필수. cash만 감소, total_deposit 불변.
+ */
+export function removeCoinsFromWallet(
+  guildId: string,
+  userId: string,
+  amount: number,
+): StockWallet {
+  validateAdminCoinAmount(amount);
+  const now = new Date().toISOString();
+  db.run("BEGIN IMMEDIATE");
+  try {
+    const row = getWalletRow(guildId, userId);
+    if (!row) {
+      throw new StockStorageError("WALLET_NOT_FOUND");
+    }
+    const cash = Number(row.cash_balance);
+    if (cash < amount) {
+      throw new StockStorageError("INSUFFICIENT_CASH");
+    }
+    db.run(
+      `UPDATE stock_wallets
+       SET cash_balance = cash_balance - ?, updated_at = ?
+       WHERE guild_id = ? AND user_id = ?`,
+      [amount, now, guildId, userId],
+    );
+    const updated = getWalletRow(guildId, userId)!;
+    db.run("COMMIT");
+    return mapWallet(updated);
+  } catch (e) {
+    db.run("ROLLBACK");
+    throw e;
+  }
+}
