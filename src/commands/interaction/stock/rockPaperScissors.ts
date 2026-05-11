@@ -15,6 +15,9 @@ import type { MineClient, SlashCommand } from "@/types";
 
 const NO_MENTION = { parse: [] as const };
 
+const RPS_COOLDOWN_MS = 5_000;
+const lastRpsAttemptByGuildUser = new Map<string, number>();
+
 const command: SlashCommand = {
   name: "가위바위보",
   description: "코인을 걸고 봇과 가위바위보를 합니다.",
@@ -64,6 +67,18 @@ const command: SlashCommand = {
     const bet = interaction.options.getInteger("베팅", true);
     const guildId = interaction.guildId;
     const userId = interaction.user.id;
+
+    const cooldownKey = `${guildId}:${userId}`;
+    const now = Date.now();
+    const lastAt = lastRpsAttemptByGuildUser.get(cooldownKey) ?? 0;
+    if (now - lastAt < RPS_COOLDOWN_MS) {
+      await interaction.reply({
+        content: "가위바위보는 5초에 한 번만 할 수 있습니다.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+    lastRpsAttemptByGuildUser.set(cooldownKey, now);
 
     try {
       const r = playRockPaperScissors({

@@ -119,6 +119,31 @@ export interface PlayRockPaperScissorsResult {
   logId: number;
 }
 
+/** `coin_game_logs.metadata` JSON 파싱 결과 */
+export interface CoinGameLogMetadataParsed {
+  playerChoice?: string;
+  botChoice?: string;
+}
+
+export interface CoinGameLogEntry {
+  id: number;
+  guildId: string;
+  userId: string;
+  gameType: string;
+  betAmount: number;
+  result: string;
+  balanceDelta: number;
+  balanceAfter: number;
+  metadata: CoinGameLogMetadataParsed | null;
+  createdAt: string;
+}
+
+export interface ListCoinGameLogsParams {
+  guildId: string;
+  userId?: string;
+  limit?: number;
+}
+
 export const MIN_RPS_BET = 100;
 export const MAX_RPS_BET = 100_000;
 
@@ -1098,6 +1123,92 @@ export function listStockSeasonResults(seasonId: number): StockSeasonResult[] {
     [seasonId],
   );
   return rows.map(mapSeasonResult);
+}
+
+interface CoinGameLogRow {
+  id: number;
+  guild_id: string;
+  user_id: string;
+  game_type: string;
+  bet_amount: number;
+  result: string;
+  balance_delta: number;
+  balance_after: number;
+  metadata: string | null;
+  created_at: string;
+}
+
+function clampCoinGameLogLimit(limit: number | undefined): number {
+  if (limit === undefined) {
+    return 10;
+  }
+  if (!Number.isInteger(limit)) {
+    return 10;
+  }
+  return Math.min(20, Math.max(1, limit));
+}
+
+function parseCoinGameLogMetadata(
+  raw: string | null,
+): CoinGameLogMetadataParsed | null {
+  if (raw === null || raw === undefined || raw === "") {
+    return null;
+  }
+  try {
+    const v = JSON.parse(raw) as unknown;
+    if (typeof v !== "object" || v === null) {
+      return null;
+    }
+    const o = v as Record<string, unknown>;
+    const out: CoinGameLogMetadataParsed = {};
+    if (typeof o.playerChoice === "string") {
+      out.playerChoice = o.playerChoice;
+    }
+    if (typeof o.botChoice === "string") {
+      out.botChoice = o.botChoice;
+    }
+    return Object.keys(out).length > 0 ? out : null;
+  } catch {
+    return null;
+  }
+}
+
+function mapCoinGameLogRow(row: CoinGameLogRow): CoinGameLogEntry {
+  return {
+    id: row.id,
+    guildId: row.guild_id,
+    userId: row.user_id,
+    gameType: row.game_type,
+    betAmount: Number(row.bet_amount),
+    result: row.result,
+    balanceDelta: Number(row.balance_delta),
+    balanceAfter: Number(row.balance_after),
+    metadata: parseCoinGameLogMetadata(row.metadata),
+    createdAt: row.created_at,
+  };
+}
+
+/** `coin_game_logs` 최근 기록 (기본 10건, 최대 20건). */
+export function listCoinGameLogs(
+  params: ListCoinGameLogsParams,
+): CoinGameLogEntry[] {
+  const limit = clampCoinGameLogLimit(params.limit);
+  const args: unknown[] = [params.guildId];
+  let sql = `SELECT id, guild_id, user_id, game_type, bet_amount, result,
+       balance_delta, balance_after, metadata, created_at
+     FROM coin_game_logs
+     WHERE guild_id = ?`;
+
+  if (params.userId !== undefined && params.userId !== "") {
+    sql += ` AND user_id = ?`;
+    args.push(params.userId);
+  }
+
+  sql += ` ORDER BY created_at DESC LIMIT ?`;
+  args.push(limit);
+
+  const rows = db.all<CoinGameLogRow>(sql, args);
+  return rows.map(mapCoinGameLogRow);
 }
 
 export function parseRpsChoice(raw: string): RpsChoice | null {
