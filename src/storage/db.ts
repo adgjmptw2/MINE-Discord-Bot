@@ -229,6 +229,25 @@ sqlite.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_stock_season_results_guild_time
     ON stock_season_results (guild_id, created_at DESC);
+
+  CREATE TABLE IF NOT EXISTS coin_game_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    game_type TEXT NOT NULL CHECK (game_type = 'RPS'),
+    bet_amount INTEGER NOT NULL,
+    result TEXT NOT NULL CHECK (result IN ('WIN', 'LOSE', 'DRAW')),
+    balance_delta INTEGER NOT NULL,
+    balance_after INTEGER NOT NULL,
+    metadata TEXT,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_coin_game_logs_guild_user_time
+    ON coin_game_logs (guild_id, user_id, created_at DESC);
+
+  CREATE INDEX IF NOT EXISTS idx_coin_game_logs_guild_time
+    ON coin_game_logs (guild_id, created_at DESC);
 `);
 
 export const db = sqlite;

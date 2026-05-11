@@ -1,3 +1,4 @@
+import { randomInt } from "node:crypto";
 import { db } from "@/storage/db";
 import type { StockPrice } from "@/services/stock/types";
 
@@ -96,6 +97,30 @@ export interface EndStockSeasonResult {
   season: StockSeason;
   savedResults: StockSeasonResult[];
 }
+
+export type RpsChoice = "가위" | "바위" | "보";
+
+export type RpsResult = "WIN" | "LOSE" | "DRAW";
+
+export interface PlayRockPaperScissorsParams {
+  guildId: string;
+  userId: string;
+  playerChoice: RpsChoice;
+  betAmount: number;
+}
+
+export interface PlayRockPaperScissorsResult {
+  playerChoice: RpsChoice;
+  botChoice: RpsChoice;
+  result: RpsResult;
+  betAmount: number;
+  balanceDelta: number;
+  balanceAfter: number;
+  logId: number;
+}
+
+export const MIN_RPS_BET = 100;
+export const MAX_RPS_BET = 100_000;
 
 export type StockStorageErrorCode =
   | "WALLET_NOT_FOUND"
@@ -1073,4 +1098,130 @@ export function listStockSeasonResults(seasonId: number): StockSeasonResult[] {
     [seasonId],
   );
   return rows.map(mapSeasonResult);
+}
+
+export function parseRpsChoice(raw: string): RpsChoice | null {
+  const t = raw.trim();
+  if (t === "가위" || t === "바위" || t === "보") {
+    return t;
+  }
+  return null;
+}
+
+const RPS_CHOICES: readonly RpsChoice[] = ["가위", "바위", "보"];
+
+function validateRpsBet(amount: number): void {
+  if (
+    !Number.isInteger(amount) ||
+    amount < MIN_RPS_BET ||
+    amount > MAX_RPS_BET
+  ) {
+    throw new StockStorageError("INVALID_AMOUNT");
+  }
+}
+
+function compareRps(player: RpsChoice, bot: RpsChoice): RpsResult {
+  if (player === bot) {
+    return "DRAW";
+  }
+  if (
+    (player === "가위" && bot === "보") ||
+    (player === "바위" && bot === "가위") ||
+    (player === "보" && bot === "바위")
+  ) {
+    return "WIN";
+  }
+  return "LOSE";
+}
+
+/** 가상 코인 가위바위보 — total_deposit은 변경하지 않는다. */
+export function playRockPaperScissors(
+  params: PlayRockPaperScissorsParams,
+): PlayRockPaperScissorsResult {
+  const { guildId, userId, playerChoice, betAmount } = params;
+  validateRpsBet(betAmount);
+
+  db.run("BEGIN IMMEDIATE");
+  try {
+    const row = getWalletRow(guildId, userId);
+    if (!row) {
+      db.run("ROLLBACK");
+      throw new StockStorageError("WALLET_NOT_FOUND");
+    }
+    const cash = Number(row.cash_balance);
+    if (cash < betAmount) {
+      db.run("ROLLBACK");
+      throw new StockStorageError("INSUFFICIENT_CASH");
+    }
+
+    const botChoice = RPS_CHOICES[randomInt(0, RPS_CHOICES.length - 1)]!;
+    const rpsResult = compareRps(playerChoice, botChoice);
+    const now = new Date().toISOString();
+
+    let balanceDelta = 0;
+    if (rpsResult === "WIN") {
+      balanceDelta = betAmount;
+      db.run(
+        `UPDATE stock_wallets SET cash_balance = cash_balance + ?, updated_at = ?
+         WHERE guild_id = ? AND user_id = ?`,
+        [betAmount, now, guildId, userId],
+      );
+      if (getStatementChanges() !== 1) {
+        db.run("ROLLBACK");
+        throw new Error("rps win wallet update failed");
+      }
+    } else if (rpsResult === "LOSE") {
+      balanceDelta = -betAmount;
+      db.run(
+        `UPDATE stock_wallets SET cash_balance = cash_balance - ?, updated_at = ?
+         WHERE guild_id = ? AND user_id = ? AND cash_balance >= ?`,
+        [betAmount, now, guildId, userId, betAmount],
+      );
+      if (getStatementChanges() !== 1) {
+        db.run("ROLLBACK");
+        throw new StockStorageError("INSUFFICIENT_CASH");
+      }
+    } else {
+      balanceDelta = 0;
+    }
+
+    const afterRow = getWalletRow(guildId, userId)!;
+    const balanceAfter = Number(afterRow.cash_balance);
+    const metaJson = JSON.stringify({ playerChoice, botChoice });
+
+    db.run(
+      `INSERT INTO coin_game_logs (
+         guild_id, user_id, game_type, bet_amount, result, balance_delta, balance_after, metadata, created_at
+       ) VALUES (?, ?, 'RPS', ?, ?, ?, ?, ?, ?)`,
+      [
+        guildId,
+        userId,
+        betAmount,
+        rpsResult,
+        balanceDelta,
+        balanceAfter,
+        metaJson,
+        now,
+      ],
+    );
+
+    const logId = Number(
+      db.get<{ id: number }>("SELECT last_insert_rowid() AS id")?.id ?? 0,
+    );
+
+    db.run("COMMIT");
+
+    return {
+      playerChoice,
+      botChoice,
+      result: rpsResult,
+      betAmount,
+      balanceDelta,
+      balanceAfter,
+      logId,
+    };
+  } catch (e) {
+    db.run("ROLLBACK");
+    throw e;
+  }
 }

@@ -205,3 +205,30 @@ export const stockSeasonResults = sqliteTable(
     ),
   }),
 );
+
+export const coinGameLogs = sqliteTable(
+  "coin_game_logs",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    guildId: text("guild_id").notNull(),
+    userId: text("user_id").notNull(),
+    gameType: text("game_type").notNull(),
+    betAmount: integer("bet_amount").notNull(),
+    result: text("result").notNull(),
+    balanceDelta: integer("balance_delta").notNull(),
+    balanceAfter: integer("balance_after").notNull(),
+    metadata: text("metadata"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => ({
+    guildUserTime: index("idx_coin_game_logs_guild_user_time").on(
+      table.guildId,
+      table.userId,
+      table.createdAt,
+    ),
+    guildTime: index("idx_coin_game_logs_guild_time").on(
+      table.guildId,
+      table.createdAt,
+    ),
+  }),
+);
