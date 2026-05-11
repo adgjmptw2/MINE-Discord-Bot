@@ -63,6 +63,40 @@ export interface StockResetCounts {
   deletedAttendances: number;
 }
 
+export type StockSeasonStatus = "ACTIVE" | "ENDED";
+
+export interface StockSeason {
+  id: number;
+  guildId: string;
+  name: string;
+  status: StockSeasonStatus;
+  startedAt: string;
+  endedAt: string | null;
+  createdAt: string;
+}
+
+export interface StockSeasonResult {
+  id: number;
+  seasonId: number;
+  guildId: string;
+  userId: string;
+  rank: number;
+  totalAssets: number;
+  cashBalance: number;
+  stockValueTotal: number;
+  profitLoss: number;
+  profitLossPercent: number;
+  createdAt: string;
+}
+
+/** createStockSeason 반환용 (생성된 시즌과 동일). */
+export type CreateStockSeasonResult = StockSeason;
+
+export interface EndStockSeasonResult {
+  season: StockSeason;
+  savedResults: StockSeasonResult[];
+}
+
 export type StockStorageErrorCode =
   | "WALLET_NOT_FOUND"
   | "INSUFFICIENT_CASH"
@@ -71,7 +105,11 @@ export type StockStorageErrorCode =
   | "INVALID_AMOUNT"
   | "INVALID_PERCENT"
   | "INVALID_PRICE"
-  | "QUANTITY_TOO_SMALL";
+  | "QUANTITY_TOO_SMALL"
+  | "ACTIVE_SEASON_EXISTS"
+  | "ACTIVE_SEASON_NOT_FOUND"
+  | "INVALID_SEASON_NAME"
+  | "EMPTY_RANKING";
 
 export class StockStorageError extends Error {
   readonly code: StockStorageErrorCode;
@@ -150,6 +188,30 @@ interface HoldingRow {
   updated_at: string;
 }
 
+interface SeasonRow {
+  id: number;
+  guild_id: string;
+  name: string;
+  status: string;
+  started_at: string;
+  ended_at: string | null;
+  created_at: string;
+}
+
+interface SeasonResultRow {
+  id: number;
+  season_id: number;
+  guild_id: string;
+  user_id: string;
+  rank: number;
+  total_assets: number;
+  cash_balance: number;
+  stock_value_total: number;
+  profit_loss: number;
+  profit_loss_percent: number;
+  created_at: string;
+}
+
 function mapWallet(row: WalletRow): StockWallet {
   return {
     guildId: row.guild_id,
@@ -170,6 +232,34 @@ function mapHolding(row: HoldingRow): StockHolding {
     averageBuyPrice: Number(row.average_buy_price),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+function mapSeason(row: SeasonRow): StockSeason {
+  return {
+    id: row.id,
+    guildId: row.guild_id,
+    name: row.name,
+    status: row.status as StockSeasonStatus,
+    startedAt: row.started_at,
+    endedAt: row.ended_at,
+    createdAt: row.created_at,
+  };
+}
+
+function mapSeasonResult(row: SeasonResultRow): StockSeasonResult {
+  return {
+    id: row.id,
+    seasonId: row.season_id,
+    guildId: row.guild_id,
+    userId: row.user_id,
+    rank: row.rank,
+    totalAssets: Number(row.total_assets),
+    cashBalance: Number(row.cash_balance),
+    stockValueTotal: Number(row.stock_value_total),
+    profitLoss: Number(row.profit_loss),
+    profitLossPercent: Number(row.profit_loss_percent),
+    createdAt: row.created_at,
   };
 }
 
@@ -863,4 +953,124 @@ export function resetStockGuildData(guildId: string): StockResetCounts {
     db.run("ROLLBACK");
     throw e;
   }
+}
+
+function getSeasonRowById(id: number): SeasonRow | undefined {
+  return db.get<SeasonRow>(
+    `SELECT id, guild_id, name, status, started_at, ended_at, created_at
+     FROM stock_seasons WHERE id = ?`,
+    [id],
+  );
+}
+
+export function getActiveStockSeason(guildId: string): StockSeason | null {
+  const row = db.get<SeasonRow>(
+    `SELECT id, guild_id, name, status, started_at, ended_at, created_at
+     FROM stock_seasons WHERE guild_id = ? AND status = 'ACTIVE'`,
+    [guildId],
+  );
+  return row ? mapSeason(row) : null;
+}
+
+export function createStockSeason(
+  guildId: string,
+  name: string,
+): CreateStockSeasonResult {
+  const trimmed = name.trim();
+  if (trimmed.length < 1 || trimmed.length > 30) {
+    throw new StockStorageError("INVALID_SEASON_NAME");
+  }
+  if (getActiveStockSeason(guildId)) {
+    throw new StockStorageError("ACTIVE_SEASON_EXISTS");
+  }
+  const now = new Date().toISOString();
+  db.run(
+    `INSERT INTO stock_seasons (guild_id, name, status, started_at, ended_at, created_at)
+     VALUES (?, ?, 'ACTIVE', ?, NULL, ?)`,
+    [guildId, trimmed, now, now],
+  );
+  const idRow = db.get<{ id: number }>("SELECT last_insert_rowid() AS id");
+  const id = Number(idRow?.id ?? 0);
+  const row = getSeasonRowById(id);
+  if (!row) {
+    throw new Error("stock_seasons insert readback failed");
+  }
+  return mapSeason(row);
+}
+
+export function endActiveStockSeasonWithResults(
+  guildId: string,
+  rankingEntries: StockRankingEntry[],
+): EndStockSeasonResult {
+  if (rankingEntries.length === 0) {
+    throw new StockStorageError("EMPTY_RANKING");
+  }
+  const active = getActiveStockSeason(guildId);
+  if (!active) {
+    throw new StockStorageError("ACTIVE_SEASON_NOT_FOUND");
+  }
+  const now = new Date().toISOString();
+  db.run("BEGIN IMMEDIATE");
+  try {
+    let r = 1;
+    for (const e of rankingEntries) {
+      db.run(
+        `INSERT INTO stock_season_results (
+           season_id, guild_id, user_id, rank, total_assets, cash_balance,
+           stock_value_total, profit_loss, profit_loss_percent, created_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          active.id,
+          guildId,
+          e.userId,
+          r,
+          e.totalAssets,
+          e.cashBalance,
+          e.stockValueTotal,
+          e.profitLoss,
+          e.profitLossPercent,
+          now,
+        ],
+      );
+      r += 1;
+    }
+    db.run(
+      `UPDATE stock_seasons SET status = 'ENDED', ended_at = ? WHERE id = ?`,
+      [now, active.id],
+    );
+    db.run("COMMIT");
+    const endedRow = getSeasonRowById(active.id);
+    if (!endedRow) {
+      throw new Error("season row missing after end");
+    }
+    const season = mapSeason(endedRow);
+    const savedResults = listStockSeasonResults(active.id);
+    return { season, savedResults };
+  } catch (err) {
+    db.run("ROLLBACK");
+    throw err;
+  }
+}
+
+export function getLatestEndedStockSeason(guildId: string): StockSeason | null {
+  const row = db.get<SeasonRow>(
+    `SELECT id, guild_id, name, status, started_at, ended_at, created_at
+     FROM stock_seasons
+     WHERE guild_id = ? AND status = 'ENDED'
+     ORDER BY ended_at DESC
+     LIMIT 1`,
+    [guildId],
+  );
+  return row ? mapSeason(row) : null;
+}
+
+export function listStockSeasonResults(seasonId: number): StockSeasonResult[] {
+  const rows = db.all<SeasonResultRow>(
+    `SELECT id, season_id, guild_id, user_id, rank, total_assets, cash_balance,
+            stock_value_total, profit_loss, profit_loss_percent, created_at
+     FROM stock_season_results WHERE season_id = ?
+     ORDER BY rank ASC`,
+    [seasonId],
+  );
+  return rows.map(mapSeasonResult);
 }

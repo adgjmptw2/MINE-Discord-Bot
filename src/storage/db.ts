@@ -196,6 +196,39 @@ sqlite.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_stock_daily_attendance_guild_date
     ON stock_daily_attendance (guild_id, date);
+
+  CREATE TABLE IF NOT EXISTS stock_seasons (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('ACTIVE', 'ENDED')),
+    started_at TEXT NOT NULL,
+    ended_at TEXT,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_stock_seasons_one_active_per_guild
+    ON stock_seasons (guild_id) WHERE status = 'ACTIVE';
+
+  CREATE TABLE IF NOT EXISTS stock_season_results (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    season_id INTEGER NOT NULL,
+    guild_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    rank INTEGER NOT NULL,
+    total_assets INTEGER NOT NULL,
+    cash_balance INTEGER NOT NULL,
+    stock_value_total INTEGER NOT NULL,
+    profit_loss INTEGER NOT NULL,
+    profit_loss_percent REAL NOT NULL,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_stock_season_results_season_rank
+    ON stock_season_results (season_id, rank);
+
+  CREATE INDEX IF NOT EXISTS idx_stock_season_results_guild_time
+    ON stock_season_results (guild_id, created_at DESC);
 `);
 
 export const db = sqlite;

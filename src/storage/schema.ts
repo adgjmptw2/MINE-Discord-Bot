@@ -2,6 +2,7 @@ import {
   index,
   integer,
   primaryKey,
+  real,
   sqliteTable,
   text,
   uniqueIndex,
@@ -163,6 +164,44 @@ export const stockDailyAttendance = sqliteTable(
     guildDate: index("idx_stock_daily_attendance_guild_date").on(
       table.guildId,
       table.date,
+    ),
+  }),
+);
+
+/** 모의투자 시즌 — ACTIVE는 길드당 하나(unique partial index는 db.ts DDL 참고). */
+export const stockSeasons = sqliteTable("stock_seasons", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  guildId: text("guild_id").notNull(),
+  name: text("name").notNull(),
+  status: text("status").notNull(),
+  startedAt: text("started_at").notNull(),
+  endedAt: text("ended_at"),
+  createdAt: text("created_at").notNull(),
+});
+
+export const stockSeasonResults = sqliteTable(
+  "stock_season_results",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    seasonId: integer("season_id").notNull(),
+    guildId: text("guild_id").notNull(),
+    userId: text("user_id").notNull(),
+    rank: integer("rank").notNull(),
+    totalAssets: integer("total_assets").notNull(),
+    cashBalance: integer("cash_balance").notNull(),
+    stockValueTotal: integer("stock_value_total").notNull(),
+    profitLoss: integer("profit_loss").notNull(),
+    profitLossPercent: real("profit_loss_percent").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => ({
+    seasonRank: index("idx_stock_season_results_season_rank").on(
+      table.seasonId,
+      table.rank,
+    ),
+    guildTime: index("idx_stock_season_results_guild_time").on(
+      table.guildId,
+      table.createdAt,
     ),
   }),
 );

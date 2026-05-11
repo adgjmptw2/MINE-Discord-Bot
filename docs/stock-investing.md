@@ -34,6 +34,9 @@
 | /코인차감 | 관리자 코인 차감 (cash만 감소) |
 | /유저초기화 | 특정 유저 지갑·보유·거래·출석 기록 삭제 (확인: 초기화) |
 | /서버초기화 | 길드 전체 모의투자 데이터 삭제 (확인: 서버초기화) |
+| /시즌시작 | ACTIVE 시즌 생성 (관리자·확인: 시즌시작) |
+| /시즌종료 | 랭킹 상위 10명 저장 후 시즌 종료 (확인: 시즌종료) |
+| /시즌정보 | 진행 시즌·최근 종료 시즌 요약 |
 
 ## 데이터 모델
 
@@ -45,6 +48,8 @@ SQLite 테이블은 `src/storage/db.ts` 등에서 정의됩니다.
 | stock_holdings | 심볼별 수량(마이크로), 평균 매수가 |
 | stock_trades | BUY/SELL, 수수료, 실현손익 등 |
 | stock_daily_attendance | 출석 일자·보상 기록 |
+| stock_seasons | 길드별 시즌 (ACTIVE는 길드당 하나, partial unique index) |
+| stock_season_results | 시즌 종료 시점 랭킹 스냅샷 (상위 10명 등) |
 
 비즈니스 로직은 Drizzle 없이 raw SQL과 트랜잭션으로 처리합니다.
 
