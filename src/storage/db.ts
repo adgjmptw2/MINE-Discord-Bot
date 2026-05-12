@@ -248,6 +248,16 @@ sqlite.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_coin_game_logs_guild_time
     ON coin_game_logs (guild_id, created_at DESC);
+
+  CREATE TABLE IF NOT EXISTS coin_guild_settings (
+    guild_id TEXT PRIMARY KEY,
+    attendance_reward INTEGER NOT NULL DEFAULT 10000,
+    rps_min_bet INTEGER NOT NULL DEFAULT 100,
+    rps_max_bet INTEGER NOT NULL DEFAULT 100000,
+    rps_cooldown_seconds INTEGER NOT NULL DEFAULT 5,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
 `);
 
 export const db = sqlite;

@@ -206,6 +206,16 @@ export const stockSeasonResults = sqliteTable(
   }),
 );
 
+export const coinGuildSettings = sqliteTable("coin_guild_settings", {
+  guildId: text("guild_id").primaryKey(),
+  attendanceReward: integer("attendance_reward").notNull().default(10_000),
+  rpsMinBet: integer("rps_min_bet").notNull().default(100),
+  rpsMaxBet: integer("rps_max_bet").notNull().default(100_000),
+  rpsCooldownSeconds: integer("rps_cooldown_seconds").notNull().default(5),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
 export const coinGameLogs = sqliteTable(
   "coin_game_logs",
   {

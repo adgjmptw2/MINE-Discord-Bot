@@ -12,7 +12,13 @@ export const MIN_STOCK_BUY_AMOUNT = 1_000;
 /** 최소 매도 금액 기준(코인, 금액 방식일 때) */
 export const MIN_STOCK_SELL_AMOUNT = 1_000;
 
-export const DAILY_ATTENDANCE_REWARD = 10_000;
+export const DEFAULT_ATTENDANCE_REWARD = 10_000;
+export const DEFAULT_RPS_MIN_BET = 100;
+export const DEFAULT_RPS_MAX_BET = 100_000;
+export const DEFAULT_RPS_COOLDOWN_SECONDS = 5;
+
+/** 호환·폴백용 — 서버별 출석액은 `getOrCreateCoinGuildSettings` */
+export const DAILY_ATTENDANCE_REWARD = DEFAULT_ATTENDANCE_REWARD;
 
 export interface StockWallet {
   guildId: string;
@@ -107,6 +113,8 @@ export interface PlayRockPaperScissorsParams {
   userId: string;
   playerChoice: RpsChoice;
   betAmount: number;
+  rpsMinBet: number;
+  rpsMaxBet: number;
 }
 
 export interface PlayRockPaperScissorsResult {
@@ -144,8 +152,26 @@ export interface ListCoinGameLogsParams {
   limit?: number;
 }
 
-export const MIN_RPS_BET = 100;
-export const MAX_RPS_BET = 100_000;
+export interface CoinGuildSettings {
+  guildId: string;
+  attendanceReward: number;
+  rpsMinBet: number;
+  rpsMaxBet: number;
+  rpsCooldownSeconds: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpdateCoinGuildSettingsPatch {
+  attendanceReward?: number;
+  rpsMinBet?: number;
+  rpsMaxBet?: number;
+  rpsCooldownSeconds?: number;
+}
+
+/** 호환·폴백용 — 서버별 베팅 한도는 `getOrCreateCoinGuildSettings` */
+export const MIN_RPS_BET = DEFAULT_RPS_MIN_BET;
+export const MAX_RPS_BET = DEFAULT_RPS_MAX_BET;
 
 export type StockStorageErrorCode =
   | "WALLET_NOT_FOUND"
@@ -159,7 +185,8 @@ export type StockStorageErrorCode =
   | "ACTIVE_SEASON_EXISTS"
   | "ACTIVE_SEASON_NOT_FOUND"
   | "INVALID_SEASON_NAME"
-  | "EMPTY_RANKING";
+  | "EMPTY_RANKING"
+  | "INVALID_COIN_GUILD_SETTINGS";
 
 export class StockStorageError extends Error {
   readonly code: StockStorageErrorCode;
@@ -388,6 +415,143 @@ export function listStockHoldings(
     [guildId, userId],
   );
   return rows.map(mapHolding);
+}
+
+interface CoinGuildSettingsRow {
+  guild_id: string;
+  attendance_reward: number;
+  rps_min_bet: number;
+  rps_max_bet: number;
+  rps_cooldown_seconds: number;
+  created_at: string;
+  updated_at: string;
+}
+
+function mapCoinGuildSettingsRow(row: CoinGuildSettingsRow): CoinGuildSettings {
+  return {
+    guildId: row.guild_id,
+    attendanceReward: Number(row.attendance_reward),
+    rpsMinBet: Number(row.rps_min_bet),
+    rpsMaxBet: Number(row.rps_max_bet),
+    rpsCooldownSeconds: Number(row.rps_cooldown_seconds),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function assertValidCoinGuildSettings(s: {
+  attendanceReward: number;
+  rpsMinBet: number;
+  rpsMaxBet: number;
+  rpsCooldownSeconds: number;
+}): void {
+  if (
+    !Number.isInteger(s.attendanceReward) ||
+    s.attendanceReward < 0 ||
+    s.attendanceReward > 1_000_000
+  ) {
+    throw new StockStorageError("INVALID_COIN_GUILD_SETTINGS");
+  }
+  if (
+    !Number.isInteger(s.rpsMinBet) ||
+    s.rpsMinBet < 1 ||
+    s.rpsMinBet > 1_000_000
+  ) {
+    throw new StockStorageError("INVALID_COIN_GUILD_SETTINGS");
+  }
+  if (
+    !Number.isInteger(s.rpsMaxBet) ||
+    s.rpsMaxBet < 1 ||
+    s.rpsMaxBet > 1_000_000
+  ) {
+    throw new StockStorageError("INVALID_COIN_GUILD_SETTINGS");
+  }
+  if (s.rpsMinBet > s.rpsMaxBet) {
+    throw new StockStorageError("INVALID_COIN_GUILD_SETTINGS");
+  }
+  if (
+    !Number.isInteger(s.rpsCooldownSeconds) ||
+    s.rpsCooldownSeconds < 0 ||
+    s.rpsCooldownSeconds > 60
+  ) {
+    throw new StockStorageError("INVALID_COIN_GUILD_SETTINGS");
+  }
+}
+
+export function getOrCreateCoinGuildSettings(
+  guildId: string,
+): CoinGuildSettings {
+  const row = db.get<CoinGuildSettingsRow>(
+    `SELECT guild_id, attendance_reward, rps_min_bet, rps_max_bet, rps_cooldown_seconds, created_at, updated_at
+     FROM coin_guild_settings WHERE guild_id = ?`,
+    [guildId],
+  );
+  if (row) {
+    return mapCoinGuildSettingsRow(row);
+  }
+  const now = new Date().toISOString();
+  db.run(
+    `INSERT INTO coin_guild_settings (
+       guild_id, attendance_reward, rps_min_bet, rps_max_bet, rps_cooldown_seconds, created_at, updated_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [
+      guildId,
+      DEFAULT_ATTENDANCE_REWARD,
+      DEFAULT_RPS_MIN_BET,
+      DEFAULT_RPS_MAX_BET,
+      DEFAULT_RPS_COOLDOWN_SECONDS,
+      now,
+      now,
+    ],
+  );
+  const inserted = db.get<CoinGuildSettingsRow>(
+    `SELECT guild_id, attendance_reward, rps_min_bet, rps_max_bet, rps_cooldown_seconds, created_at, updated_at
+     FROM coin_guild_settings WHERE guild_id = ?`,
+    [guildId],
+  );
+  if (!inserted) {
+    throw new Error("coin_guild_settings insert failed");
+  }
+  return mapCoinGuildSettingsRow(inserted);
+}
+
+export function updateCoinGuildSettings(
+  guildId: string,
+  patch: UpdateCoinGuildSettingsPatch,
+): CoinGuildSettings {
+  const current = getOrCreateCoinGuildSettings(guildId);
+  const next = {
+    attendanceReward: patch.attendanceReward ?? current.attendanceReward,
+    rpsMinBet: patch.rpsMinBet ?? current.rpsMinBet,
+    rpsMaxBet: patch.rpsMaxBet ?? current.rpsMaxBet,
+    rpsCooldownSeconds:
+      patch.rpsCooldownSeconds ?? current.rpsCooldownSeconds,
+  };
+  assertValidCoinGuildSettings(next);
+  const now = new Date().toISOString();
+  db.run(
+    `UPDATE coin_guild_settings SET
+       attendance_reward = ?,
+       rps_min_bet = ?,
+       rps_max_bet = ?,
+       rps_cooldown_seconds = ?,
+       updated_at = ?
+     WHERE guild_id = ?`,
+    [
+      next.attendanceReward,
+      next.rpsMinBet,
+      next.rpsMaxBet,
+      next.rpsCooldownSeconds,
+      now,
+      guildId,
+    ],
+  );
+  return {
+    guildId,
+    ...next,
+    createdAt: current.createdAt,
+    updatedAt: now,
+  };
 }
 
 export function recordStockAttendance(
@@ -1221,11 +1385,11 @@ export function parseRpsChoice(raw: string): RpsChoice | null {
 
 const RPS_CHOICES: readonly RpsChoice[] = ["가위", "바위", "보"];
 
-function validateRpsBet(amount: number): void {
+function validateRpsBet(amount: number, minBet: number, maxBet: number): void {
   if (
     !Number.isInteger(amount) ||
-    amount < MIN_RPS_BET ||
-    amount > MAX_RPS_BET
+    amount < minBet ||
+    amount > maxBet
   ) {
     throw new StockStorageError("INVALID_AMOUNT");
   }
@@ -1249,8 +1413,9 @@ function compareRps(player: RpsChoice, bot: RpsChoice): RpsResult {
 export function playRockPaperScissors(
   params: PlayRockPaperScissorsParams,
 ): PlayRockPaperScissorsResult {
-  const { guildId, userId, playerChoice, betAmount } = params;
-  validateRpsBet(betAmount);
+  const { guildId, userId, playerChoice, betAmount, rpsMinBet, rpsMaxBet } =
+    params;
+  validateRpsBet(betAmount, rpsMinBet, rpsMaxBet);
 
   db.run("BEGIN IMMEDIATE");
   try {

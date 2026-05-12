@@ -3,8 +3,7 @@ import {
   MessageFlags,
 } from "discord.js";
 import {
-  MAX_RPS_BET,
-  MIN_RPS_BET,
+  getOrCreateCoinGuildSettings,
   parseRpsChoice,
   playRockPaperScissors,
   StockStorageError,
@@ -15,7 +14,6 @@ import type { MineClient, SlashCommand } from "@/types";
 
 const NO_MENTION = { parse: [] as const };
 
-const RPS_COOLDOWN_MS = 5_000;
 const lastRpsAttemptByGuildUser = new Map<string, number>();
 
 const command: SlashCommand = {
@@ -38,10 +36,10 @@ const command: SlashCommand = {
     {
       type: ApplicationCommandOptionType.Integer,
       name: "베팅",
-      description: `베팅 코인 (${MIN_RPS_BET}~${MAX_RPS_BET})`,
+      description: "베팅 코인 (서버 `/코인설정` 범위 내 정수)",
       required: true,
-      minValue: MIN_RPS_BET,
-      maxValue: MAX_RPS_BET,
+      minValue: 1,
+      maxValue: 1_000_000,
     },
   ],
 
@@ -68,17 +66,37 @@ const command: SlashCommand = {
     const guildId = interaction.guildId;
     const userId = interaction.user.id;
 
-    const cooldownKey = `${guildId}:${userId}`;
-    const now = Date.now();
-    const lastAt = lastRpsAttemptByGuildUser.get(cooldownKey) ?? 0;
-    if (now - lastAt < RPS_COOLDOWN_MS) {
+    const settings = getOrCreateCoinGuildSettings(guildId);
+    const minBet = settings.rpsMinBet;
+    const maxBet = settings.rpsMaxBet;
+
+    if (
+      !Number.isInteger(bet) ||
+      bet < minBet ||
+      bet > maxBet
+    ) {
       await interaction.reply({
-        content: "가위바위보는 5초에 한 번만 할 수 있습니다.",
+        content: `베팅은 ${minBet.toLocaleString("ko-KR")}~${maxBet.toLocaleString("ko-KR")} 코인 사이 정수여야 합니다. (/코인설정으로 범위 변경 가능)`,
         flags: MessageFlags.Ephemeral,
       });
       return;
     }
-    lastRpsAttemptByGuildUser.set(cooldownKey, now);
+
+    const cooldownSec = settings.rpsCooldownSeconds;
+    if (cooldownSec > 0) {
+      const cooldownKey = `${guildId}:${userId}`;
+      const now = Date.now();
+      const cooldownMs = cooldownSec * 1000;
+      const lastAt = lastRpsAttemptByGuildUser.get(cooldownKey) ?? 0;
+      if (now - lastAt < cooldownMs) {
+        await interaction.reply({
+          content: `가위바위보는 ${cooldownSec}초에 한 번만 할 수 있습니다.`,
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
+      lastRpsAttemptByGuildUser.set(cooldownKey, now);
+    }
 
     try {
       const r = playRockPaperScissors({
@@ -86,6 +104,8 @@ const command: SlashCommand = {
         userId,
         playerChoice: choice,
         betAmount: bet,
+        rpsMinBet: minBet,
+        rpsMaxBet: maxBet,
       });
 
       const lines: string[] = [
@@ -132,7 +152,7 @@ const command: SlashCommand = {
         }
         if (e.code === "INVALID_AMOUNT") {
           await interaction.reply({
-            content: `베팅은 ${MIN_RPS_BET.toLocaleString("ko-KR")}~${MAX_RPS_BET.toLocaleString("ko-KR")} 코인 사이 정수여야 합니다.`,
+            content: `베팅은 ${minBet.toLocaleString("ko-KR")}~${maxBet.toLocaleString("ko-KR")} 코인 사이 정수여야 합니다.`,
             flags: MessageFlags.Ephemeral,
           });
           return;

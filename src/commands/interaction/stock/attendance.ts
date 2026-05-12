@@ -1,6 +1,6 @@
 import { MessageFlags } from "discord.js";
 import {
-  DAILY_ATTENDANCE_REWARD,
+  getOrCreateCoinGuildSettings,
   recordStockAttendance,
 } from "@/storage/stock";
 import { getKstDateString } from "@/utils/date";
@@ -28,11 +28,13 @@ const command: SlashCommand = {
     const userId = interaction.user.id;
     const today = getKstDateString();
 
+    const settings = getOrCreateCoinGuildSettings(guildId);
+
     const result = recordStockAttendance(
       guildId,
       userId,
       today,
-      DAILY_ATTENDANCE_REWARD,
+      settings.attendanceReward,
     );
     const cash = result.wallet.cashBalance.toLocaleString("ko-KR");
 
