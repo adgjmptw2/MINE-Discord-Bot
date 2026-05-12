@@ -27,6 +27,14 @@ Soundroom 전용 채널은 서버 설정에 따라 일부 슬래시가 제한될
 - [ ] `/도움말 카테고리:음악` 표시
 - [ ] 도움말에 실제 돈·환전과 무관하다는 안내 표시
 
+## 상태 명령 테스트
+
+- [ ] `/상태` 실행
+- [ ] 주식 시세 캐시 상태 표시
+- [ ] DB 상태 표시
+- [ ] 코인 설정 표시
+- [ ] 민감정보가 노출되지 않음
+
 ## 시세 갱신 모드 (interval / scheduled-close)
 
 - [ ] `STOCK_PRICE_REFRESH_MODE=interval`에서 시작 시 1회 갱신 후 `STOCK_PRICE_REFRESH_INTERVAL_MS`마다 갱신되는지 확인

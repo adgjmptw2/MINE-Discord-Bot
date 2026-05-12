@@ -261,3 +261,12 @@ sqlite.exec(`
 `);
 
 export const db = sqlite;
+
+export function checkDatabaseHealth(): boolean {
+  try {
+    sqlite.get<{ ok: number }>("SELECT 1 AS ok");
+    return true;
+  } catch {
+    return false;
+  }
+}

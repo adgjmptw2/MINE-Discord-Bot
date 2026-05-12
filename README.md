@@ -24,6 +24,8 @@
 - SQLite 저장소
 - 주식 모의투자 게임
 
+베타 운영 체크리스트: [docs/beta-ops-checklist.md](docs/beta-ops-checklist.md)
+
 ## 주식 모의투자 게임
 
 서버별 가상 화폐로 국내 인기 주식 5개를 사고파는 모의투자 게임입니다.
@@ -53,6 +55,7 @@ mock / yahoo / twelvedata 등으로 교체할 수 있습니다.
 | 명령어 | 설명 |
 | --- | --- |
 | /도움말 | 봇의 주요 명령어와 사용법을 확인합니다 |
+| /상태 | 봇의 주요 운영 상태를 확인합니다 |
 | /출석 | 하루 1회 가상 화폐를 받습니다 |
 | /자산 | 내 총 잔액을 공개 메시지로 확인합니다 |
 | /주식자산 | 내 주식 보유 현황을 본인만 자세히 확인합니다 |
@@ -140,6 +143,8 @@ mock / yahoo / twelvedata 등으로 교체할 수 있습니다.
 상세 설계는 [docs/stock-investing.md](docs/stock-investing.md)를 참고합니다.
 
 수동 테스트는 [docs/stock-manual-test.md](docs/stock-manual-test.md)를 참고합니다.
+
+베타 운영 점검은 [docs/beta-ops-checklist.md](docs/beta-ops-checklist.md)를 참고합니다.
 
 ## 준비
 
