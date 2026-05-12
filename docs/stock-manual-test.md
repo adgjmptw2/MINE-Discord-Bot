@@ -17,6 +17,16 @@ Soundroom 전용 채널은 서버 설정에 따라 일부 슬래시가 제한될
 - [ ] npm run build 성공
 - [ ] npm run start:bot 성공
 
+## 도움말 테스트
+
+- [ ] `/도움말` 실행 시 전체 도움말 표시
+- [ ] `/도움말 카테고리:코인` 표시
+- [ ] `/도움말 카테고리:주식` 표시
+- [ ] `/도움말 카테고리:게임` 표시
+- [ ] `/도움말 카테고리:시즌` 표시
+- [ ] `/도움말 카테고리:음악` 표시
+- [ ] 도움말에 실제 돈·환전과 무관하다는 안내 표시
+
 ## 시세 갱신 모드 (interval / scheduled-close)
 
 - [ ] `STOCK_PRICE_REFRESH_MODE=interval`에서 시작 시 1회 갱신 후 `STOCK_PRICE_REFRESH_INTERVAL_MS`마다 갱신되는지 확인
