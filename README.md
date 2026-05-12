@@ -24,7 +24,7 @@
 - SQLite 저장소
 - 주식 모의투자 게임
 
-베타 운영 체크리스트: [docs/beta-ops-checklist.md](docs/beta-ops-checklist.md)
+문서: [배포 가이드](docs/deployment.md) · [베타 운영 체크리스트](docs/beta-ops-checklist.md)
 
 ## 주식 모의투자 게임
 
@@ -144,7 +144,7 @@ mock / yahoo / twelvedata 등으로 교체할 수 있습니다.
 
 수동 테스트는 [docs/stock-manual-test.md](docs/stock-manual-test.md)를 참고합니다.
 
-베타 운영 점검은 [docs/beta-ops-checklist.md](docs/beta-ops-checklist.md)를 참고합니다.
+배포·VM 구성은 [docs/deployment.md](docs/deployment.md)를, 베타 운영 점검은 [docs/beta-ops-checklist.md](docs/beta-ops-checklist.md)를 참고합니다.
 
 ## 준비
 

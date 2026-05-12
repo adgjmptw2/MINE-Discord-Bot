@@ -1,5 +1,7 @@
 # 베타 운영 체크리스트
 
+배포·VM 준비·`.env`·Lavalink는 [배포 가이드](./deployment.md)를 먼저 보세요.
+
 배포·베타 운영 전후에 순서대로 확인합니다.
 
 ## 실행 전
@@ -43,6 +45,7 @@
 
 ## 운영 메모
 
+- VM·`.env`·Lavalink 요약은 [배포 가이드](./deployment.md) 참고
 - SQLite DB 백업 필요
 - Yahoo provider는 demo/delayed 성격
 - 실제 투자용 아님
