@@ -274,6 +274,23 @@ sqlite.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_coin_work_logs_guild_time
     ON coin_work_logs (guild_id, created_at DESC);
+
+  CREATE TABLE IF NOT EXISTS coin_fishing_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    fish_name TEXT NOT NULL,
+    rarity TEXT NOT NULL,
+    reward_amount INTEGER NOT NULL,
+    balance_after INTEGER NOT NULL,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_coin_fishing_logs_guild_user_time
+    ON coin_fishing_logs (guild_id, user_id, created_at DESC);
+
+  CREATE INDEX IF NOT EXISTS idx_coin_fishing_logs_guild_time
+    ON coin_fishing_logs (guild_id, created_at DESC);
 `);
 
 export const db = sqlite;

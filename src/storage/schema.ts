@@ -266,3 +266,28 @@ export const coinWorkLogs = sqliteTable(
     ),
   }),
 );
+
+export const coinFishingLogs = sqliteTable(
+  "coin_fishing_logs",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    guildId: text("guild_id").notNull(),
+    userId: text("user_id").notNull(),
+    fishName: text("fish_name").notNull(),
+    rarity: text("rarity").notNull(),
+    rewardAmount: integer("reward_amount").notNull(),
+    balanceAfter: integer("balance_after").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => ({
+    guildUserTime: index("idx_coin_fishing_logs_guild_user_time").on(
+      table.guildId,
+      table.userId,
+      table.createdAt,
+    ),
+    guildTime: index("idx_coin_fishing_logs_guild_time").on(
+      table.guildId,
+      table.createdAt,
+    ),
+  }),
+);

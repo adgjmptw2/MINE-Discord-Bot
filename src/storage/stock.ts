@@ -192,6 +192,47 @@ export interface CoinWorkCooldownResult {
   latestWorkedAt: string | null;
 }
 
+/** `/낚시` 쿨다운(초) — 고정 20분 */
+export const DEFAULT_FISHING_COOLDOWN_SECONDS = 1200;
+
+export type FishingRarity =
+  | "NONE"
+  | "COMMON"
+  | "UNCOMMON"
+  | "RARE"
+  | "LEGENDARY";
+
+export const FISHING_RARITY_NONE: FishingRarity = "NONE";
+export const FISHING_RARITY_COMMON: FishingRarity = "COMMON";
+export const FISHING_RARITY_UNCOMMON: FishingRarity = "UNCOMMON";
+export const FISHING_RARITY_RARE: FishingRarity = "RARE";
+export const FISHING_RARITY_LEGENDARY: FishingRarity = "LEGENDARY";
+
+export interface CoinFishingLog {
+  id: number;
+  guildId: string;
+  userId: string;
+  fishName: string;
+  rarity: FishingRarity;
+  rewardAmount: number;
+  balanceAfter: number;
+  createdAt: string;
+}
+
+export interface CoinFishingResult {
+  fishName: string;
+  rarity: FishingRarity;
+  rewardAmount: number;
+  balanceAfter: number;
+  createdAt: string;
+}
+
+export interface CoinFishingCooldownResult {
+  canFish: boolean;
+  remainingMs: number;
+  latestFishedAt: string | null;
+}
+
 export type StockStorageErrorCode =
   | "WALLET_NOT_FOUND"
   | "INSUFFICIENT_CASH"
@@ -206,7 +247,8 @@ export type StockStorageErrorCode =
   | "INVALID_SEASON_NAME"
   | "EMPTY_RANKING"
   | "INVALID_COIN_GUILD_SETTINGS"
-  | "WORK_COOLDOWN";
+  | "WORK_COOLDOWN"
+  | "FISHING_COOLDOWN";
 
 export class StockStorageError extends Error {
   readonly code: StockStorageErrorCode;
@@ -1525,6 +1567,180 @@ export function performCoinWork(
       rewardAmount: reward,
       balanceAfter,
       workType: COIN_WORK_TYPE_PART_TIME,
+      createdAt: nowIso,
+    };
+  } catch (e) {
+    db.run("ROLLBACK");
+    throw e;
+  }
+}
+
+interface CoinFishingLogDbRow {
+  id: number;
+  guild_id: string;
+  user_id: string;
+  fish_name: string;
+  rarity: string;
+  reward_amount: number;
+  balance_after: number;
+  created_at: string;
+}
+
+const COIN_FISHING_COOLDOWN_MS = DEFAULT_FISHING_COOLDOWN_SECONDS * 1000;
+
+function mapCoinFishingLog(row: CoinFishingLogDbRow): CoinFishingLog {
+  return {
+    id: row.id,
+    guildId: row.guild_id,
+    userId: row.user_id,
+    fishName: row.fish_name,
+    rarity: row.rarity as FishingRarity,
+    rewardAmount: Number(row.reward_amount),
+    balanceAfter: Number(row.balance_after),
+    createdAt: row.created_at,
+  };
+}
+
+/** 최근 `/낚시` 기록 1건 */
+export function getLatestCoinFishingLog(
+  guildId: string,
+  userId: string,
+): CoinFishingLog | null {
+  const row = db.get<CoinFishingLogDbRow>(
+    `SELECT id, guild_id, user_id, fish_name, rarity, reward_amount, balance_after, created_at
+     FROM coin_fishing_logs
+     WHERE guild_id = ? AND user_id = ?
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [guildId, userId],
+  );
+  return row ? mapCoinFishingLog(row) : null;
+}
+
+export function canFishNow(
+  guildId: string,
+  userId: string,
+  now: Date = new Date(),
+): CoinFishingCooldownResult {
+  const latest = getLatestCoinFishingLog(guildId, userId);
+  if (!latest) {
+    return { canFish: true, remainingMs: 0, latestFishedAt: null };
+  }
+  const lastMs = new Date(latest.createdAt).getTime();
+  const elapsed = now.getTime() - lastMs;
+  if (elapsed >= COIN_FISHING_COOLDOWN_MS) {
+    return {
+      canFish: true,
+      remainingMs: 0,
+      latestFishedAt: latest.createdAt,
+    };
+  }
+  return {
+    canFish: false,
+    remainingMs: COIN_FISHING_COOLDOWN_MS - elapsed,
+    latestFishedAt: latest.createdAt,
+  };
+}
+
+function rollFishingReward(): {
+  fishName: string;
+  rarity: FishingRarity;
+  rewardAmount: number;
+} {
+  const roll = randomInt(1, 100);
+  if (roll <= 20) {
+    return {
+      fishName: "꽝",
+      rarity: FISHING_RARITY_NONE,
+      rewardAmount: 0,
+    };
+  }
+  if (roll <= 55) {
+    return {
+      fishName: "작은 물고기",
+      rarity: FISHING_RARITY_COMMON,
+      rewardAmount: randomInt(300, 800),
+    };
+  }
+  if (roll <= 80) {
+    return {
+      fishName: "평범한 물고기",
+      rarity: FISHING_RARITY_UNCOMMON,
+      rewardAmount: randomInt(800, 1500),
+    };
+  }
+  if (roll <= 95) {
+    return {
+      fishName: "큰 물고기",
+      rarity: FISHING_RARITY_RARE,
+      rewardAmount: randomInt(1500, 3000),
+    };
+  }
+  return {
+    fishName: "황금 물고기",
+    rarity: FISHING_RARITY_LEGENDARY,
+    rewardAmount: 5000,
+  };
+}
+
+/** `/낚시` — `coin_fishing_logs` 기록. 꽝은 잔액·total_deposit 불변. */
+export function performCoinFishing(
+  guildId: string,
+  userId: string,
+): CoinFishingResult {
+  db.run("BEGIN IMMEDIATE");
+  try {
+    const latest = db.get<CoinFishingLogDbRow>(
+      `SELECT id, guild_id, user_id, fish_name, rarity, reward_amount, balance_after, created_at
+       FROM coin_fishing_logs
+       WHERE guild_id = ? AND user_id = ?
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [guildId, userId],
+    );
+    const nowDate = new Date();
+    const nowIso = nowDate.toISOString();
+    if (latest) {
+      const lastMs = new Date(latest.created_at).getTime();
+      if (nowDate.getTime() - lastMs < COIN_FISHING_COOLDOWN_MS) {
+        throw new StockStorageError("FISHING_COOLDOWN");
+      }
+    }
+
+    const rolled = rollFishingReward();
+    ensureWalletRow(guildId, userId, nowIso);
+    const rewardAmount = rolled.rewardAmount;
+    if (rewardAmount > 0) {
+      db.run(
+        `UPDATE stock_wallets SET cash_balance = cash_balance + ?, total_deposit = total_deposit + ?, updated_at = ?
+         WHERE guild_id = ? AND user_id = ?`,
+        [rewardAmount, rewardAmount, nowIso, guildId, userId],
+      );
+      if (getStatementChanges() !== 1) {
+        throw new Error("coin fishing wallet update failed");
+      }
+    }
+    const w = getWalletRow(guildId, userId)!;
+    const balanceAfter = Number(w.cash_balance);
+    db.run(
+      `INSERT INTO coin_fishing_logs (guild_id, user_id, fish_name, rarity, reward_amount, balance_after, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        guildId,
+        userId,
+        rolled.fishName,
+        rolled.rarity,
+        rewardAmount,
+        balanceAfter,
+        nowIso,
+      ],
+    );
+    db.run("COMMIT");
+    return {
+      fishName: rolled.fishName,
+      rarity: rolled.rarity,
+      rewardAmount,
+      balanceAfter,
       createdAt: nowIso,
     };
   } catch (e) {
