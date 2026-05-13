@@ -242,3 +242,27 @@ export const coinGameLogs = sqliteTable(
     ),
   }),
 );
+
+export const coinWorkLogs = sqliteTable(
+  "coin_work_logs",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    guildId: text("guild_id").notNull(),
+    userId: text("user_id").notNull(),
+    rewardAmount: integer("reward_amount").notNull(),
+    balanceAfter: integer("balance_after").notNull(),
+    workType: text("work_type").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => ({
+    guildUserTime: index("idx_coin_work_logs_guild_user_time").on(
+      table.guildId,
+      table.userId,
+      table.createdAt,
+    ),
+    guildTime: index("idx_coin_work_logs_guild_time").on(
+      table.guildId,
+      table.createdAt,
+    ),
+  }),
+);

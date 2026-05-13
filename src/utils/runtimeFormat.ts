@@ -24,3 +24,18 @@ export function formatMemory(bytes: number): string {
 export function truncateText(text: string, max: number): string {
   return truncate(text, max);
 }
+
+/** 남은 대기 시간 표시 (예: 18분 20초, 1시간 5분, 30초) */
+export function formatRemainingCooldown(ms: number): string {
+  const sec = Math.max(0, Math.ceil(ms / 1000));
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  if (h > 0) {
+    return `${h}시간 ${m}분`;
+  }
+  if (m > 0) {
+    return `${m}분 ${s}초`;
+  }
+  return `${s}초`;
+}

@@ -173,6 +173,25 @@ export interface UpdateCoinGuildSettingsPatch {
 export const MIN_RPS_BET = DEFAULT_RPS_MIN_BET;
 export const MAX_RPS_BET = DEFAULT_RPS_MAX_BET;
 
+/** /알바 쿨다운(초) — 서버 설정 없음(고정 30분) */
+export const DEFAULT_WORK_COOLDOWN_SECONDS = 1800;
+
+export const MIN_WORK_REWARD = 500;
+export const MAX_WORK_REWARD = 2000;
+
+export interface CoinWorkResult {
+  rewardAmount: number;
+  balanceAfter: number;
+  workType: string;
+  createdAt: string;
+}
+
+export interface CoinWorkCooldownResult {
+  canWork: boolean;
+  remainingMs: number;
+  latestWorkedAt: string | null;
+}
+
 export type StockStorageErrorCode =
   | "WALLET_NOT_FOUND"
   | "INSUFFICIENT_CASH"
@@ -186,7 +205,8 @@ export type StockStorageErrorCode =
   | "ACTIVE_SEASON_NOT_FOUND"
   | "INVALID_SEASON_NAME"
   | "EMPTY_RANKING"
-  | "INVALID_COIN_GUILD_SETTINGS";
+  | "INVALID_COIN_GUILD_SETTINGS"
+  | "WORK_COOLDOWN";
 
 export class StockStorageError extends Error {
   readonly code: StockStorageErrorCode;
@@ -1373,6 +1393,144 @@ export function listCoinGameLogs(
 
   const rows = db.all<CoinGameLogRow>(sql, args);
   return rows.map(mapCoinGameLogRow);
+}
+
+interface CoinWorkLogDbRow {
+  id: number;
+  guild_id: string;
+  user_id: string;
+  reward_amount: number;
+  balance_after: number;
+  work_type: string;
+  created_at: string;
+}
+
+const COIN_WORK_TYPE_PART_TIME = "PART_TIME";
+
+const COIN_WORK_COOLDOWN_MS = DEFAULT_WORK_COOLDOWN_SECONDS * 1000;
+
+function mapCoinWorkLatest(row: CoinWorkLogDbRow): CoinWorkLogLatest {
+  return {
+    id: row.id,
+    guildId: row.guild_id,
+    userId: row.user_id,
+    rewardAmount: Number(row.reward_amount),
+    balanceAfter: Number(row.balance_after),
+    workType: row.work_type,
+    createdAt: row.created_at,
+  };
+}
+
+/** 최근 `/알바` 기록 1건 */
+export interface CoinWorkLogLatest {
+  id: number;
+  guildId: string;
+  userId: string;
+  rewardAmount: number;
+  balanceAfter: number;
+  workType: string;
+  createdAt: string;
+}
+
+export function getLatestCoinWorkLog(
+  guildId: string,
+  userId: string,
+): CoinWorkLogLatest | null {
+  const row = db.get<CoinWorkLogDbRow>(
+    `SELECT id, guild_id, user_id, reward_amount, balance_after, work_type, created_at
+     FROM coin_work_logs
+     WHERE guild_id = ? AND user_id = ?
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [guildId, userId],
+  );
+  return row ? mapCoinWorkLatest(row) : null;
+}
+
+export function canWorkNow(
+  guildId: string,
+  userId: string,
+  now: Date = new Date(),
+): CoinWorkCooldownResult {
+  const latest = getLatestCoinWorkLog(guildId, userId);
+  if (!latest) {
+    return { canWork: true, remainingMs: 0, latestWorkedAt: null };
+  }
+  const lastMs = new Date(latest.createdAt).getTime();
+  const elapsed = now.getTime() - lastMs;
+  if (elapsed >= COIN_WORK_COOLDOWN_MS) {
+    return {
+      canWork: true,
+      remainingMs: 0,
+      latestWorkedAt: latest.createdAt,
+    };
+  }
+  return {
+    canWork: false,
+    remainingMs: COIN_WORK_COOLDOWN_MS - elapsed,
+    latestWorkedAt: latest.createdAt,
+  };
+}
+
+/** `/알바` — cash·total_deposit 증가, `coin_work_logs` 기록. */
+export function performCoinWork(
+  guildId: string,
+  userId: string,
+): CoinWorkResult {
+  db.run("BEGIN IMMEDIATE");
+  try {
+    const latest = db.get<CoinWorkLogDbRow>(
+      `SELECT id, guild_id, user_id, reward_amount, balance_after, work_type, created_at
+       FROM coin_work_logs
+       WHERE guild_id = ? AND user_id = ?
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [guildId, userId],
+    );
+    const nowDate = new Date();
+    const nowIso = nowDate.toISOString();
+    if (latest) {
+      const lastMs = new Date(latest.created_at).getTime();
+      if (nowDate.getTime() - lastMs < COIN_WORK_COOLDOWN_MS) {
+        throw new StockStorageError("WORK_COOLDOWN");
+      }
+    }
+
+    const reward = randomInt(MIN_WORK_REWARD, MAX_WORK_REWARD);
+    ensureWalletRow(guildId, userId, nowIso);
+    db.run(
+      `UPDATE stock_wallets SET cash_balance = cash_balance + ?, total_deposit = total_deposit + ?, updated_at = ?
+       WHERE guild_id = ? AND user_id = ?`,
+      [reward, reward, nowIso, guildId, userId],
+    );
+    if (getStatementChanges() !== 1) {
+      throw new Error("coin work wallet update failed");
+    }
+    const w = getWalletRow(guildId, userId)!;
+    const balanceAfter = Number(w.cash_balance);
+    db.run(
+      `INSERT INTO coin_work_logs (guild_id, user_id, reward_amount, balance_after, work_type, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        guildId,
+        userId,
+        reward,
+        balanceAfter,
+        COIN_WORK_TYPE_PART_TIME,
+        nowIso,
+      ],
+    );
+    db.run("COMMIT");
+    return {
+      rewardAmount: reward,
+      balanceAfter,
+      workType: COIN_WORK_TYPE_PART_TIME,
+      createdAt: nowIso,
+    };
+  } catch (e) {
+    db.run("ROLLBACK");
+    throw e;
+  }
 }
 
 export function parseRpsChoice(raw: string): RpsChoice | null {
