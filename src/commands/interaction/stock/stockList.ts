@@ -1,4 +1,9 @@
 import { getSupportedStockSymbols } from "@/settings/stockSymbols";
+import {
+  DAILY_MISSION_KEY_STOCK_LIST,
+  recordDailyMissionProgress,
+} from "@/storage/stock";
+import { getKstDateString } from "@/utils/date";
 import { panelReply } from "@/utils/discord";
 import {
   formatAnsiQuoteLine,
@@ -57,6 +62,12 @@ const command: SlashCommand = {
         },
         allowedMentions: NO_MENTION,
       }),
+    );
+    recordDailyMissionProgress(
+      interaction.guildId,
+      interaction.user.id,
+      getKstDateString(),
+      DAILY_MISSION_KEY_STOCK_LIST,
     );
   },
 };

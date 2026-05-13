@@ -1,6 +1,8 @@
 import { MessageFlags } from "discord.js";
 import {
+  DAILY_MISSION_KEY_ATTENDANCE,
   getOrCreateCoinGuildSettings,
+  recordDailyMissionProgress,
   recordStockAttendance,
 } from "@/storage/stock";
 import { getKstDateString } from "@/utils/date";
@@ -36,6 +38,7 @@ const command: SlashCommand = {
       today,
       settings.attendanceReward,
     );
+    recordDailyMissionProgress(guildId, userId, today, DAILY_MISSION_KEY_ATTENDANCE);
     const cash = result.wallet.cashBalance.toLocaleString("ko-KR");
 
     if (result.alreadyClaimed) {

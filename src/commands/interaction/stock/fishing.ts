@@ -1,11 +1,14 @@
 import { MessageFlags } from "discord.js";
 import {
+  DAILY_MISSION_KEY_FISHING,
   performCoinFishing,
   canFishNow,
+  recordDailyMissionProgress,
   StockStorageError,
   FISHING_RARITY_NONE,
   FISHING_RARITY_LEGENDARY,
 } from "@/storage/stock";
+import { getKstDateString } from "@/utils/date";
 import { panelReply } from "@/utils/discord";
 import { formatRemainingCooldown } from "@/utils/runtimeFormat";
 import type { MineClient, SlashCommand } from "@/types";
@@ -32,6 +35,12 @@ const command: SlashCommand = {
 
     try {
       const r = performCoinFishing(guildId, userId);
+      recordDailyMissionProgress(
+        guildId,
+        userId,
+        getKstDateString(),
+        DAILY_MISSION_KEY_FISHING,
+      );
       const rewardStr = `\`${r.rewardAmount.toLocaleString("ko-KR")} 코인\``;
       const balStr = `\`${r.balanceAfter.toLocaleString("ko-KR")} 코인\``;
 

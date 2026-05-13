@@ -3,11 +3,14 @@ import {
   MessageFlags,
 } from "discord.js";
 import {
+  DAILY_MISSION_KEY_RPS,
   getOrCreateCoinGuildSettings,
   parseRpsChoice,
   playRockPaperScissors,
+  recordDailyMissionProgress,
   StockStorageError,
 } from "@/storage/stock";
+import { getKstDateString } from "@/utils/date";
 import { panelReply } from "@/utils/discord";
 import { formatCoin, formatSignedCoin } from "@/utils/stockFormat";
 import type { MineClient, SlashCommand } from "@/types";
@@ -107,6 +110,12 @@ const command: SlashCommand = {
         rpsMinBet: minBet,
         rpsMaxBet: maxBet,
       });
+      recordDailyMissionProgress(
+        guildId,
+        userId,
+        getKstDateString(),
+        DAILY_MISSION_KEY_RPS,
+      );
 
       const lines: string[] = [
         `<@${userId}>님: ${r.playerChoice}`,

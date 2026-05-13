@@ -291,3 +291,38 @@ export const coinFishingLogs = sqliteTable(
     ),
   }),
 );
+
+export const coinDailyMissions = sqliteTable(
+  "coin_daily_missions",
+  {
+    guildId: text("guild_id").notNull(),
+    userId: text("user_id").notNull(),
+    date: text("date").notNull(),
+    missionKey: text("mission_key").notNull(),
+    completedAt: text("completed_at").notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.guildId, table.userId, table.date, table.missionKey],
+    }),
+    guildUserDate: index("idx_coin_daily_missions_guild_user_date").on(
+      table.guildId,
+      table.userId,
+      table.date,
+    ),
+  }),
+);
+
+export const coinDailyMissionRewards = sqliteTable(
+  "coin_daily_mission_rewards",
+  {
+    guildId: text("guild_id").notNull(),
+    userId: text("user_id").notNull(),
+    date: text("date").notNull(),
+    rewardAmount: integer("reward_amount").notNull(),
+    claimedAt: text("claimed_at").notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.guildId, table.userId, table.date] }),
+  }),
+);

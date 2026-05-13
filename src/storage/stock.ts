@@ -1,6 +1,8 @@
 import { randomInt } from "node:crypto";
 import { db } from "@/storage/db";
 import type { StockPrice } from "@/services/stock/types";
+import { getKstDayUtcIsoBounds } from "@/utils/date";
+import { log } from "@/utils/logger";
 
 export const STOCK_QUANTITY_SCALE = 1_000_000;
 
@@ -233,6 +235,37 @@ export interface CoinFishingCooldownResult {
   latestFishedAt: string | null;
 }
 
+/** 일일 미션 전부 완료 시 1회 지급 (코인) */
+export const DAILY_MISSION_REWARD = 3000;
+
+export const DAILY_MISSION_KEY_ATTENDANCE = "ATTENDANCE" as const;
+export const DAILY_MISSION_KEY_WORK = "WORK" as const;
+export const DAILY_MISSION_KEY_FISHING = "FISHING" as const;
+export const DAILY_MISSION_KEY_RPS = "RPS" as const;
+export const DAILY_MISSION_KEY_STOCK_LIST = "STOCK_LIST" as const;
+
+export type DailyMissionKey =
+  | typeof DAILY_MISSION_KEY_ATTENDANCE
+  | typeof DAILY_MISSION_KEY_WORK
+  | typeof DAILY_MISSION_KEY_FISHING
+  | typeof DAILY_MISSION_KEY_RPS
+  | typeof DAILY_MISSION_KEY_STOCK_LIST;
+
+export interface DailyMissionStatus {
+  key: DailyMissionKey;
+  label: string;
+  completed: boolean;
+}
+
+export interface DailyMissionSummary {
+  date: string;
+  missions: DailyMissionStatus[];
+  completedCount: number;
+  totalCount: number;
+  rewardClaimed: boolean;
+  rewardAmount: number;
+}
+
 export type StockStorageErrorCode =
   | "WALLET_NOT_FOUND"
   | "INSUFFICIENT_CASH"
@@ -248,7 +281,9 @@ export type StockStorageErrorCode =
   | "EMPTY_RANKING"
   | "INVALID_COIN_GUILD_SETTINGS"
   | "WORK_COOLDOWN"
-  | "FISHING_COOLDOWN";
+  | "FISHING_COOLDOWN"
+  | "DAILY_MISSION_NOT_COMPLETED"
+  | "DAILY_MISSION_REWARD_ALREADY_CLAIMED";
 
 export class StockStorageError extends Error {
   readonly code: StockStorageErrorCode;
@@ -1743,6 +1778,193 @@ export function performCoinFishing(
       balanceAfter,
       createdAt: nowIso,
     };
+  } catch (e) {
+    db.run("ROLLBACK");
+    throw e;
+  }
+}
+
+const DAILY_MISSION_DISPLAY_ORDER: readonly {
+  key: DailyMissionKey;
+  label: string;
+}[] = [
+  { key: DAILY_MISSION_KEY_ATTENDANCE, label: "출석하기" },
+  { key: DAILY_MISSION_KEY_WORK, label: "알바 1회 하기" },
+  { key: DAILY_MISSION_KEY_FISHING, label: "낚시 1회 하기" },
+  { key: DAILY_MISSION_KEY_RPS, label: "가위바위보 1회 하기" },
+  { key: DAILY_MISSION_KEY_STOCK_LIST, label: "주식목록 확인하기" },
+];
+
+function hasDailyMissionRow(
+  guildId: string,
+  userId: string,
+  date: string,
+  missionKey: DailyMissionKey,
+): boolean {
+  const row = db.get<{ n: number }>(
+    `SELECT 1 AS n FROM coin_daily_missions WHERE guild_id = ? AND user_id = ? AND date = ? AND mission_key = ? LIMIT 1`,
+    [guildId, userId, date, missionKey],
+  );
+  return row !== undefined;
+}
+
+function hasAttendanceToday(
+  guildId: string,
+  userId: string,
+  kstDate: string,
+): boolean {
+  const row = db.get<{ n: number }>(
+    `SELECT 1 AS n FROM stock_daily_attendance WHERE guild_id = ? AND user_id = ? AND date = ? LIMIT 1`,
+    [guildId, userId, kstDate],
+  );
+  return row !== undefined;
+}
+
+function hasWorkOnKstDate(
+  guildId: string,
+  userId: string,
+  kstDate: string,
+): boolean {
+  const { startIso, endExclusiveIso } = getKstDayUtcIsoBounds(kstDate);
+  const row = db.get<{ n: number }>(
+    `SELECT 1 AS n FROM coin_work_logs WHERE guild_id = ? AND user_id = ? AND created_at >= ? AND created_at < ? LIMIT 1`,
+    [guildId, userId, startIso, endExclusiveIso],
+  );
+  return row !== undefined;
+}
+
+function hasFishingOnKstDate(
+  guildId: string,
+  userId: string,
+  kstDate: string,
+): boolean {
+  const { startIso, endExclusiveIso } = getKstDayUtcIsoBounds(kstDate);
+  const row = db.get<{ n: number }>(
+    `SELECT 1 AS n FROM coin_fishing_logs WHERE guild_id = ? AND user_id = ? AND created_at >= ? AND created_at < ? LIMIT 1`,
+    [guildId, userId, startIso, endExclusiveIso],
+  );
+  return row !== undefined;
+}
+
+function hasRpsOnKstDate(
+  guildId: string,
+  userId: string,
+  kstDate: string,
+): boolean {
+  const { startIso, endExclusiveIso } = getKstDayUtcIsoBounds(kstDate);
+  const row = db.get<{ n: number }>(
+    `SELECT 1 AS n FROM coin_game_logs WHERE guild_id = ? AND user_id = ? AND game_type = 'RPS' AND created_at >= ? AND created_at < ? LIMIT 1`,
+    [guildId, userId, startIso, endExclusiveIso],
+  );
+  return row !== undefined;
+}
+
+function isDailyMissionKeyComplete(
+  guildId: string,
+  userId: string,
+  date: string,
+  missionKey: DailyMissionKey,
+): boolean {
+  if (hasDailyMissionRow(guildId, userId, date, missionKey)) {
+    return true;
+  }
+  switch (missionKey) {
+    case DAILY_MISSION_KEY_ATTENDANCE:
+      return hasAttendanceToday(guildId, userId, date);
+    case DAILY_MISSION_KEY_WORK:
+      return hasWorkOnKstDate(guildId, userId, date);
+    case DAILY_MISSION_KEY_FISHING:
+      return hasFishingOnKstDate(guildId, userId, date);
+    case DAILY_MISSION_KEY_RPS:
+      return hasRpsOnKstDate(guildId, userId, date);
+    case DAILY_MISSION_KEY_STOCK_LIST:
+      return false;
+  }
+}
+
+/** `coin_daily_missions`에 기록. 실패해도 예외를 밖으로 던지지 않는다. */
+export function recordDailyMissionProgress(
+  guildId: string,
+  userId: string,
+  date: string,
+  missionKey: DailyMissionKey,
+): void {
+  const nowIso = new Date().toISOString();
+  try {
+    db.run(
+      `INSERT OR IGNORE INTO coin_daily_missions (guild_id, user_id, date, mission_key, completed_at) VALUES (?, ?, ?, ?, ?)`,
+      [guildId, userId, date, missionKey, nowIso],
+    );
+  } catch (e) {
+    log("error", "dailyMission", "recordDailyMissionProgress failed", e);
+  }
+}
+
+export function getDailyMissionSummary(
+  guildId: string,
+  userId: string,
+  date: string,
+): DailyMissionSummary {
+  const rewardRow = db.get<{ reward_amount: number }>(
+    `SELECT reward_amount FROM coin_daily_mission_rewards WHERE guild_id = ? AND user_id = ? AND date = ?`,
+    [guildId, userId, date],
+  );
+  const missions: DailyMissionStatus[] = DAILY_MISSION_DISPLAY_ORDER.map(
+    ({ key, label }) => ({
+      key,
+      label,
+      completed: isDailyMissionKeyComplete(guildId, userId, date, key),
+    }),
+  );
+  const completedCount = missions.filter((m) => m.completed).length;
+  return {
+    date,
+    missions,
+    completedCount,
+    totalCount: DAILY_MISSION_DISPLAY_ORDER.length,
+    rewardClaimed: rewardRow !== undefined,
+    rewardAmount: DAILY_MISSION_REWARD,
+  };
+}
+
+export function claimDailyMissionReward(
+  guildId: string,
+  userId: string,
+  date: string,
+): { rewardAmount: number; balanceAfter: number } {
+  db.run("BEGIN IMMEDIATE");
+  try {
+    const claimed = db.get<{ guild_id: string }>(
+      `SELECT guild_id FROM coin_daily_mission_rewards WHERE guild_id = ? AND user_id = ? AND date = ?`,
+      [guildId, userId, date],
+    );
+    if (claimed) {
+      throw new StockStorageError("DAILY_MISSION_REWARD_ALREADY_CLAIMED");
+    }
+    for (const { key } of DAILY_MISSION_DISPLAY_ORDER) {
+      if (!isDailyMissionKeyComplete(guildId, userId, date, key)) {
+        throw new StockStorageError("DAILY_MISSION_NOT_COMPLETED");
+      }
+    }
+    const nowIso = new Date().toISOString();
+    const rewardAmount = DAILY_MISSION_REWARD;
+    ensureWalletRow(guildId, userId, nowIso);
+    db.run(
+      `UPDATE stock_wallets SET cash_balance = cash_balance + ?, total_deposit = total_deposit + ?, updated_at = ?
+       WHERE guild_id = ? AND user_id = ?`,
+      [rewardAmount, rewardAmount, nowIso, guildId, userId],
+    );
+    if (getStatementChanges() !== 1) {
+      throw new Error("daily mission reward wallet update failed");
+    }
+    const w = getWalletRow(guildId, userId)!;
+    const balanceAfter = Number(w.cash_balance);
+    db.run(
+      `INSERT INTO coin_daily_mission_rewards (guild_id, user_id, date, reward_amount, claimed_at) VALUES (?, ?, ?, ?, ?)`,
+      [guildId, userId, date, rewardAmount, nowIso],
+    );
+    db.run("COMMIT");
+    return { rewardAmount, balanceAfter };
   } catch (e) {
     db.run("ROLLBACK");
     throw e;

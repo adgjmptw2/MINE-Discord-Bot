@@ -8,6 +8,32 @@ export function getKstDateString(date = new Date()): string {
   }).format(date);
 }
 
+/**
+ * KST 달력 날짜 `YYYY-MM-DD` 하루의 UTC 구간 `[startIso, endExclusiveIso)`.
+ * 서울은 UTC+9 고정(일광절약시 없음).
+ */
+export function getKstDayUtcIsoBounds(kstYmd: string): {
+  startIso: string;
+  endExclusiveIso: string;
+} {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(kstYmd.trim());
+  if (!m) {
+    throw new Error(`Invalid KST date string: ${kstYmd}`);
+  }
+  const y = Number(m[1]);
+  const mon = Number(m[2]);
+  const d = Number(m[3]);
+  if (!Number.isInteger(y) || !Number.isInteger(mon) || !Number.isInteger(d)) {
+    throw new Error(`Invalid KST date string: ${kstYmd}`);
+  }
+  const startMs = Date.UTC(y, mon - 1, d, -9, 0, 0, 0);
+  const endMs = Date.UTC(y, mon - 1, d + 1, -9, 0, 0, 0);
+  return {
+    startIso: new Date(startMs).toISOString(),
+    endExclusiveIso: new Date(endMs).toISOString(),
+  };
+}
+
 /** KST 기준 자정부터의 경과 분 (0–1439) */
 export function getKstMinutesOfDay(date = new Date()): number {
   const parts = new Intl.DateTimeFormat("en-GB", {
