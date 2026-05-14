@@ -1,5 +1,5 @@
 import { findStockSymbol } from "@/settings/stockSymbols";
-import { STOCK_QUANTITY_SCALE } from "@/storage/stock";
+import { STOCK_QUANTITY_SCALE, type CoinGameLogEntry } from "@/storage/stock";
 
 /** 천 단위 쉼표만 (예: 80,000) */
 export function formatKrwPrice(price: number): string {
@@ -128,4 +128,26 @@ export function formatAnsiQuoteLine(
 /** ```ansi … ``` 래퍼 (코드블록 안에는 백틱 없음) */
 export function wrapAnsiCodeBlock(inner: string): string {
   return `\`\`\`ansi\n${inner}\n\`\`\``;
+}
+
+/** `/프로필` 등: 최근 미니게임 1건 요약 */
+export function formatLatestGameLogForProfile(
+  log: CoinGameLogEntry | null,
+): string {
+  if (!log) {
+    return "최근 게임 없음";
+  }
+  if (log.gameType === "RPS") {
+    const label = "가위바위보";
+    if (log.result === "WIN") {
+      return `${label} 승리 (${formatSignedCoin(log.balanceDelta)})`;
+    }
+    if (log.result === "LOSE") {
+      return `${label} 패배 (${formatSignedCoin(log.balanceDelta)})`;
+    }
+    if (log.result === "DRAW") {
+      return `${label} 무승부 (${formatSignedCoin(log.balanceDelta)})`;
+    }
+  }
+  return `${log.gameType} ${log.result} (${formatSignedCoin(log.balanceDelta)})`;
 }

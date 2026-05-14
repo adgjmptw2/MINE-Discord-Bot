@@ -291,6 +291,15 @@ export interface CoinEquippedItem {
   equippedAt: string;
 }
 
+export interface CoinProfileSummary {
+  wallet: StockWallet | null;
+  assetSummary: StockAssetSummary | null;
+  equippedTitle: string | null;
+  inventoryCount: number;
+  latestGameLog: CoinGameLogEntry | null;
+  activeSeason: StockSeason | null;
+}
+
 export type StockStorageErrorCode =
   | "WALLET_NOT_FOUND"
   | "INSUFFICIENT_CASH"
@@ -1499,6 +1508,46 @@ export function listCoinGameLogs(
 
   const rows = db.all<CoinGameLogRow>(sql, args);
   return rows.map(mapCoinGameLogRow);
+}
+
+export function countCoinInventoryItems(
+  guildId: string,
+  userId: string,
+): number {
+  const row = db.get<{ n: number }>(
+    `SELECT COUNT(*) AS n FROM coin_inventory_items WHERE guild_id = ? AND user_id = ?`,
+    [guildId, userId],
+  );
+  return Number(row?.n ?? 0);
+}
+
+export function getLatestCoinGameLog(
+  guildId: string,
+  userId: string,
+): CoinGameLogEntry | null {
+  const rows = listCoinGameLogs({ guildId, userId, limit: 1 });
+  return rows[0] ?? null;
+}
+
+export function getCoinProfileSummary(
+  guildId: string,
+  userId: string,
+  prices: StockPrice[],
+): CoinProfileSummary {
+  const wallet = getStockWallet(guildId, userId);
+  const assetSummary = getStockAssetSummary(guildId, userId, prices);
+  const equippedTitle = getEquippedTitleDisplayName(guildId, userId);
+  const inventoryCount = countCoinInventoryItems(guildId, userId);
+  const latestGameLog = getLatestCoinGameLog(guildId, userId);
+  const activeSeason = getActiveStockSeason(guildId);
+  return {
+    wallet,
+    assetSummary,
+    equippedTitle,
+    inventoryCount,
+    latestGameLog,
+    activeSeason,
+  };
 }
 
 interface CoinWorkLogDbRow {
