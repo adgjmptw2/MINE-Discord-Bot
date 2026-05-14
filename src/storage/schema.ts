@@ -326,3 +326,29 @@ export const coinDailyMissionRewards = sqliteTable(
     pk: primaryKey({ columns: [table.guildId, table.userId, table.date] }),
   }),
 );
+
+export const coinInventoryItems = sqliteTable(
+  "coin_inventory_items",
+  {
+    guildId: text("guild_id").notNull(),
+    userId: text("user_id").notNull(),
+    itemKey: text("item_key").notNull(),
+    itemType: text("item_type").notNull(),
+    itemName: text("item_name").notNull(),
+    pricePaid: integer("price_paid").notNull(),
+    purchasedAt: text("purchased_at").notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.guildId, table.userId, table.itemKey],
+    }),
+    guildUser: index("idx_coin_inventory_items_guild_user").on(
+      table.guildId,
+      table.userId,
+    ),
+    guildItem: index("idx_coin_inventory_items_guild_item").on(
+      table.guildId,
+      table.itemKey,
+    ),
+  }),
+);

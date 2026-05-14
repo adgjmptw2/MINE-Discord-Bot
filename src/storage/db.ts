@@ -312,6 +312,23 @@ sqlite.exec(`
     claimed_at TEXT NOT NULL,
     PRIMARY KEY (guild_id, user_id, date)
   );
+
+  CREATE TABLE IF NOT EXISTS coin_inventory_items (
+    guild_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    item_key TEXT NOT NULL,
+    item_type TEXT NOT NULL,
+    item_name TEXT NOT NULL,
+    price_paid INTEGER NOT NULL,
+    purchased_at TEXT NOT NULL,
+    PRIMARY KEY (guild_id, user_id, item_key)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_coin_inventory_items_guild_user
+    ON coin_inventory_items (guild_id, user_id);
+
+  CREATE INDEX IF NOT EXISTS idx_coin_inventory_items_guild_item
+    ON coin_inventory_items (guild_id, item_key);
 `);
 
 export const db = sqlite;

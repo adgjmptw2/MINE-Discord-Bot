@@ -1,6 +1,7 @@
 import { randomInt } from "node:crypto";
 import { db } from "@/storage/db";
 import type { StockPrice } from "@/services/stock/types";
+import { getCoinShopItems, type CoinShopItem } from "@/settings/coinShopItems";
 import { getKstDayUtcIsoBounds } from "@/utils/date";
 import { log } from "@/utils/logger";
 
@@ -266,6 +267,22 @@ export interface DailyMissionSummary {
   rewardAmount: number;
 }
 
+export interface CoinInventoryItem {
+  guildId: string;
+  userId: string;
+  itemKey: string;
+  itemType: string;
+  itemName: string;
+  pricePaid: number;
+  purchasedAt: string;
+}
+
+export interface PurchaseCoinShopItemResult {
+  item: CoinShopItem;
+  wallet: StockWallet;
+  balanceAfter: number;
+}
+
 export type StockStorageErrorCode =
   | "WALLET_NOT_FOUND"
   | "INSUFFICIENT_CASH"
@@ -283,7 +300,9 @@ export type StockStorageErrorCode =
   | "WORK_COOLDOWN"
   | "FISHING_COOLDOWN"
   | "DAILY_MISSION_NOT_COMPLETED"
-  | "DAILY_MISSION_REWARD_ALREADY_CLAIMED";
+  | "DAILY_MISSION_REWARD_ALREADY_CLAIMED"
+  | "ITEM_NOT_FOUND"
+  | "ITEM_ALREADY_OWNED";
 
 export class StockStorageError extends Error {
   readonly code: StockStorageErrorCode;
@@ -1965,6 +1984,120 @@ export function claimDailyMissionReward(
     );
     db.run("COMMIT");
     return { rewardAmount, balanceAfter };
+  } catch (e) {
+    db.run("ROLLBACK");
+    throw e;
+  }
+}
+
+interface CoinInventoryRow {
+  guild_id: string;
+  user_id: string;
+  item_key: string;
+  item_type: string;
+  item_name: string;
+  price_paid: number;
+  purchased_at: string;
+}
+
+function mapCoinInventoryRow(row: CoinInventoryRow): CoinInventoryItem {
+  return {
+    guildId: row.guild_id,
+    userId: row.user_id,
+    itemKey: row.item_key,
+    itemType: row.item_type,
+    itemName: row.item_name,
+    pricePaid: Number(row.price_paid),
+    purchasedAt: row.purchased_at,
+  };
+}
+
+export function listCoinInventoryItems(
+  guildId: string,
+  userId: string,
+): CoinInventoryItem[] {
+  const rows = db.all<CoinInventoryRow>(
+    `SELECT guild_id, user_id, item_key, item_type, item_name, price_paid, purchased_at
+     FROM coin_inventory_items
+     WHERE guild_id = ? AND user_id = ?
+     ORDER BY purchased_at DESC`,
+    [guildId, userId],
+  );
+  return rows.map(mapCoinInventoryRow);
+}
+
+export function hasCoinInventoryItem(
+  guildId: string,
+  userId: string,
+  itemKey: string,
+): boolean {
+  const row = db.get<{ n: number }>(
+    `SELECT 1 AS n FROM coin_inventory_items WHERE guild_id = ? AND user_id = ? AND item_key = ? LIMIT 1`,
+    [guildId, userId, itemKey],
+  );
+  return row !== undefined;
+}
+
+/** 상점 구매 — `cash_balance`만 차감, `total_deposit`는 변경하지 않는다. */
+export function purchaseCoinShopItem(params: {
+  guildId: string;
+  userId: string;
+  item: CoinShopItem;
+}): PurchaseCoinShopItemResult {
+  const { guildId, userId, item } = params;
+  const catalog = getCoinShopItems().find((i) => i.itemKey === item.itemKey);
+  if (
+    !catalog ||
+    catalog.price !== item.price ||
+    catalog.itemType !== item.itemType ||
+    catalog.name !== item.name
+  ) {
+    throw new StockStorageError("ITEM_NOT_FOUND");
+  }
+
+  db.run("BEGIN IMMEDIATE");
+  try {
+    const walletRow = getWalletRow(guildId, userId);
+    if (!walletRow) {
+      throw new StockStorageError("WALLET_NOT_FOUND");
+    }
+    const owned = db.get<{ n: number }>(
+      `SELECT 1 AS n FROM coin_inventory_items WHERE guild_id = ? AND user_id = ? AND item_key = ? LIMIT 1`,
+      [guildId, userId, item.itemKey],
+    );
+    if (owned) {
+      throw new StockStorageError("ITEM_ALREADY_OWNED");
+    }
+    const cash = Number(walletRow.cash_balance);
+    if (cash < item.price) {
+      throw new StockStorageError("INSUFFICIENT_CASH");
+    }
+    const nowIso = new Date().toISOString();
+    db.run(
+      `UPDATE stock_wallets SET cash_balance = cash_balance - ?, updated_at = ?
+       WHERE guild_id = ? AND user_id = ?`,
+      [item.price, nowIso, guildId, userId],
+    );
+    if (getStatementChanges() !== 1) {
+      throw new Error("coin shop wallet update failed");
+    }
+    const w = getWalletRow(guildId, userId)!;
+    const balanceAfter = Number(w.cash_balance);
+    db.run(
+      `INSERT INTO coin_inventory_items (guild_id, user_id, item_key, item_type, item_name, price_paid, purchased_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        guildId,
+        userId,
+        catalog.itemKey,
+        catalog.itemType,
+        catalog.name,
+        catalog.price,
+        nowIso,
+      ],
+    );
+    db.run("COMMIT");
+    return { item: catalog, wallet: mapWallet(w), balanceAfter };
   } catch (e) {
     db.run("ROLLBACK");
     throw e;

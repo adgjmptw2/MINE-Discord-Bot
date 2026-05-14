@@ -16,6 +16,8 @@
 
 **`/미션`**은 KST 기준 당일 5가지 활동(출석·알바·낚시·가위바위보·주식목록)을 완료하면 **3,000 코인**을 한 번 받을 수 있는 일일 과제입니다. 진행도는 `coin_daily_missions`·관련 로그로 판별하고, 보상 수령은 `coin_daily_mission_rewards`에 기록됩니다. 보상은 `cash_balance`·`total_deposit`에 반영됩니다.
 
+**`/상점`**·**`/구매`**는 가상 코인으로 **칭호(TITLE)** 아이템을 사고, **`/내아이템`**으로 보유 목록을 확인합니다. 상품 목록은 코드 상수(`src/settings/coinShopItems.ts`)이며, 구매 시 `cash_balance`만 차감하고 **`total_deposit`은 바꾸지 않습니다.** 칭호는 현재 **보유·표시만** 하며, 장착·랭킹 표시·스탯 효과는 아직 없습니다. 보유는 `coin_inventory_items`에 저장됩니다.
+
 `coin_game_logs`에 기록되며, `/게임기록`으로 본인의 최근 미니게임 기록을 확인할 수 있습니다. 다른 유저 기록은 서버 관리자 또는 봇 운영자만 조회할 수 있습니다.
 
 `coin_guild_settings`에 길드별 출석 보상, 가위바위보 베팅 한도·쿨다운이 저장되며, `/코인설정`으로 조회·변경(변경은 관리자)할 수 있습니다. 기본값은 출석 10,000코인, 가위바위보 베팅 100~100,000코인, 쿨다운 5초입니다.
@@ -42,6 +44,9 @@
 | /알바 | 30분마다 알바 보상(500~2,000 코인, `coin_work_logs`) |
 | /낚시 | 20분마다 낚시 보상(랜덤, 꽝 시 0코인, `coin_fishing_logs`) |
 | /미션 | KST 당일 일일 미션 진행도·보상 수령(`coin_daily_missions` 등) |
+| /상점 | 고정 칭호 아이템 목록·가격·설명(공개) |
+| /구매 | 상점 아이템 구매(`coin_inventory_items`, `cash_balance` 차감) |
+| /내아이템 | 보유 상점 아이템 목록(ephemeral) |
 | /자산 | 총자산(현금+주식 평가)만 공개 메시지로 표시 |
 | /주식자산 | 현금·보유·평가·총자산·수익률(본인만, ephemeral) |
 | /주식목록 | 지원 5종 + 캐시 시세 (ANSI 색상·공개 메시지) |
@@ -77,6 +82,7 @@ SQLite 테이블은 `src/storage/db.ts` 등에서 정의됩니다.
 | coin_fishing_logs | `/낚시` 결과·쿨다운 판별용 로그 (`fish_name`, `rarity`, `reward_amount` 등) |
 | coin_daily_missions | 일일 미션 완료 스냅샷 (`mission_key`, KST `date`, `INSERT OR IGNORE`) |
 | coin_daily_mission_rewards | 일일 미션 보상 일 1회 수령 기록 |
+| coin_inventory_items | `/구매`로 산 상점 아이템 보유(PK: 길드·유저·`item_key`, `price_paid` 스냅샷) |
 | coin_guild_settings | 길드별 출석 보상·가위바위보 베팅 한도·쿨다운 (`/코인설정`) |
 
 비즈니스 로직은 Drizzle 없이 raw SQL과 트랜잭션으로 처리합니다.
