@@ -1,4 +1,7 @@
-import { getStockRanking } from "@/storage/stock";
+import {
+  getEquippedTitleDisplayName,
+  getStockRanking,
+} from "@/storage/stock";
 import { panelReply } from "@/utils/discord";
 import { formatCoin } from "@/utils/stockFormat";
 import type { MineClient, SlashCommand } from "@/types";
@@ -63,7 +66,9 @@ const command: SlashCommand = {
         anyUnavailable = true;
       }
       const rank = index + 1;
-      return `${rank}위 <@${e.userId}> ${formatCoin(e.totalAssets)}`;
+      const titleName = getEquippedTitleDisplayName(guildId, e.userId);
+      const titlePart = titleName ? `[${titleName}] ` : "";
+      return `${rank}위 ${titlePart}<@${e.userId}> ${formatCoin(e.totalAssets)}`;
     });
 
     const rankBlock = rankLines.join("\n");

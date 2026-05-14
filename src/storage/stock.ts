@@ -283,6 +283,14 @@ export interface PurchaseCoinShopItemResult {
   balanceAfter: number;
 }
 
+export interface CoinEquippedItem {
+  guildId: string;
+  userId: string;
+  itemType: string;
+  itemKey: string;
+  equippedAt: string;
+}
+
 export type StockStorageErrorCode =
   | "WALLET_NOT_FOUND"
   | "INSUFFICIENT_CASH"
@@ -302,7 +310,9 @@ export type StockStorageErrorCode =
   | "DAILY_MISSION_NOT_COMPLETED"
   | "DAILY_MISSION_REWARD_ALREADY_CLAIMED"
   | "ITEM_NOT_FOUND"
-  | "ITEM_ALREADY_OWNED";
+  | "ITEM_ALREADY_OWNED"
+  | "ITEM_NOT_OWNED"
+  | "INVALID_ITEM_TYPE";
 
 export class StockStorageError extends Error {
   readonly code: StockStorageErrorCode;
@@ -2102,6 +2112,118 @@ export function purchaseCoinShopItem(params: {
     db.run("ROLLBACK");
     throw e;
   }
+}
+
+const COIN_EQUIP_TYPE_TITLE = "TITLE";
+
+interface CoinEquippedRow {
+  guild_id: string;
+  user_id: string;
+  item_type: string;
+  item_key: string;
+  equipped_at: string;
+}
+
+function mapCoinEquippedRow(row: CoinEquippedRow): CoinEquippedItem {
+  return {
+    guildId: row.guild_id,
+    userId: row.user_id,
+    itemType: row.item_type,
+    itemKey: row.item_key,
+    equippedAt: row.equipped_at,
+  };
+}
+
+export function getEquippedCoinItem(
+  guildId: string,
+  userId: string,
+  itemType: string,
+): CoinEquippedItem | null {
+  const row = db.get<CoinEquippedRow>(
+    `SELECT guild_id, user_id, item_type, item_key, equipped_at
+     FROM coin_equipped_items
+     WHERE guild_id = ? AND user_id = ? AND item_type = ?`,
+    [guildId, userId, itemType],
+  );
+  return row ? mapCoinEquippedRow(row) : null;
+}
+
+export function getEquippedTitleDisplayName(
+  guildId: string,
+  userId: string,
+): string | null {
+  const eq = getEquippedCoinItem(guildId, userId, COIN_EQUIP_TYPE_TITLE);
+  if (!eq) {
+    return null;
+  }
+  const inv = db.get<{ item_name: string }>(
+    `SELECT item_name FROM coin_inventory_items WHERE guild_id = ? AND user_id = ? AND item_key = ? LIMIT 1`,
+    [guildId, userId, eq.itemKey],
+  );
+  if (inv) {
+    return inv.item_name;
+  }
+  return getCoinShopItems().find((i) => i.itemKey === eq.itemKey)?.name ?? null;
+}
+
+export interface EquipCoinInventoryItemResult {
+  itemKey: string;
+  itemType: string;
+  itemName: string;
+  equippedAt: string;
+}
+
+export function equipCoinInventoryItem(
+  guildId: string,
+  userId: string,
+  itemKey: string,
+): EquipCoinInventoryItemResult {
+  const catalog = getCoinShopItems().find((i) => i.itemKey === itemKey);
+  if (!catalog) {
+    throw new StockStorageError("ITEM_NOT_FOUND");
+  }
+  if (catalog.itemType !== COIN_EQUIP_TYPE_TITLE) {
+    throw new StockStorageError("INVALID_ITEM_TYPE");
+  }
+
+  db.run("BEGIN IMMEDIATE");
+  try {
+    const inv = db.get<{ n: number }>(
+      `SELECT 1 AS n FROM coin_inventory_items WHERE guild_id = ? AND user_id = ? AND item_key = ? LIMIT 1`,
+      [guildId, userId, itemKey],
+    );
+    if (!inv) {
+      throw new StockStorageError("ITEM_NOT_OWNED");
+    }
+    const nowIso = new Date().toISOString();
+    db.run(
+      `INSERT OR REPLACE INTO coin_equipped_items (guild_id, user_id, item_type, item_key, equipped_at)
+       VALUES (?, ?, ?, ?, ?)`,
+      [guildId, userId, COIN_EQUIP_TYPE_TITLE, itemKey, nowIso],
+    );
+    db.run("COMMIT");
+    return {
+      itemKey: catalog.itemKey,
+      itemType: catalog.itemType,
+      itemName: catalog.name,
+      equippedAt: nowIso,
+    };
+  } catch (e) {
+    db.run("ROLLBACK");
+    throw e;
+  }
+}
+
+export function unequipCoinItem(
+  guildId: string,
+  userId: string,
+  itemType: string,
+): { deleted: boolean } {
+  db.run(
+    `DELETE FROM coin_equipped_items WHERE guild_id = ? AND user_id = ? AND item_type = ?`,
+    [guildId, userId, itemType],
+  );
+  return { deleted: getStatementChanges() > 0 };
 }
 
 export function parseRpsChoice(raw: string): RpsChoice | null {

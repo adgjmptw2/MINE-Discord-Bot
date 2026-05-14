@@ -1,12 +1,15 @@
 import { MessageFlags } from "discord.js";
-import { listCoinInventoryItems } from "@/storage/stock";
+import {
+  getEquippedCoinItem,
+  listCoinInventoryItems,
+} from "@/storage/stock";
 import { panelReply } from "@/utils/discord";
 import { scheduleEphemeralReplyDelete } from "@/utils/ephemeralCleanup";
 import type { MineClient, SlashCommand } from "@/types";
 
 const command: SlashCommand = {
   name: "내아이템",
-  description: "내가 보유한 상점 아이템을 확인합니다.",
+  description: "보유한 상점 아이템과 장착 상태를 확인합니다.",
   category: "stock",
   guildOnly: true,
 
@@ -23,6 +26,7 @@ const command: SlashCommand = {
     const guildId = interaction.guildId;
     const userId = interaction.user.id;
     const items = listCoinInventoryItems(guildId, userId);
+    const equipped = getEquippedCoinItem(guildId, userId, "TITLE");
 
     if (items.length === 0) {
       await interaction.reply({
@@ -35,7 +39,11 @@ const command: SlashCommand = {
 
     const lines: string[] = [
       "칭호",
-      ...items.map((i) => `- ${i.itemName}`),
+      ...items.map((i) => {
+        const mark =
+          equipped?.itemKey === i.itemKey ? " 장착 중" : "";
+        return `- ${i.itemName}${mark}`;
+      }),
     ];
 
     await interaction.reply(

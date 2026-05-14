@@ -1,4 +1,7 @@
-import { getStockAssetSummary } from "@/storage/stock";
+import {
+  getEquippedTitleDisplayName,
+  getStockAssetSummary,
+} from "@/storage/stock";
 import { panelReply } from "@/utils/discord";
 import type { MineClient, SlashCommand } from "@/types";
 
@@ -47,7 +50,10 @@ const command: SlashCommand = {
       return;
     }
 
-    const title = `<@${userId}>님의 잔액`;
+    const equipName = getEquippedTitleDisplayName(guildId, userId);
+    const title = equipName
+      ? `[${equipName}] <@${userId}>님의 잔액`
+      : `<@${userId}>님의 잔액`;
 
     const lines: string[] = [`${fmtPlain(summary.totalAssets)} 코인`];
 

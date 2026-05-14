@@ -352,3 +352,21 @@ export const coinInventoryItems = sqliteTable(
     ),
   }),
 );
+
+export const coinEquippedItems = sqliteTable(
+  "coin_equipped_items",
+  {
+    guildId: text("guild_id").notNull(),
+    userId: text("user_id").notNull(),
+    itemType: text("item_type").notNull(),
+    itemKey: text("item_key").notNull(),
+    equippedAt: text("equipped_at").notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.guildId, table.userId, table.itemType] }),
+    guildUser: index("idx_coin_equipped_items_guild_user").on(
+      table.guildId,
+      table.userId,
+    ),
+  }),
+);
