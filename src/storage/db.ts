@@ -341,6 +341,18 @@ sqlite.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_coin_equipped_items_guild_user
     ON coin_equipped_items (guild_id, user_id);
+
+  CREATE TABLE IF NOT EXISTS coin_achievement_rewards (
+    guild_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    achievement_key TEXT NOT NULL,
+    reward_amount INTEGER NOT NULL,
+    claimed_at TEXT NOT NULL,
+    PRIMARY KEY (guild_id, user_id, achievement_key)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_coin_achievement_rewards_guild_user
+    ON coin_achievement_rewards (guild_id, user_id);
 `);
 
 export const db = sqlite;

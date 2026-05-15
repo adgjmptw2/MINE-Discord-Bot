@@ -370,3 +370,23 @@ export const coinEquippedItems = sqliteTable(
     ),
   }),
 );
+
+export const coinAchievementRewards = sqliteTable(
+  "coin_achievement_rewards",
+  {
+    guildId: text("guild_id").notNull(),
+    userId: text("user_id").notNull(),
+    achievementKey: text("achievement_key").notNull(),
+    rewardAmount: integer("reward_amount").notNull(),
+    claimedAt: text("claimed_at").notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.guildId, table.userId, table.achievementKey],
+    }),
+    guildUser: index("idx_coin_achievement_rewards_guild_user").on(
+      table.guildId,
+      table.userId,
+    ),
+  }),
+);

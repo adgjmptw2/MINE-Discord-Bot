@@ -2,7 +2,10 @@ import {
   ApplicationCommandOptionType,
   MessageFlags,
 } from "discord.js";
-import { getCoinProfileSummary } from "@/storage/stock";
+import {
+  getCoinAchievementSummary,
+  getCoinProfileSummary,
+} from "@/storage/stock";
 import { panelReply } from "@/utils/discord";
 import {
   formatLatestGameLogForProfile,
@@ -43,6 +46,7 @@ const command: SlashCommand = {
     const cachedPrices = market?.getCachedPrices() ?? [];
 
     const p = getCoinProfileSummary(guildId, userId, cachedPrices);
+    const ach = getCoinAchievementSummary(guildId, userId);
 
     if (!p.wallet && !p.assetSummary) {
       await interaction.reply(
@@ -73,6 +77,7 @@ const command: SlashCommand = {
       `현금: \`${cash.toLocaleString("ko-KR")} 코인\``,
       `주식 평가액: \`${stockVal.toLocaleString("ko-KR")} 코인\``,
       `보유 아이템: \`${p.inventoryCount.toLocaleString("ko-KR")}개\``,
+      `업적: \`${ach.completedCount} / ${ach.totalCount}\``,
       `최근 게임: \`${formatLatestGameLogForProfile(p.latestGameLog)}\``,
       `현재 시즌: \`${p.activeSeason?.name ?? "없음"}\``,
       "",

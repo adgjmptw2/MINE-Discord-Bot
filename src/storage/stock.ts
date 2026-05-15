@@ -2,6 +2,11 @@ import { randomInt } from "node:crypto";
 import { db } from "@/storage/db";
 import type { StockPrice } from "@/services/stock/types";
 import { getCoinShopItems, type CoinShopItem } from "@/settings/coinShopItems";
+import {
+  getCoinAchievements,
+  type CoinAchievement,
+  type CoinAchievementCategory,
+} from "@/settings/coinAchievements";
 import { getKstDayUtcIsoBounds } from "@/utils/date";
 import { log } from "@/utils/logger";
 
@@ -300,6 +305,35 @@ export interface CoinProfileSummary {
   activeSeason: StockSeason | null;
 }
 
+export interface CoinAchievementStatus {
+  key: string;
+  name: string;
+  description: string;
+  rewardAmount: number;
+  category: CoinAchievementCategory;
+  completed: boolean;
+  claimed: boolean;
+}
+
+export interface CoinAchievementSummary {
+  achievements: CoinAchievementStatus[];
+  completedCount: number;
+  claimedCount: number;
+  totalCount: number;
+}
+
+export interface ClaimCoinAchievementRewardResult {
+  achievement: CoinAchievement;
+  rewardAmount: number;
+  balanceAfter: number;
+}
+
+export interface ClaimAllCoinAchievementRewardsResult {
+  claimedAchievementKeys: string[];
+  totalReward: number;
+  balanceAfter: number;
+}
+
 export type StockStorageErrorCode =
   | "WALLET_NOT_FOUND"
   | "INSUFFICIENT_CASH"
@@ -321,7 +355,11 @@ export type StockStorageErrorCode =
   | "ITEM_NOT_FOUND"
   | "ITEM_ALREADY_OWNED"
   | "ITEM_NOT_OWNED"
-  | "INVALID_ITEM_TYPE";
+  | "INVALID_ITEM_TYPE"
+  | "ACHIEVEMENT_NOT_FOUND"
+  | "ACHIEVEMENT_NOT_COMPLETED"
+  | "ACHIEVEMENT_ALREADY_CLAIMED"
+  | "ACHIEVEMENT_REWARD_NOT_AVAILABLE";
 
 export class StockStorageError extends Error {
   readonly code: StockStorageErrorCode;
@@ -1548,6 +1586,226 @@ export function getCoinProfileSummary(
     latestGameLog,
     activeSeason,
   };
+}
+
+function isCoinAchievementCompleted(
+  guildId: string,
+  userId: string,
+  achievementKey: string,
+): boolean {
+  switch (achievementKey) {
+    case "first_attendance":
+      return (
+        db.get<{ n: number }>(
+          `SELECT 1 AS n FROM stock_daily_attendance WHERE guild_id = ? AND user_id = ? LIMIT 1`,
+          [guildId, userId],
+        ) !== undefined
+      );
+    case "first_work":
+      return (
+        db.get<{ n: number }>(
+          `SELECT 1 AS n FROM coin_work_logs WHERE guild_id = ? AND user_id = ? LIMIT 1`,
+          [guildId, userId],
+        ) !== undefined
+      );
+    case "first_fishing":
+      return (
+        db.get<{ n: number }>(
+          `SELECT 1 AS n FROM coin_fishing_logs WHERE guild_id = ? AND user_id = ? LIMIT 1`,
+          [guildId, userId],
+        ) !== undefined
+      );
+    case "first_rps":
+      return (
+        db.get<{ n: number }>(
+          `SELECT 1 AS n FROM coin_game_logs WHERE guild_id = ? AND user_id = ? AND game_type = 'RPS' LIMIT 1`,
+          [guildId, userId],
+        ) !== undefined
+      );
+    case "first_rps_win":
+      return (
+        db.get<{ n: number }>(
+          `SELECT 1 AS n FROM coin_game_logs WHERE guild_id = ? AND user_id = ? AND game_type = 'RPS' AND result = 'WIN' LIMIT 1`,
+          [guildId, userId],
+        ) !== undefined
+      );
+    case "first_stock_trade":
+      return (
+        db.get<{ n: number }>(
+          `SELECT 1 AS n FROM stock_trades WHERE guild_id = ? AND user_id = ? LIMIT 1`,
+          [guildId, userId],
+        ) !== undefined
+      );
+    case "first_stock_buy":
+      return (
+        db.get<{ n: number }>(
+          `SELECT 1 AS n FROM stock_trades WHERE guild_id = ? AND user_id = ? AND side = 'BUY' LIMIT 1`,
+          [guildId, userId],
+        ) !== undefined
+      );
+    case "first_stock_sell":
+      return (
+        db.get<{ n: number }>(
+          `SELECT 1 AS n FROM stock_trades WHERE guild_id = ? AND user_id = ? AND side = 'SELL' LIMIT 1`,
+          [guildId, userId],
+        ) !== undefined
+      );
+    case "first_shop_purchase":
+      return (
+        db.get<{ n: number }>(
+          `SELECT 1 AS n FROM coin_inventory_items WHERE guild_id = ? AND user_id = ? LIMIT 1`,
+          [guildId, userId],
+        ) !== undefined
+      );
+    case "first_title_equipped":
+      return (
+        db.get<{ n: number }>(
+          `SELECT 1 AS n FROM coin_equipped_items WHERE guild_id = ? AND user_id = ? AND item_type = 'TITLE' LIMIT 1`,
+          [guildId, userId],
+        ) !== undefined
+      );
+    default:
+      return false;
+  }
+}
+
+function loadClaimedAchievementKeys(
+  guildId: string,
+  userId: string,
+): Set<string> {
+  const rows = db.all<{ achievement_key: string }>(
+    `SELECT achievement_key FROM coin_achievement_rewards WHERE guild_id = ? AND user_id = ?`,
+    [guildId, userId],
+  );
+  return new Set(rows.map((r) => r.achievement_key));
+}
+
+export function getCoinAchievementSummary(
+  guildId: string,
+  userId: string,
+): CoinAchievementSummary {
+  const claimedKeys = loadClaimedAchievementKeys(guildId, userId);
+  const defs = getCoinAchievements();
+  const achievements: CoinAchievementStatus[] = defs.map((def) => ({
+    key: def.key,
+    name: def.name,
+    description: def.description,
+    rewardAmount: def.rewardAmount,
+    category: def.category,
+    completed: isCoinAchievementCompleted(guildId, userId, def.key),
+    claimed: claimedKeys.has(def.key),
+  }));
+  const completedCount = achievements.filter((a) => a.completed).length;
+  const claimedCount = achievements.filter((a) => a.claimed).length;
+  return {
+    achievements,
+    completedCount,
+    claimedCount,
+    totalCount: achievements.length,
+  };
+}
+
+export function claimCoinAchievementReward(
+  guildId: string,
+  userId: string,
+  achievementKey: string,
+): ClaimCoinAchievementRewardResult {
+  const def = getCoinAchievements().find((a) => a.key === achievementKey);
+  if (!def) {
+    throw new StockStorageError("ACHIEVEMENT_NOT_FOUND");
+  }
+  db.run("BEGIN IMMEDIATE");
+  try {
+    if (!isCoinAchievementCompleted(guildId, userId, achievementKey)) {
+      throw new StockStorageError("ACHIEVEMENT_NOT_COMPLETED");
+    }
+    const already = db.get<{ guild_id: string }>(
+      `SELECT guild_id FROM coin_achievement_rewards WHERE guild_id = ? AND user_id = ? AND achievement_key = ?`,
+      [guildId, userId, achievementKey],
+    );
+    if (already) {
+      throw new StockStorageError("ACHIEVEMENT_ALREADY_CLAIMED");
+    }
+    const nowIso = new Date().toISOString();
+    const rewardAmount = def.rewardAmount;
+    ensureWalletRow(guildId, userId, nowIso);
+    db.run(
+      `UPDATE stock_wallets SET cash_balance = cash_balance + ?, total_deposit = total_deposit + ?, updated_at = ?
+       WHERE guild_id = ? AND user_id = ?`,
+      [rewardAmount, rewardAmount, nowIso, guildId, userId],
+    );
+    if (getStatementChanges() !== 1) {
+      throw new Error("achievement reward wallet update failed");
+    }
+    const w = getWalletRow(guildId, userId)!;
+    const balanceAfter = Number(w.cash_balance);
+    db.run(
+      `INSERT INTO coin_achievement_rewards (guild_id, user_id, achievement_key, reward_amount, claimed_at)
+       VALUES (?, ?, ?, ?, ?)`,
+      [guildId, userId, achievementKey, rewardAmount, nowIso],
+    );
+    db.run("COMMIT");
+    return { achievement: def, rewardAmount, balanceAfter };
+  } catch (e) {
+    db.run("ROLLBACK");
+    throw e;
+  }
+}
+
+export function claimAllCompletedAchievementRewards(
+  guildId: string,
+  userId: string,
+): ClaimAllCoinAchievementRewardsResult {
+  db.run("BEGIN IMMEDIATE");
+  try {
+    const defs = getCoinAchievements();
+    const keysToClaim: CoinAchievement[] = [];
+    for (const def of defs) {
+      if (!isCoinAchievementCompleted(guildId, userId, def.key)) {
+        continue;
+      }
+      const already = db.get<{ guild_id: string }>(
+        `SELECT guild_id FROM coin_achievement_rewards WHERE guild_id = ? AND user_id = ? AND achievement_key = ?`,
+        [guildId, userId, def.key],
+      );
+      if (already) {
+        continue;
+      }
+      keysToClaim.push(def);
+    }
+    if (keysToClaim.length === 0) {
+      throw new StockStorageError("ACHIEVEMENT_REWARD_NOT_AVAILABLE");
+    }
+    const totalReward = keysToClaim.reduce((s, d) => s + d.rewardAmount, 0);
+    const nowIso = new Date().toISOString();
+    ensureWalletRow(guildId, userId, nowIso);
+    db.run(
+      `UPDATE stock_wallets SET cash_balance = cash_balance + ?, total_deposit = total_deposit + ?, updated_at = ?
+       WHERE guild_id = ? AND user_id = ?`,
+      [totalReward, totalReward, nowIso, guildId, userId],
+    );
+    if (getStatementChanges() !== 1) {
+      throw new Error("claim all achievement rewards wallet update failed");
+    }
+    for (const def of keysToClaim) {
+      db.run(
+        `INSERT INTO coin_achievement_rewards (guild_id, user_id, achievement_key, reward_amount, claimed_at)
+         VALUES (?, ?, ?, ?, ?)`,
+        [guildId, userId, def.key, def.rewardAmount, nowIso],
+      );
+    }
+    const w = getWalletRow(guildId, userId)!;
+    const balanceAfter = Number(w.cash_balance);
+    db.run("COMMIT");
+    return {
+      claimedAchievementKeys: keysToClaim.map((d) => d.key),
+      totalReward,
+      balanceAfter,
+    };
+  } catch (e) {
+    db.run("ROLLBACK");
+    throw e;
+  }
 }
 
 interface CoinWorkLogDbRow {
