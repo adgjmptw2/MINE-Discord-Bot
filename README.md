@@ -8,13 +8,21 @@
 
 ## 스크린샷
 
-노래 채널 패널 이미지
+- `docs/readme-soundroom-panel.png` — 노래 채널(Soundroom) 패널
+- `docs/readme-player-and-queue.png` — 지금 재생 중 · 대기열
+- `docs/readme-mock-investment-stocks.png` — 모의투자 종목 목록
+
+노래 채널 패널
 
 ![노래 채널 패널](docs/readme-soundroom-panel.png)
 
-지금 재생 중 · 대기열 이미지
+지금 재생 중 · 대기열
 
 ![지금 재생 중 · 대기열](docs/readme-player-and-queue.png)
+
+모의투자 종목
+
+![모의투자 종목](docs/readme-mock-investment-stocks.png)
 
 ## 기능
 
@@ -178,6 +186,8 @@ npm run start:bot
 ```
 
 `start:bot`과 `start`는 실행 전에 자동으로 build를 돌립니다.
+
+음악(Lavalink)까지 한 번에 로컬에서 켜려면 `.env`에 **`LAVALINK_JAR_DIR`**(`Lavalink.jar` 가 있는 폴더의 절대 경로)를 넣고 `npm run start:all` 을 사용합니다. Lavalink만 켤 때는 `npm run start:lavalink` 입니다. 원격 Lavalink(`LAVALINK_HOST`가 localhost가 아님)면 `start:all`은 쓸 수 없고, 터미널 두 개로 Lavalink 후 봇 순서를 지키면 됩니다.
 
 `dist`만 갱신하려면 `npm run build`만 실행하면 됩니다.
 
