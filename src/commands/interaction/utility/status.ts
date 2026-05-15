@@ -79,6 +79,12 @@ function summarizeStock(client: MineClient): string[] {
     lines.push(`예약 시각(KST): ${clocks || "—"}`);
   }
 
+  lines.push(
+    stock.stockTradingHoursEnabled
+      ? `모의 매수·매도 시간: 평일 ${formatKstMinutesAsClock(stock.stockTradingStartMinutesKst)}~${formatKstMinutesAsClock(stock.stockTradingEndMinutesKst)} KST`
+      : "모의 매수·매도 시간: 제한 없음",
+  );
+
   return lines;
 }
 

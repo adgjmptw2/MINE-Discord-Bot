@@ -10,10 +10,9 @@ import {
 } from "@/storage/stock";
 import { panelReply } from "@/utils/discord";
 import { scheduleEphemeralReplyDelete } from "@/utils/ephemeralCleanup";
+import { isStockTradingAllowed } from "@/utils/stockTradingHours";
 import { formatCoin, formatStockQuantity } from "@/utils/stockFormat";
 import type { MineClient, SlashCommand } from "@/types";
-
-// TODO: 정규장 거래 시간 제한은 추후 설정값으로 추가 가능
 
 const command: SlashCommand = {
   name: "매수",
@@ -109,6 +108,27 @@ const command: SlashCommand = {
     }
 
     const price = cached.price;
+    const stockCfg = client.config.stock;
+
+    const trading = isStockTradingAllowed(stockCfg);
+    if (!trading.allowed) {
+      const range = `평일 ${trading.startLabel}~${trading.endLabel} KST`;
+      const description =
+        trading.reason === "WEEKEND"
+          ? `주말에는 주식 거래를 할 수 없습니다.\n거래 가능 시간: ${range}`
+          : `현재는 주식 거래 시간이 아닙니다.\n거래 가능 시간: ${range}`;
+      await interaction.reply(
+        panelReply({
+          ephemeral: true,
+          panel: {
+            title: "매수",
+            description,
+          },
+        }),
+      );
+      scheduleIfEphemeral();
+      return;
+    }
 
     try {
       const r = buyStock({
@@ -117,14 +137,15 @@ const command: SlashCommand = {
         symbol: symMeta.symbol,
         price,
         amount,
+        buyFeeRate: stockCfg.stockBuyFeeRate,
       });
 
       const lines = [
         `📌 **${symMeta.nameKo}** (${symMeta.code})`,
         `💵 체결가: ${formatCoin(r.price)}`,
         `🛒 매수금액: ${formatCoin(r.amount)}`,
-        `📎 수수료: ${formatCoin(r.fee)}`,
-        `💸 실제 차감: ${formatCoin(r.netAmount)}`,
+        `📎 매수 수수료: ${formatCoin(r.fee)}`,
+        `💸 총 차감액: ${formatCoin(r.netAmount)}`,
         `📊 이번 매수 수량: ${formatStockQuantity(r.quantityMicro)}`,
         `📈 총 보유 수량: ${formatStockQuantity(r.totalQuantityMicro)}`,
         `📉 평균 매수가: ${formatCoin(r.averageBuyPrice)}`,

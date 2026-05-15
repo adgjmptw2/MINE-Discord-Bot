@@ -10,11 +10,10 @@ import {
 } from "@/storage/stock";
 import { panelReply } from "@/utils/discord";
 import { scheduleEphemeralReplyDelete } from "@/utils/ephemeralCleanup";
+import { isStockTradingAllowed } from "@/utils/stockTradingHours";
 import { parseSellInput } from "@/utils/parseSellInput";
 import { formatCoin, formatStockQuantity } from "@/utils/stockFormat";
 import type { MineClient, SlashCommand } from "@/types";
-
-// TODO: 정규장 거래 시간 제한은 추후 설정값으로 추가 가능
 
 const command: SlashCommand = {
   name: "매도",
@@ -126,8 +125,33 @@ const command: SlashCommand = {
     }
 
     const price = cached.price;
+    const stockCfg = client.config.stock;
+
+    const trading = isStockTradingAllowed(stockCfg);
+    if (!trading.allowed) {
+      const range = `평일 ${trading.startLabel}~${trading.endLabel} KST`;
+      const description =
+        trading.reason === "WEEKEND"
+          ? `주말에는 주식 거래를 할 수 없습니다.\n거래 가능 시간: ${range}`
+          : `현재는 주식 거래 시간이 아닙니다.\n거래 가능 시간: ${range}`;
+      await interaction.reply(
+        panelReply({
+          ephemeral: true,
+          panel: {
+            title: "매도",
+            description,
+          },
+        }),
+      );
+      scheduleIfEphemeral();
+      return;
+    }
 
     try {
+      const feeArgs = {
+        sellFeeRate: stockCfg.stockSellFeeRate,
+        sellTaxRate: stockCfg.stockSellTaxRate,
+      };
       const r =
         parsed.mode === "all"
           ? sellStock({
@@ -136,6 +160,7 @@ const command: SlashCommand = {
               symbol: symMeta.symbol,
               price,
               mode: "all",
+              ...feeArgs,
             })
           : parsed.mode === "percent"
             ? sellStock({
@@ -145,6 +170,7 @@ const command: SlashCommand = {
                 price,
                 mode: "percent",
                 percent: parsed.percent,
+                ...feeArgs,
               })
             : sellStock({
                 guildId,
@@ -153,6 +179,7 @@ const command: SlashCommand = {
                 price,
                 mode: "amount",
                 amount: parsed.amount,
+                ...feeArgs,
               });
 
       const lines = [
@@ -160,7 +187,9 @@ const command: SlashCommand = {
         `💵 체결가: ${formatCoin(r.price)}`,
         `📊 매도 수량: ${formatStockQuantity(r.soldQuantityMicro)}`,
         `💰 매도금액: ${formatCoin(r.grossAmount)}`,
-        `📎 수수료: ${formatCoin(r.fee)}`,
+        `📎 매도 수수료: ${formatCoin(r.sellFee)}`,
+        `🧾 거래세: ${formatCoin(r.sellTax)}`,
+        `📌 총 비용: ${formatCoin(r.totalFee)}`,
         `✅ 실제 입금: ${formatCoin(r.netAmount)}`,
         `📈 실현손익: ${formatCoin(r.realizedProfit)}`,
         `📉 남은 보유: ${formatStockQuantity(r.remainingQuantityMicro)}`,

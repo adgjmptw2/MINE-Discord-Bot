@@ -8,6 +8,9 @@
 
 - [ ] `.env` 설정 확인
 - [ ] Lavalink 실행 확인
+- [ ] Lavalink를 `-Xms512m -Xmx1536m` 옵션으로 실행 ([배포 가이드](./deployment.md) Lavalink JVM 메모리 섹션 참고)
+- [ ] `/상태`에서 음악·Lavalink 연결 상태 확인
+- [ ] 장시간 재생 중 **java**(Lavalink) 프로세스 메모리 사용량 확인
 - [ ] `npm run check` 성공
 - [ ] `npm run build` 성공
 - [ ] `npm run start:bot` 성공

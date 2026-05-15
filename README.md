@@ -40,6 +40,8 @@
 
 mock / yahoo / twelvedata 등으로 교체할 수 있습니다.
 
+**거래 시간·수수료:** `STOCK_TRADING_HOURS_ENABLED=true`이면 **KST 평일**에만 `/매수`·`/매도`가 가능하고, 기본 창은 **09:00 이상 15:30 미만**(15:30 정각은 제외)입니다. 토·일은 거래 불가이며 **공휴일·임시 휴장은 반영하지 않습니다.** 매수·매도 수수료와 매도 거래세는 `.env`의 `STOCK_BUY_FEE_RATE`, `STOCK_SELL_FEE_RATE`, `STOCK_SELL_TAX_RATE`로 정하며, 실제 증권사와 동일하지 않을 수 있습니다. `/주식목록`, `/시세`, `/주식자산` 등 조회는 시간 제한 없습니다.
+
 ### 지원 종목
 
 | 종목 | 종목코드 |
@@ -95,6 +97,12 @@ mock / yahoo / twelvedata 등으로 교체할 수 있습니다.
 | STOCK_PRICE_REFRESH_INTERVAL_MS | 기본 300000ms, 5분 (`interval` 모드에서 사용) |
 | STOCK_PRICE_REFRESH_MODE | `interval`(기본) 또는 `scheduled-close` |
 | STOCK_SCHEDULED_CLOSE_REFRESH_TIMES_KST | `scheduled-close`일 때만 사용. 쉼표로 구분한 KST `HH:mm` 목록 |
+| STOCK_TRADING_HOURS_ENABLED | `true`면 평일 KST 지정 시간에만 `/매수`·`/매도` (기본 `false`) |
+| STOCK_TRADING_START_KST | 거래 시작 `HH:mm` (기본 `09:00`) |
+| STOCK_TRADING_END_KST | 거래 종료 `HH:mm`, **미포함** 상한 (기본 `15:30`) |
+| STOCK_BUY_FEE_RATE | 매수 수수료율 (기본 `0.00015`) |
+| STOCK_SELL_FEE_RATE | 매도 수수료율 (기본 `0.00015`) |
+| STOCK_SELL_TAX_RATE | 매도 거래세율 (기본 `0.002`) |
 | TWELVE_DATA_API_KEY | twelvedata 사용 시 필요 |
 
 ### 개발·테스트 순서
@@ -133,7 +141,7 @@ mock / yahoo / twelvedata 등으로 교체할 수 있습니다.
 
 ### 알려진 한계
 
-- 장 운영 시간 제한 없음
+- `/매수`·`/매도`는 `.env`의 `STOCK_TRADING_HOURS_ENABLED` 등으로 **평일 KST 지정 시간**에만 제한할 수 있으며, **공휴일·임시 휴장은 반영하지 않는다**(기본은 24시간 주문 가능).
 - 시즌은 관리자가 `/시즌시작`·`/시즌종료`로 선택 운영하며, 시즌 종료만으로 유저 지갑·거래 데이터가 자동 초기화되지는 않음
 - 예약/지정가 주문 없음
 - Yahoo provider는 공식 투자용 데이터가 아님

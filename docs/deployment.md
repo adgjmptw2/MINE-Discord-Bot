@@ -75,6 +75,12 @@ OS별 설치 명령은 공식 문서가 가장 정확합니다. **Ubuntu 계열*
 | `STOCK_PRICE_REFRESH_INTERVAL_MS` | (선택) interval 모드 갱신 주기 |
 | `STOCK_PRICE_REFRESH_MODE` | `interval` \| `scheduled-close` |
 | `STOCK_SCHEDULED_CLOSE_REFRESH_TIMES_KST` | scheduled-close일 때 KST `HH:mm` 목록 |
+| `STOCK_TRADING_HOURS_ENABLED` | `true`면 평일 KST `STOCK_TRADING_START_KST` 이상 `STOCK_TRADING_END_KST` **미만**에만 `/매수`·`/매도` 허용 (`false`면 24시간) |
+| `STOCK_TRADING_START_KST` | 거래 시작 시각 `HH:mm` (기본 `09:00`) |
+| `STOCK_TRADING_END_KST` | 거래 종료 시각 `HH:mm`, **해당 시각은 미포함**(기본 `15:30` → 15:30 정각은 불가) |
+| `STOCK_BUY_FEE_RATE` | 매수 수수료율 (기본 `0.00015`, 0~0.1) |
+| `STOCK_SELL_FEE_RATE` | 매도 수수료율 (기본 `0.00015`) |
+| `STOCK_SELL_TAX_RATE` | 매도 거래세율 (기본 `0.002`) |
 | `TWELVE_DATA_API_KEY` | `twelvedata` 사용 시 |
 
 ## Lavalink 운영
@@ -84,6 +90,35 @@ OS별 설치 명령은 공식 문서가 가장 정확합니다. **Ubuntu 계열*
 - 음악이 자주 끊기면: **VM 네트워크**, **Lavalink 로그**, **Node 봇 로그** 순으로 확인합니다.
 - **YouTube 소스**·정책·플러그인 이슈일 수 있습니다.
 - 동일 사양이라도 **상시 VM**이 로컬 PC보다 안정적인 경우가 많습니다.
+
+### JVM 메모리(권장)
+
+`application.yml` 내용은 그대로 두고, **Java 프로세스만** 아래처럼 메모리 한도를 주는 것을 권장합니다.
+
+**권장 실행 명령** (`Lavalink.jar` 가 있는 폴더에서):
+
+```bash
+java -Xms512m -Xmx1536m -jar Lavalink.jar
+```
+
+- **`-Xms512m`**: 시작 힙 **512MB**
+- **`-Xmx1536m`**: 최대 힙 **1536MB** (약 1.5GB)
+- **PC에 여유 RAM이 약 3GB 이상** 있는 환경에서 **소규모 베타**용으로 무난한 기본값입니다.
+- **메모리가 빠듯하면** `-Xmx1024m` 등으로 낮출 수 있습니다.
+- **여유가 크고 OOM·끊김이 의심되면** `-Xmx2048m` 까지 올려 볼 수 있습니다. (그만큼 **실제 RAM 여유**가 있어야 합니다.)
+
+**Windows** (PowerShell 또는 cmd, `Lavalink.jar` 가 있는 폴더로 `cd` 한 뒤):
+
+```bat
+java -Xms512m -Xmx1536m -jar Lavalink.jar
+```
+
+**레포에 포함된 셸 스크립트** (Linux / macOS): `Lavalink.jar` 가 있는 디렉터리로 이동한 뒤 아래처럼 실행합니다.
+
+```bash
+cd /path/to/your/lavalink
+bash /path/to/MINE-Discord-main/scripts/start-lavalink.sh
+```
 
 ## SQLite 운영
 
@@ -105,12 +140,19 @@ cp storage/mine.sqlite storage/mine.sqlite.bak
 
 이 레포에는 **운영용 unit 파일·Docker Compose는 포함하지 않습니다.** 아래는 **예시**입니다.
 
-**pm2 예시** (`package.json`의 `start:bot`과 동일하게 빌드+실행):
+**pm2 예시 — Discord 봇** (`package.json`의 `start:bot`과 동일하게 빌드+실행):
 
 ```bash
 pm2 start "npm run start:bot" --name mine-discord-bot
 pm2 logs mine-discord-bot
 pm2 restart mine-discord-bot
+```
+
+**pm2 예시 — Lavalink**(JVM 메모리 옵션 포함, `--cwd` 는 실제 `Lavalink.jar` 경로로 바꿉니다):
+
+```bash
+pm2 start "java -Xms512m -Xmx1536m -jar Lavalink.jar" --name lavalink --cwd /path/to/your/lavalink
+pm2 logs lavalink
 ```
 
 이미 빌드된 `dist`만 돌리고 싶다면 `node dist/index.js`만 pm2에 넣고, 배포 파이프에서 `npm run build`를 분리하는 방식도 가능합니다.

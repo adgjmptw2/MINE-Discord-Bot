@@ -12,8 +12,6 @@ import { log } from "@/utils/logger";
 
 export const STOCK_QUANTITY_SCALE = 1_000_000;
 
-export const STOCK_TRADE_FEE_RATE = 0.001;
-
 /** 최소 매수 금액 (코인) */
 export const MIN_STOCK_BUY_AMOUNT = 1_000;
 
@@ -377,6 +375,7 @@ export interface BuyStockParams {
   symbol: string;
   price: number;
   amount: number;
+  buyFeeRate: number;
 }
 
 export interface BuyStockResult {
@@ -402,6 +401,8 @@ export interface SellStockParams {
   mode: "amount" | "percent" | "all";
   amount?: number;
   percent?: number;
+  sellFeeRate: number;
+  sellTaxRate: number;
 }
 
 export interface SellStockResult {
@@ -413,7 +414,11 @@ export interface SellStockResult {
   soldQuantityMicro: number;
   remainingQuantityMicro: number;
   grossAmount: number;
+  /** 매도 수수료 + 거래세 합 (DB `stock_trades.fee`와 동일) */
   fee: number;
+  sellFee: number;
+  sellTax: number;
+  totalFee: number;
   netAmount: number;
   realizedProfit: number;
   averageBuyPrice: number;
@@ -924,7 +929,7 @@ export function buyStock(params: BuyStockParams): BuyStockResult {
   }
 
   const priceRounded = Math.round(priceRaw);
-  const fee = Math.floor(amount * STOCK_TRADE_FEE_RATE);
+  const fee = Math.floor(amount * params.buyFeeRate);
   const netAmount = amount + fee;
   const quantityMicro = Math.floor(
     (amount / priceRounded) * STOCK_QUANTITY_SCALE,
@@ -1113,8 +1118,10 @@ export function sellStock(params: SellStockParams): SellStockResult {
     const grossAmount = Math.floor(
       (soldQuantityMicro / STOCK_QUANTITY_SCALE) * priceRounded,
     );
-    const fee = Math.floor(grossAmount * STOCK_TRADE_FEE_RATE);
-    const netAmount = grossAmount - fee;
+    const sellFee = Math.floor(grossAmount * params.sellFeeRate);
+    const sellTax = Math.floor(grossAmount * params.sellTaxRate);
+    const totalFee = sellFee + sellTax;
+    const netAmount = grossAmount - totalFee;
     const costBasis = Math.floor(
       (soldQuantityMicro / STOCK_QUANTITY_SCALE) * avgBuy,
     );
@@ -1158,7 +1165,7 @@ export function sellStock(params: SellStockParams): SellStockResult {
         soldQuantityMicro,
         priceRounded,
         grossAmount,
-        fee,
+        totalFee,
         netAmount,
         realizedProfit,
         now,
@@ -1186,7 +1193,10 @@ export function sellStock(params: SellStockParams): SellStockResult {
       remainingQuantityMicro:
         remainingQuantityMicro <= 0 ? 0 : remainingQuantityMicro,
       grossAmount,
-      fee,
+      fee: totalFee,
+      sellFee,
+      sellTax,
+      totalFee,
       netAmount,
       realizedProfit,
       averageBuyPrice: avgBuy,

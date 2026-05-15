@@ -95,3 +95,16 @@ export function formatKstMinutesAsClock(minutes: number): string {
   const m = minutes % 60;
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
+
+/**
+ * KST 기준 [startMinutes, endMinutes) 구간이면 true.
+ * 예: 09:00~15:30 → 540 이상 930 미만만 거래 가능(15:30 정각은 불가).
+ */
+export function isWithinKstTimeRange(
+  date: Date,
+  startMinutes: number,
+  endMinutes: number,
+): boolean {
+  const m = getKstMinutesOfDay(date);
+  return m >= startMinutes && m < endMinutes;
+}

@@ -118,6 +118,69 @@ function parseStockScheduledCloseRefreshTimesKst(raw: string): number[] {
   return [...new Set(parsed)].sort((a, b) => a - b);
 }
 
+const DEFAULT_TRADING_START_STR = "09:00";
+const DEFAULT_TRADING_END_STR = "15:30";
+const DEFAULT_TRADING_START_MIN = 9 * 60;
+const DEFAULT_TRADING_END_MIN = 15 * 60 + 30;
+
+const DEFAULT_STOCK_BUY_FEE = 0.00015;
+const DEFAULT_STOCK_SELL_FEE = 0.00015;
+const DEFAULT_STOCK_SELL_TAX = 0.002;
+const MAX_STOCK_FEE_OR_TAX_RATE = 0.1;
+
+function parseStockTradingWindowMinutes(): {
+  startMinutes: number;
+  endMinutes: number;
+} {
+  const startStr = envValue(
+    "STOCK_TRADING_START_KST",
+    DEFAULT_TRADING_START_STR,
+  );
+  const endStr = envValue("STOCK_TRADING_END_KST", DEFAULT_TRADING_END_STR);
+  const start = parseKstTimeToMinutes(startStr);
+  const end = parseKstTimeToMinutes(endStr);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) {
+    log(
+      "warn",
+      "config",
+      `STOCK_TRADING_*_KST 파싱 실패 → ${DEFAULT_TRADING_START_STR}~${DEFAULT_TRADING_END_STR}`,
+    );
+    return {
+      startMinutes: DEFAULT_TRADING_START_MIN,
+      endMinutes: DEFAULT_TRADING_END_MIN,
+    };
+  }
+  if (start >= end) {
+    log(
+      "warn",
+      "config",
+      `STOCK_TRADING 시작>=종료 (${startStr}, ${endStr}) → 기본 ${DEFAULT_TRADING_START_STR}~${DEFAULT_TRADING_END_STR}`,
+    );
+    return {
+      startMinutes: DEFAULT_TRADING_START_MIN,
+      endMinutes: DEFAULT_TRADING_END_MIN,
+    };
+  }
+  return { startMinutes: start, endMinutes: end };
+}
+
+function parseStockFeeOrTaxRate(name: string, fallback: number): number {
+  const raw = envValue(name);
+  if (raw === "") {
+    return fallback;
+  }
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0 || n > MAX_STOCK_FEE_OR_TAX_RATE) {
+    log(
+      "warn",
+      "config",
+      `${name} 값 이상("${raw}") → 기본 ${fallback}`,
+    );
+    return fallback;
+  }
+  return n;
+}
+
 function envTwelveDataApiKey(): string {
   // 나중에 twelvedata 모드일 때 없으면 그때 에러 내면 됨
   return envValue("TWELVE_DATA_API_KEY");
@@ -143,6 +206,8 @@ function requireDiscordApplicationId(raw: string): string {
   }
   return value;
 }
+
+const stockTradingWindow = parseStockTradingWindowMinutes();
 
 const config: BotConfig = {
   clientid: requireDiscordApplicationId(envValue("CLIENT_ID")),
@@ -176,6 +241,21 @@ const config: BotConfig = {
       envValue("STOCK_SCHEDULED_CLOSE_REFRESH_TIMES_KST"),
     ),
     twelveDataApiKey: envTwelveDataApiKey(),
+    stockTradingHoursEnabled: envBoolean("STOCK_TRADING_HOURS_ENABLED", false),
+    stockTradingStartMinutesKst: stockTradingWindow.startMinutes,
+    stockTradingEndMinutesKst: stockTradingWindow.endMinutes,
+    stockBuyFeeRate: parseStockFeeOrTaxRate(
+      "STOCK_BUY_FEE_RATE",
+      DEFAULT_STOCK_BUY_FEE,
+    ),
+    stockSellFeeRate: parseStockFeeOrTaxRate(
+      "STOCK_SELL_FEE_RATE",
+      DEFAULT_STOCK_SELL_FEE,
+    ),
+    stockSellTaxRate: parseStockFeeOrTaxRate(
+      "STOCK_SELL_TAX_RATE",
+      DEFAULT_STOCK_SELL_TAX,
+    ),
   },
 };
 

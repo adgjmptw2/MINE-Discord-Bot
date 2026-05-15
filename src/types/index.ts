@@ -41,6 +41,15 @@ export interface StockConfig {
   stockScheduledCloseRefreshTimesKst: number[];
   /** 비어 있으면 없는 거. twelvedata 쓸 때 키 있는지는 그때 검사 */
   twelveDataApiKey: string;
+  /** true면 평일 KST `stockTradingStartMinutesKst` 이상 `stockTradingEndMinutesKst` 미만에만 매수·매도 */
+  stockTradingHoursEnabled: boolean;
+  /** KST 거래 시작 시각(분 0–1439, 예: 09:00 → 540) */
+  stockTradingStartMinutesKst: number;
+  /** KST 거래 종료 시각(분, 상한은 배타적: `now < end`) */
+  stockTradingEndMinutesKst: number;
+  stockBuyFeeRate: number;
+  stockSellFeeRate: number;
+  stockSellTaxRate: number;
 }
 
 export interface BotConfig {
