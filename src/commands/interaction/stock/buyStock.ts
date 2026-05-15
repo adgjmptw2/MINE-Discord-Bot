@@ -47,6 +47,8 @@ const command: SlashCommand = {
       return;
     }
 
+    const scheduleIfEphemeral = () => scheduleEphemeralReplyDelete(interaction);
+
     const guildId = interaction.guildId;
     const userId = interaction.user.id;
 
@@ -70,7 +72,7 @@ const command: SlashCommand = {
           },
         }),
       );
-      scheduleEphemeralReplyDelete(interaction);
+      scheduleIfEphemeral();
       return;
     }
 
@@ -87,7 +89,7 @@ const command: SlashCommand = {
           },
         }),
       );
-      scheduleEphemeralReplyDelete(interaction);
+      scheduleIfEphemeral();
       return;
     }
 
@@ -102,7 +104,7 @@ const command: SlashCommand = {
           },
         }),
       );
-      scheduleEphemeralReplyDelete(interaction);
+      scheduleIfEphemeral();
       return;
     }
 
@@ -133,13 +135,14 @@ const command: SlashCommand = {
 
       await interaction.reply(
         panelReply({
-          ephemeral: true,
+          ephemeral: false,
           panel: {
             title: "✅ 매수 체결",
             lines,
           },
         }),
       );
+      return;
     } catch (e) {
       if (e instanceof StockStorageError) {
         let description = "처리할 수 없습니다.";
@@ -165,6 +168,8 @@ const command: SlashCommand = {
             },
           }),
         );
+        scheduleIfEphemeral();
+        return;
       } else {
         await interaction.reply({
           content:
@@ -173,10 +178,10 @@ const command: SlashCommand = {
               : "매수 처리 중 오류가 발생했습니다.",
           flags: MessageFlags.Ephemeral,
         });
+        scheduleIfEphemeral();
+        return;
       }
     }
-
-    scheduleEphemeralReplyDelete(interaction);
   },
 };
 

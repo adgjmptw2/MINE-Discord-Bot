@@ -28,12 +28,14 @@ const command: SlashCommand = {
   ],
 
   async run(client: MineClient, interaction) {
+    const scheduleIfEphemeral = () => scheduleEphemeralReplyDelete(interaction);
+
     if (!interaction.inGuild()) {
       await interaction.reply({
         content: "서버에서만 사용할 수 있습니다.",
         flags: MessageFlags.Ephemeral,
       });
-      scheduleEphemeralReplyDelete(interaction);
+      scheduleIfEphemeral();
       return;
     }
 
@@ -57,7 +59,7 @@ const command: SlashCommand = {
           },
         }),
       );
-      scheduleEphemeralReplyDelete(interaction);
+      scheduleIfEphemeral();
       return;
     }
 
@@ -67,7 +69,7 @@ const command: SlashCommand = {
     if (!p) {
       await interaction.reply(
         panelReply({
-          ephemeral: true,
+          ephemeral: false,
           panel: {
             title: "📈 종목 시세",
             description: "시세 준비 중입니다. 잠시 후 다시 시도해 주세요.",
@@ -79,13 +81,12 @@ const command: SlashCommand = {
           },
         }),
       );
-      scheduleEphemeralReplyDelete(interaction);
       return;
     }
 
     await interaction.reply(
       panelReply({
-        ephemeral: true,
+        ephemeral: false,
         panel: {
           title: "📈 종목 시세",
           lines: [
@@ -102,8 +103,6 @@ const command: SlashCommand = {
         },
       }),
     );
-
-    scheduleEphemeralReplyDelete(interaction);
   },
 };
 

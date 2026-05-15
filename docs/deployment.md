@@ -1,4 +1,4 @@
-# MINE Discord Bot 배포 가이드
+# Discord 봇 배포 가이드
 
 ## 개요
 

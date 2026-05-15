@@ -1,3 +1,4 @@
+import { MessageFlags } from "discord.js";
 import {
   getEquippedTitleDisplayName,
   getStockAssetSummary,
@@ -21,7 +22,7 @@ const command: SlashCommand = {
     if (!interaction.inGuild() || !interaction.guild) {
       await interaction.reply({
         content: "서버에서만 사용할 수 있습니다.",
-        allowedMentions: NO_MENTION,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
