@@ -4,6 +4,7 @@ import type { SlashCommand } from "@/types";
 
 const CAT_ALL = "전체";
 const CAT_MUSIC = "음악";
+const CAT_UTILITY = "유틸리티";
 const CAT_COIN = "코인";
 const CAT_STOCK = "주식";
 const CAT_GAME = "게임";
@@ -32,6 +33,13 @@ function linesCoinSummary(): string[] {
     "`/프로필` — 유저의 코인 프로필을 확인합니다.",
     "`/업적` — 업적 진행도와 보상을 확인합니다.",
     "`/랭킹` — 서버 코인 랭킹을 확인합니다.",
+  ];
+}
+
+function linesUtilitySummary(): string[] {
+  return [
+    "### 🔧 유틸리티 · 기타",
+    "`/오늘운세` — 저장형 또는 일회용으로 오늘의 재미용 운세를 확인합니다.",
   ];
 }
 
@@ -70,7 +78,9 @@ function buildOverview(): string[] {
     "",
     ...linesSeasonSummary(),
     "",
-    "관리자·음악 상세는 `/도움말`에 **카테고리** 옵션을 주세요.",
+    ...linesUtilitySummary(),
+    "",
+    "관리자·음악·유틸리티 상세는 `/도움말`에 **카테고리** 옵션을 주세요.",
     "",
     ...DISCLAIMER,
   ];
@@ -94,6 +104,15 @@ function buildCoinDetail(): string[] {
     "`/랭킹` — 서버 코인 랭킹을 확인합니다.",
     "",
     "서버별 출석 보상·가위바위보 베팅 한도·쿨다운은 **`/코인설정`**(관리자)에서 바꿉니다.",
+    "",
+    ...DISCLAIMER,
+  ];
+}
+
+function buildUtilityDetail(): string[] {
+  return [
+    "### 🔧 유틸리티 · 기타",
+    "`/오늘운세` — 저장형 또는 일회용으로 오늘의 재미용 운세를 확인합니다.",
     "",
     ...DISCLAIMER,
   ];
@@ -187,6 +206,7 @@ const command: SlashCommand = {
       choices: [
         { name: "전체", value: CAT_ALL },
         { name: "음악", value: CAT_MUSIC },
+        { name: "유틸리티", value: CAT_UTILITY },
         { name: "코인", value: CAT_COIN },
         { name: "주식", value: CAT_STOCK },
         { name: "게임", value: CAT_GAME },
@@ -204,6 +224,9 @@ const command: SlashCommand = {
     switch (cat) {
       case CAT_MUSIC:
         lines = buildMusicDetail();
+        break;
+      case CAT_UTILITY:
+        lines = buildUtilityDetail();
         break;
       case CAT_COIN:
         lines = buildCoinDetail();

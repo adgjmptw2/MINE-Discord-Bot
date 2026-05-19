@@ -390,3 +390,15 @@ export const coinAchievementRewards = sqliteTable(
     ),
   }),
 );
+
+export const fortuneProfiles = sqliteTable("fortune_profiles", {
+  userId: text("user_id").primaryKey(),
+  profileCiphertext: text("profile_ciphertext").notNull(),
+  profileIv: text("profile_iv").notNull(),
+  profileTag: text("profile_tag").notNull(),
+  keyVersion: integer("key_version").notNull().default(1),
+  privacyNoticeVersion: text("privacy_notice_version").notNull(),
+  consentedAt: text("consented_at").notNull(),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});

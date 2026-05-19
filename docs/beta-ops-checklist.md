@@ -13,7 +13,7 @@
 - [ ] 장시간 재생 중 **java**(Lavalink) 프로세스 메모리 사용량 확인
 - [ ] `npm run check` 성공
 - [ ] `npm run build` 성공
-- [ ] `npm run start:bot` 성공
+- [ ] `npm run start:bot` 성공 (로컬 Lavalink 한 터미널이면 `LAVALINK_JAR_DIR` 설정 후 `npm run start:all` 로 대체 가능)
 
 ## Discord 확인
 

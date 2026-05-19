@@ -9,6 +9,7 @@ import {
   handleSoundroomQueueMoveModalSubmit,
   handleSoundroomQueuePanelInteraction,
 } from "@/handlers/soundroomQueuePanel";
+import { handleFortuneInteraction } from "@/handlers/fortuneInteractions";
 import {
   handleSoundroomButton,
   handleSoundroomModal,
@@ -103,6 +104,11 @@ export default function registerInteractionCreate(client: MineClient): void {
       if (handled) {
         return;
       }
+      if (interaction.customId.startsWith("fortune_")) {
+        if (await handleFortuneInteraction(client, interaction)) {
+          return;
+        }
+      }
     }
 
     if (
@@ -121,6 +127,12 @@ export default function registerInteractionCreate(client: MineClient): void {
     if (interaction.isButton() && interaction.customId.startsWith("sr_")) {
       await handleSoundroomButton(client, interaction);
       return;
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith("fortune_")) {
+      if (await handleFortuneInteraction(client, interaction)) {
+        return;
+      }
     }
 
     if (interaction.isButton() && interaction.customId.startsWith("player_")) {

@@ -353,6 +353,18 @@ sqlite.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_coin_achievement_rewards_guild_user
     ON coin_achievement_rewards (guild_id, user_id);
+
+  CREATE TABLE IF NOT EXISTS fortune_profiles (
+    user_id TEXT PRIMARY KEY,
+    profile_ciphertext TEXT NOT NULL,
+    profile_iv TEXT NOT NULL,
+    profile_tag TEXT NOT NULL,
+    key_version INTEGER NOT NULL DEFAULT 1,
+    privacy_notice_version TEXT NOT NULL,
+    consented_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
 `);
 
 export const db = sqlite;

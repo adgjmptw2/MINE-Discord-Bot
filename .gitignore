@@ -14,3 +14,10 @@ dist/
 *.log
 *.tsbuildinfo
 .DS_Store
+.cursor/
+
+# Lavalink 런타임(JAR는 릴리스에서 받음)
+lavalink/Lavalink.jar
+lavalink/plugins/*.jar
+lavalink/logs/
+lavalink/application.yml

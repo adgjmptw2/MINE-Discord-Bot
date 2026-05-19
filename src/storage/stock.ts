@@ -7,7 +7,11 @@ import {
   type CoinAchievement,
   type CoinAchievementCategory,
 } from "@/settings/coinAchievements";
-import { getKstDayUtcIsoBounds } from "@/utils/date";
+import {
+  addKstCalendarDays,
+  getKstMonthCalendarBounds,
+  getKstDayUtcIsoBounds,
+} from "@/utils/date";
 import { log } from "@/utils/logger";
 
 export const STOCK_QUANTITY_SCALE = 1_000_000;
@@ -732,12 +736,85 @@ export function updateCoinGuildSettings(
   };
 }
 
+/** 7·14·30일 연속 출석 달성 시 추가 지급 (코인) */
+const ATTENDANCE_STREAK_BONUS_7 = 3_000;
+const ATTENDANCE_STREAK_BONUS_14 = 5_000;
+const ATTENDANCE_STREAK_BONUS_30 = 10_000;
+
+function streakBonusForConsecutiveDays(streak: number): number {
+  if (streak === 7) return ATTENDANCE_STREAK_BONUS_7;
+  if (streak === 14) return ATTENDANCE_STREAK_BONUS_14;
+  if (streak === 30) return ATTENDANCE_STREAK_BONUS_30;
+  return 0;
+}
+
+function hasStockAttendance(
+  guildId: string,
+  userId: string,
+  date: string,
+): boolean {
+  const r = db.get<{ n: number }>(
+    `SELECT COUNT(*) AS n FROM stock_daily_attendance WHERE guild_id = ? AND user_id = ? AND date = ?`,
+    [guildId, userId, date],
+  );
+  return Number(r?.n ?? 0) > 0;
+}
+
+/** KST `asOfDate` 기준 연속 출석 일수(오늘 미출석이면 어제까지의 연속). */
+export function computeAttendanceStreak(
+  guildId: string,
+  userId: string,
+  asOfDate: string,
+): number {
+  if (hasStockAttendance(guildId, userId, asOfDate)) {
+    let count = 0;
+    let d = asOfDate;
+    while (hasStockAttendance(guildId, userId, d)) {
+      count++;
+      d = addKstCalendarDays(d, -1);
+    }
+    return count;
+  }
+  let count = 0;
+  let d = addKstCalendarDays(asOfDate, -1);
+  while (hasStockAttendance(guildId, userId, d)) {
+    count++;
+    d = addKstCalendarDays(d, -1);
+  }
+  return count;
+}
+
+/** KST `kstNow`가 속한 달에 출석한 날짜 `YYYY-MM-DD` 목록(오름차순). */
+export function listStockAttendanceDatesInMonth(
+  guildId: string,
+  userId: string,
+  kstNow: Date = new Date(),
+): string[] {
+  const { firstYmd, lastYmd } = getKstMonthCalendarBounds(kstNow);
+  const rows = db.all<{ date: string }>(
+    `SELECT date FROM stock_daily_attendance
+     WHERE guild_id = ? AND user_id = ? AND date >= ? AND date <= ?
+     ORDER BY date ASC`,
+    [guildId, userId, firstYmd, lastYmd],
+  );
+  return rows.map((r) => r.date);
+}
+
+export interface RecordStockAttendanceResult {
+  alreadyClaimed: boolean;
+  wallet: StockWallet;
+  /** 기본 출석 보상(서버 설정). 이미 출석한 날에도 설정값을 돌려 UI 호환용으로 둔다. */
+  rewardAmount: number;
+  streakDays: number;
+  streakBonusAmount: number;
+}
+
 export function recordStockAttendance(
   guildId: string,
   userId: string,
   date: string,
   rewardAmount = DAILY_ATTENDANCE_REWARD,
-): { alreadyClaimed: boolean; wallet: StockWallet; rewardAmount: number } {
+): RecordStockAttendanceResult {
   db.run("BEGIN IMMEDIATE");
   try {
     const dup = db.get<{ n: number }>(
@@ -750,8 +827,15 @@ export function recordStockAttendance(
     if (already) {
       ensureWalletRow(guildId, userId, now);
       const w = getWalletRow(guildId, userId)!;
+      const streakDays = computeAttendanceStreak(guildId, userId, date);
       db.run("COMMIT");
-      return { alreadyClaimed: true, wallet: mapWallet(w), rewardAmount };
+      return {
+        alreadyClaimed: true,
+        wallet: mapWallet(w),
+        rewardAmount,
+        streakDays,
+        streakBonusAmount: 0,
+      };
     }
 
     ensureWalletRow(guildId, userId, now);
@@ -768,9 +852,29 @@ export function recordStockAttendance(
        VALUES (?, ?, ?, ?, ?)`,
       [guildId, userId, date, rewardAmount, now],
     );
+
+    const streakDays = computeAttendanceStreak(guildId, userId, date);
+    const streakBonusAmount = streakBonusForConsecutiveDays(streakDays);
+    if (streakBonusAmount > 0) {
+      db.run(
+        `UPDATE stock_wallets
+         SET cash_balance = cash_balance + ?,
+             total_deposit = total_deposit + ?,
+             updated_at = ?
+         WHERE guild_id = ? AND user_id = ?`,
+        [streakBonusAmount, streakBonusAmount, now, guildId, userId],
+      );
+    }
+
     const updated = getWalletRow(guildId, userId)!;
     db.run("COMMIT");
-    return { alreadyClaimed: false, wallet: mapWallet(updated), rewardAmount };
+    return {
+      alreadyClaimed: false,
+      wallet: mapWallet(updated),
+      rewardAmount,
+      streakDays,
+      streakBonusAmount,
+    };
   } catch (e) {
     db.run("ROLLBACK");
     throw e;

@@ -31,6 +31,9 @@ npm run start:bot
 
 - **`.env`** 가 필요합니다. (`.env.example` 참고)
 - **Lavalink** 가 먼저 떠 있어야 음악 기능이 정상 동작합니다.
+- 한 터미널에서 켜려면 **`LAVALINK_JAR_DIR`**( `Lavalink.jar` 가 있는 폴더의 **절대 경로** )를 `.env`에 넣은 뒤 `npm run start:all` 을 사용합니다. 스크립트가 Lavalink를 띄운 뒤 **TCP 포트가 열릴 때까지** 기다렸다가 봇을 시작합니다.
+- Lavalink만 켜려면 같은 변수를 채운 뒤 `npm run start:lavalink` 입니다.
+- Lavalink를 다른 머신이나 Docker에 두었다면 **`LAVALINK_HOST`가 localhost가 아닐 수 있어** `start:all`은 사용할 수 없습니다. 그때는 Lavalink를 먼저 기동한 다음 **다른 터미널**에서 `npm run start:bot` 하세요.
 - SQLite는 기본적으로 **`storage/mine.sqlite`** 를 사용합니다. (`storage/` 디렉터리는 봇이 필요 시 생성합니다.)
 
 ## VM 배포 준비
@@ -70,6 +73,8 @@ OS별 설치 명령은 공식 문서가 가장 정확합니다. **Ubuntu 계열*
 | `LAVALINK_PASSWORD` | Lavalink 비밀번호 |
 | `LAVALINK_SECURE` | WSS 사용 여부 |
 | `LAVALINK_ENGINE` | 검색 엔진(예: `ytsearch`) |
+| `LAVALINK_JAR_DIR` | `Lavalink.jar` 가 있는 디렉터리 절대 경로 (`start:lavalink` / `start:all` 에 필요) |
+| `LAVALINK_JAVA_OPTS` | (선택) JVM 옵션 문자열. 미설정 시 `-Xms512m -Xmx1536m` |
 | `SHARD_COUNT` / `SHARD_LIST` | (선택) 샤딩 |
 | `STOCK_PRICE_PROVIDER` | `mock` \| `yahoo` \| `twelvedata` |
 | `STOCK_PRICE_REFRESH_INTERVAL_MS` | (선택) interval 모드 갱신 주기 |
@@ -135,7 +140,7 @@ cp storage/mine.sqlite storage/mine.sqlite.bak
 
 ## 재시작 전략
 
-- 개발 중: `npm run start:bot` (스크립트가 빌드 후 `node dist/index.js` 실행)
+- 개발 중: `npm run start:bot` (스크립트가 빌드 후 `node dist/index.js` 실행). 로컬 Lavalink까지 한 터미널이면 `LAVALINK_JAR_DIR` 설정 후 `npm run start:all`.
 - 운영: **pm2** 또는 **systemd** 권장(프로세스 재시작·로그)
 
 이 레포에는 **운영용 unit 파일·Docker Compose는 포함하지 않습니다.** 아래는 **예시**입니다.

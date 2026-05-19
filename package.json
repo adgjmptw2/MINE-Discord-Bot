@@ -13,6 +13,8 @@
     "build": "tsc --project tsconfig.json && tsc-alias -p tsconfig.json",
     "start": "npm run build && node dist/launcher.js",
     "start:bot": "npm run build && node dist/index.js",
+    "start:lavalink": "node scripts/run-lavalink.js",
+    "start:all": "npm run build && node scripts/start-all.js",
     "start:bun": "bun run build && bun dist/launcher.js",
     "start:bot:bun": "bun run build && bun dist/index.js",
     "typecheck": "tsc --project tsconfig.json --noEmit",

@@ -1,74 +1,73 @@
 import type { MineClient } from "@/types";
 import { log } from "@/utils/logger";
 
-const reconnectTimers = new Map<string, NodeJS.Timeout>();
-const reconnectDelayMs = 5_000;
-const maxAttempts = 12;
+type RiffyNodeLike = {
+  name?: string;
+  options?: {
+    name?: string;
+    identifier?: string;
+    host?: string;
+    port?: number;
+  };
+};
+
+function getRiffyNodeLabel(node: unknown): string {
+  const n = node as RiffyNodeLike;
+  if (typeof n.name === "string" && n.name.trim() !== "") {
+    return n.name;
+  }
+  const opt = n.options;
+  if (opt) {
+    if (typeof opt.name === "string" && opt.name.trim() !== "") {
+      return opt.name;
+    }
+    if (typeof opt.identifier === "string" && opt.identifier.trim() !== "") {
+      return opt.identifier;
+    }
+    if (typeof opt.host === "string" && opt.host.trim() !== "") {
+      const port = typeof opt.port === "number" ? opt.port : "unknown-port";
+      return `${opt.host}:${port}`;
+    }
+  }
+  return "unknown";
+}
+
+function disconnectCloseSummary(reason: unknown): string {
+  if (reason === null || reason === undefined) {
+    return "";
+  }
+  if (typeof reason === "object") {
+    const o = reason as Record<string, unknown>;
+    const parts: string[] = [];
+    if (typeof o.event === "number") {
+      parts.push(`event=${o.event}`);
+    }
+    if (typeof o.code === "number") {
+      parts.push(`code=${o.code}`);
+    }
+    if (Buffer.isBuffer(o.reason)) {
+      parts.push(
+        o.reason.length === 0
+          ? "reason=(empty buffer)"
+          : `reason=${o.reason.toString("utf8") || "(binary)"}`,
+      );
+    } else if (typeof o.reason === "string" && o.reason !== "") {
+      parts.push(`reason=${o.reason}`);
+    }
+    return parts.length > 0 ? ` (${parts.join(", ")})` : "";
+  }
+  return "";
+}
 
 export default function registerNodeDisconnect(client: MineClient): void {
   client.riffy.on("nodeDisconnect", (node, reason) => {
-    const reconnectableNode = node as {
-      options?: { identifier?: string };
-      connect?: () => Promise<void> | void;
-    };
-    const identifier = reconnectableNode.options?.identifier ?? "unknown";
-    log("warn", "riffy", `Node disconnected: ${identifier}`, reason);
-
-    if (typeof reconnectableNode.connect !== "function") {
-      log(
-        "warn",
-        "riffy",
-        `Node ${identifier} does not expose connect(); skipping auto-reconnect.`,
-      );
-      return;
-    }
-
-    const active = reconnectTimers.get(identifier);
-    if (active) {
-      clearTimeout(active);
-      reconnectTimers.delete(identifier);
-    }
-
-    let attempt = 0;
-
-    const tryReconnect = () => {
-      const timer = setTimeout(async () => {
-        attempt += 1;
-
-        try {
-          await reconnectableNode.connect?.();
-          log(
-            "success",
-            "riffy",
-            `Node reconnect successful: ${identifier} (attempt ${attempt})`,
-          );
-          reconnectTimers.delete(identifier);
-          return;
-        } catch (error) {
-          log(
-            "warn",
-            "riffy",
-            `Node reconnect failed: ${identifier} (attempt ${attempt})`,
-            error,
-          );
-        }
-
-        if (attempt >= maxAttempts) {
-          reconnectTimers.delete(identifier);
-          log(
-            "error",
-            "riffy",
-            `Node reconnect exhausted for ${identifier} after ${maxAttempts} attempts`,
-          );
-          return;
-        }
-
-        tryReconnect();
-      }, reconnectDelayMs);
-
-      reconnectTimers.set(identifier, timer);
-    };
-
-    tryReconnect();
+    const nodeLabel = getRiffyNodeLabel(node);
+    const summary = disconnectCloseSummary(reason);
+    log(
+      "warn",
+      "riffy",
+      `Node disconnected: ${nodeLabel}${summary}. Waiting for Riffy internal reconnect (no manual connect).`,
+      reason,
+    );
   });
 }

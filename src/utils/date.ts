@@ -34,6 +34,38 @@ export function getKstDayUtcIsoBounds(kstYmd: string): {
   };
 }
 
+/** KST 달력 `YYYY-MM-DD`에 `deltaDays`만큼 더한 날짜(동일 `YYYY-MM-DD` 표기). */
+export function addKstCalendarDays(ymd: string, deltaDays: number): string {
+  const { startIso } = getKstDayUtcIsoBounds(ymd);
+  const t = new Date(startIso).getTime() + deltaDays * 86_400_000;
+  return getKstDateString(new Date(t));
+}
+
+/** KST 기준 `now`가 속한 달의 첫날·마지막 날 `YYYY-MM-DD`. */
+export function getKstMonthCalendarBounds(now = new Date()): {
+  year: string;
+  month: string;
+  firstYmd: string;
+  lastYmd: string;
+} {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(now);
+  const year = parts.find((p) => p.type === "year")?.value ?? "1970";
+  const month = parts.find((p) => p.type === "month")?.value ?? "01";
+  const firstYmd = `${year}-${month}-01`;
+  const yNum = Number(year);
+  const mNum = Number(month);
+  const nextFirst =
+    mNum === 12
+      ? `${yNum + 1}-01-01`
+      : `${yNum}-${String(mNum + 1).padStart(2, "0")}-01`;
+  const lastYmd = addKstCalendarDays(nextFirst, -1);
+  return { year, month, firstYmd, lastYmd };
+}
+
 /** KST 기준 자정부터의 경과 분 (0–1439) */
 export function getKstMinutesOfDay(date = new Date()): number {
   const parts = new Intl.DateTimeFormat("en-GB", {
