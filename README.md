@@ -1,38 +1,63 @@
 # 마인 Discord 봇
 
-개인 서버에서 쓰기 좋게 다듬은 Discord 음악 봇입니다.
+**MINE봇**은 개인 서버에서 쓰기 좋게 만든 음악·코인 경제 디스코드 봇입니다.
 
-전용 노래 채널(Soundroom) 중심으로 재생합니다.
+전용 노래 채널인 **Soundroom**을 중심으로 음악을 재생하고, 서버 안에서 사용할 수 있는 가상 코인 경제 기능을 함께 제공합니다.
 
-플레이리스트·인기차트·슬래시 명령 일부만 남긴 가벼운 구성입니다.
+![Soundroom 미리보기](docs/readme-soundroom-panel.png)
 
-## 스크린샷
+### 주요 기능
 
-- `docs/readme-soundroom-panel.png` — 노래 채널(Soundroom) 패널
-- `docs/readme-player-and-queue.png` — 지금 재생 중 · 대기열
-- `docs/readme-mock-investment-stocks.png` — 모의투자 종목 목록
+🎵 **음악 / Soundroom**
 
-노래 채널 패널
+- `/세팅`으로 노래 전용 채널과 컨트롤 패널을 만듭니다.
+- 전용 노래 채널 기반 음악 재생
+- 플레이리스트 기능
+- 인기차트 관리 기능
 
-![노래 채널 패널](docs/readme-soundroom-panel.png)
+![음악 기능 미리보기](docs/readme-player-and-queue.png)
 
-지금 재생 중 · 대기열
+🪙 **코인 경제**
 
-![지금 재생 중 · 대기열](docs/readme-player-and-queue.png)
+- `/출석`, `/알바`, `/낚시`로 코인 획득
+- `/자산`, `/프로필`, `/랭킹`으로 내 상태 확인
+- `/미션`, `/업적`으로 활동 보상 획득
 
-모의투자 종목
+![주식·자산 미리보기](docs/readme-mock-investment-stocks.png)
 
-![모의투자 종목](docs/readme-mock-investment-stocks.png)
+📈 **주식 모의투자**
 
-## 기능
+- 코인으로 국내 인기 종목을 매수·매도
+- 시세는 설정한 Provider(예: yahoo, mock 등)에서 가져옵니다.
+- `/주식목록`, `/시세`, `/매수`, `/매도`, `/주식자산`
+- 실제 투자용이 아닌 서버 내 모의투자 게임입니다.
+- 매수·매도 시간을 KST 평일 창으로 제한할 수 있습니다(`.env`).
 
-- 노래 채널
-- 플레이리스트
-- 인기차트
-- SQLite 저장소
-- 주식 모의투자 게임
+🎮 **미니게임 / 상점**
 
-문서: [배포 가이드](docs/deployment.md) · [베타 운영 체크리스트](docs/beta-ops-checklist.md)
+- `/가위바위보`로 코인 게임
+- `/상점`, `/구매`, `/내아이템`
+- 칭호 구매·장착, 프로필·랭킹 표시
+
+🏆 **시즌 / 관리자 기능**
+
+- 서버 코인 랭킹 시즌 관리
+- 코인 지급·차감, 유저 초기화, 서버 초기화
+- `/상태`, `/도움말`로 운영 상태와 명령어 확인
+
+🔮 **오늘의 운세**
+
+- `/오늘운세`로 저장형(프로필 저장) 또는 일회용 재미용 운세를 확인합니다.
+- 오늘의 흐름·대인운·코인운·게임운 등과 행운 키워드·색·숫자를 보여 줍니다.
+- 저장형을 쓰려면 봇 호스트가 `FORTUNE_PROFILE_ENCRYPTION_KEY_BASE64`를 설정해야 합니다(`.env.example` 참고).
+
+![오늘의 운세 미리보기](docs/readme-fortune-panel.png)
+
+운세 프로필(저장형)이 어떤 데이터를 다루는지는 **[개인정보 안내](docs/PRIVACY.md)** 를 참고하세요.
+
+MINE의 코인, 주식, 게임 기능은 모두 **서버 내 가상 기능**이며 실제 돈, 환전, 현물 보상과는 관련이 없습니다.
+
+문서: [배포 가이드](docs/deployment.md) · [베타 운영 체크리스트](docs/beta-ops-checklist.md) · [개인정보 안내](docs/PRIVACY.md)
 
 ## 주식 모의투자 게임
 
@@ -66,6 +91,8 @@ mock / yahoo / twelvedata 등으로 교체할 수 있습니다.
 | --- | --- |
 | /도움말 | 봇의 주요 명령어와 사용법을 확인합니다 |
 | /상태 | 봇의 주요 운영 상태를 확인합니다 |
+| /오늘운세 | 저장형 또는 일회용으로 재미용 오늘의 운세를 확인합니다 |
+| /세팅 | Soundroom 전용 음악 채널과 컨트롤 패널을 생성합니다 |
 | /출석 | 하루 1회 가상 화폐를 받습니다 |
 | /알바 | 일정 시간마다 알바를 해서 코인을 법니다 |
 | /낚시 | 일정 시간마다 낚시를 해서 코인을 법니다 |
@@ -101,6 +128,7 @@ mock / yahoo / twelvedata 등으로 교체할 수 있습니다.
 
 | 변수 | 설명 |
 | --- | --- |
+| FORTUNE_PROFILE_ENCRYPTION_KEY_BASE64 | 저장형 `/오늘운세` 프로필 암호화(AES-256-GCM). 32바이트를 Base64로 인코딩한 값. 비우면 일회용만 가능 |
 | STOCK_PRICE_PROVIDER | mock, yahoo, twelvedata 중 하나 |
 | STOCK_PRICE_REFRESH_INTERVAL_MS | 기본 300000ms, 5분 (`interval` 모드에서 사용) |
 | STOCK_PRICE_REFRESH_MODE | `interval`(기본) 또는 `scheduled-close` |
