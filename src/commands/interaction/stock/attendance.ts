@@ -37,20 +37,26 @@ function kstFirstOfMonthWeekdaySun0(firstYmd: string): number {
   return map[w] ?? 0;
 }
 
-function buildAttendanceCalendarLines(
+function buildAttendanceCalendarBlock(
   attended: ReadonlySet<string>,
   year: string,
   month: string,
   firstYmd: string,
   lastYmd: string,
-): string[] {
+): string {
+  const R = "\u001b[1;31m";
+  const G = "\u001b[1;32m";
+  const B = "\u001b[1;34m";
+  const D = "\u001b[2;37m";
+  const Z = "\u001b[0m";
+
   const lastDay = Number(lastYmd.slice(8, 10));
   const pad = kstFirstOfMonthWeekdaySun0(firstYmd);
-  const out: string[] = [
-    "```text",
-    "Sun Mon Tue Wed Thu Fri Sat",
-    "---------------------------",
-  ];
+  const header = `${R}Sun${Z} ${G}Mon Tue Wed Thu Fri${Z} ${B}Sat${Z}`;
+  const rule = `${D}───────────────────────────${Z}`;
+
+  const rows: string[] = [];
+
   const slots: string[] = [];
   for (let i = 0; i < pad; i++) {
     slots.push("   ");
@@ -64,16 +70,16 @@ function buildAttendanceCalendarLines(
     slots.push("   ");
   }
   for (let i = 0; i < slots.length; i += 7) {
-    out.push(
+    rows.push(
       slots
         .slice(i, i + 7)
-        .map((s) => s.padEnd(4, " "))
-        .join("")
+        .map((s) => s.padEnd(3, " "))
+        .join(" ")
         .trimEnd(),
     );
   }
-  out.push("```");
-  return out;
+
+  return ["```ansi", header, rule, ...rows, "```"].join("\n");
 }
 
 const command: SlashCommand = {
@@ -117,7 +123,7 @@ const command: SlashCommand = {
     const monthDates = listStockAttendanceDatesInMonth(guildId, userId, now);
     const attended = new Set(monthDates);
     const { year, month, firstYmd, lastYmd } = getKstMonthCalendarBounds(now);
-    const calendarLines = buildAttendanceCalendarLines(
+    const calendarBlock = buildAttendanceCalendarBlock(
       attended,
       year,
       month,
@@ -125,20 +131,12 @@ const command: SlashCommand = {
       lastYmd,
     );
 
-    const footerLines = [
-      "",
-      "_※ 출석 보상은 서버 내 가상 코인입니다. 실제 돈·환전·현물 보상과 무관합니다._",
-      "_※ 코인은 서버 안에서만 쓰는 게임 재화입니다._",
-    ];
-
     if (result.alreadyClaimed) {
       const lines: string[] = [
         `연속 출석: **${result.streakDays}**일`,
         `현금 잔고: **${cash}** 코인`,
-        "",
         "**이번 달 출석**",
-        ...calendarLines,
-        ...footerLines,
+        calendarBlock,
       ];
       await interaction.reply(
         panelReply({
@@ -161,7 +159,7 @@ const command: SlashCommand = {
           `추가 보상: +${result.streakBonusAmount.toLocaleString("ko-KR")} 코인`,
         );
       }
-      lines.push(`현금 잔고: **${cash}** 코인`, "", "**이번 달 출석**", ...calendarLines, ...footerLines);
+      lines.push(`현금 잔고: **${cash}** 코인`, "**이번 달 출석**", calendarBlock);
 
       await interaction.reply(
         panelReply({

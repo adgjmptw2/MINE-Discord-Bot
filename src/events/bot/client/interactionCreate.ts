@@ -9,6 +9,7 @@ import {
   handleSoundroomQueueMoveModalSubmit,
   handleSoundroomQueuePanelInteraction,
 } from "@/handlers/soundroomQueuePanel";
+import { handleCoinShopButton } from "@/handlers/coinShopInteractions";
 import { handleFortuneInteraction } from "@/handlers/fortuneInteractions";
 import {
   handleSoundroomButton,
@@ -133,6 +134,11 @@ export default function registerInteractionCreate(client: MineClient): void {
       if (await handleFortuneInteraction(client, interaction)) {
         return;
       }
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith("coin_shop:pg:")) {
+      await handleCoinShopButton(interaction);
+      return;
     }
 
     if (interaction.isButton() && interaction.customId.startsWith("player_")) {

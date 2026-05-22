@@ -24,6 +24,8 @@ export interface PanelOptions {
   lines?: string[];
   imageUrl?: string;
   subtle?: boolean;
+  /** Components V2 컨테이너 왼쪽 액센트 색(RGB 정수). 미지정 시 기존과 동일. */
+  accentColor?: number;
 }
 
 export interface PanelMessageOptions {
@@ -91,6 +93,9 @@ export function truncate(value: string, maxLength: number): string {
 
 export function buildPanel(options: PanelOptions): ContainerBuilder {
   const container = new ContainerBuilder();
+  if (options.accentColor !== undefined) {
+    container.setAccentColor(options.accentColor);
+  }
   const bodyLines = options.lines?.filter(Boolean) ?? [];
   const eyebrow = options.eyebrow ? `### ${options.eyebrow}\n` : "";
   const header = `${eyebrow}## ${options.title}`;

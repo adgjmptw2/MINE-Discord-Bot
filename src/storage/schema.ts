@@ -391,6 +391,89 @@ export const coinAchievementRewards = sqliteTable(
   }),
 );
 
+export const coinSwords = sqliteTable(
+  "coin_swords",
+  {
+    guildId: text("guild_id").notNull(),
+    userId: text("user_id").notNull(),
+    level: integer("level").notNull().default(0),
+    totalAttempts: integer("total_attempts").notNull().default(0),
+    successCount: integer("success_count").notNull().default(0),
+    failCount: integer("fail_count").notNull().default(0),
+    downgradeCount: integer("downgrade_count").notNull().default(0),
+    destroyCount: integer("destroy_count").notNull().default(0),
+    highestLevel: integer("highest_level").notNull().default(0),
+    lastEnhancedAt: text("last_enhanced_at"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.guildId, table.userId] }),
+    guildLevel: index("idx_coin_swords_guild_level").on(
+      table.guildId,
+      table.level,
+      table.highestLevel,
+    ),
+    guildUser: index("idx_coin_swords_guild_user").on(
+      table.guildId,
+      table.userId,
+    ),
+  }),
+);
+
+export const coinDungeonRuns = sqliteTable(
+  "coin_dungeon_runs",
+  {
+    guildId: text("guild_id").notNull(),
+    userId: text("user_id").notNull(),
+    date: text("date").notNull(),
+    swordLevel: integer("sword_level").notNull(),
+    rewardAmount: integer("reward_amount").notNull(),
+    balanceAfter: integer("balance_after").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.guildId, table.userId, table.date],
+    }),
+    guildDate: index("idx_coin_dungeon_runs_guild_date").on(
+      table.guildId,
+      table.date,
+    ),
+    guildUserTime: index("idx_coin_dungeon_runs_guild_user_time").on(
+      table.guildId,
+      table.userId,
+      table.createdAt,
+    ),
+  }),
+);
+
+export const coinConsumableItems = sqliteTable(
+  "coin_consumable_items",
+  {
+    guildId: text("guild_id").notNull(),
+    userId: text("user_id").notNull(),
+    itemKey: text("item_key").notNull(),
+    itemName: text("item_name").notNull(),
+    quantity: integer("quantity").notNull().default(0),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.guildId, table.userId, table.itemKey],
+    }),
+    guildUser: index("idx_coin_consumable_items_guild_user").on(
+      table.guildId,
+      table.userId,
+    ),
+    guildItem: index("idx_coin_consumable_items_guild_item").on(
+      table.guildId,
+      table.itemKey,
+    ),
+  }),
+);
+
 export const fortuneProfiles = sqliteTable("fortune_profiles", {
   userId: text("user_id").primaryKey(),
   profileCiphertext: text("profile_ciphertext").notNull(),

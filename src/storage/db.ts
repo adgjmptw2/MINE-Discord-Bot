@@ -354,6 +354,62 @@ sqlite.exec(`
   CREATE INDEX IF NOT EXISTS idx_coin_achievement_rewards_guild_user
     ON coin_achievement_rewards (guild_id, user_id);
 
+  CREATE TABLE IF NOT EXISTS coin_swords (
+    guild_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    level INTEGER NOT NULL DEFAULT 0 CHECK (level >= 0 AND level <= 20),
+    total_attempts INTEGER NOT NULL DEFAULT 0,
+    success_count INTEGER NOT NULL DEFAULT 0,
+    fail_count INTEGER NOT NULL DEFAULT 0,
+    downgrade_count INTEGER NOT NULL DEFAULT 0,
+    destroy_count INTEGER NOT NULL DEFAULT 0,
+    highest_level INTEGER NOT NULL DEFAULT 0,
+    last_enhanced_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (guild_id, user_id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_coin_swords_guild_level
+    ON coin_swords (guild_id, level DESC, highest_level DESC);
+
+  CREATE INDEX IF NOT EXISTS idx_coin_swords_guild_user
+    ON coin_swords (guild_id, user_id);
+
+  CREATE TABLE IF NOT EXISTS coin_dungeon_runs (
+    guild_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    date TEXT NOT NULL,
+    sword_level INTEGER NOT NULL,
+    reward_amount INTEGER NOT NULL,
+    balance_after INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (guild_id, user_id, date)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_coin_dungeon_runs_guild_date
+    ON coin_dungeon_runs (guild_id, date);
+
+  CREATE INDEX IF NOT EXISTS idx_coin_dungeon_runs_guild_user_time
+    ON coin_dungeon_runs (guild_id, user_id, created_at DESC);
+
+  CREATE TABLE IF NOT EXISTS coin_consumable_items (
+    guild_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    item_key TEXT NOT NULL,
+    item_name TEXT NOT NULL,
+    quantity INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (guild_id, user_id, item_key)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_coin_consumable_items_guild_user
+    ON coin_consumable_items (guild_id, user_id);
+
+  CREATE INDEX IF NOT EXISTS idx_coin_consumable_items_guild_item
+    ON coin_consumable_items (guild_id, item_key);
+
   CREATE TABLE IF NOT EXISTS fortune_profiles (
     user_id TEXT PRIMARY KEY,
     profile_ciphertext TEXT NOT NULL,

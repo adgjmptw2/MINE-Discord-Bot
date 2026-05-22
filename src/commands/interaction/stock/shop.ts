@@ -1,9 +1,7 @@
 import { MessageFlags } from "discord.js";
-import { getCoinShopItems } from "@/settings/coinShopItems";
+import { buildCoinShopPanelOptions } from "@/handlers/coinShopInteractions";
 import { panelReply } from "@/utils/discord";
 import type { MineClient, SlashCommand } from "@/types";
-
-const NO_MENTION = { parse: [] as const };
 
 const command: SlashCommand = {
   name: "상점",
@@ -20,28 +18,7 @@ const command: SlashCommand = {
       return;
     }
 
-    const items = getCoinShopItems();
-    const lines: string[] = [];
-    for (let i = 0; i < items.length; i++) {
-      const it = items[i]!;
-      const n = i + 1;
-      lines.push(`${n}. ${it.name}`);
-      lines.push(`가격: \`${it.price.toLocaleString("ko-KR")} 코인\``);
-      lines.push(`설명: ${it.description}`);
-      lines.push("");
-    }
-    lines.push("구매:", "`/구매 아이템:초보 투자자`");
-
-    await interaction.reply(
-      panelReply({
-        ephemeral: false,
-        panel: {
-          title: "🛒 코인 상점",
-          lines,
-        },
-        allowedMentions: NO_MENTION,
-      }),
-    );
+    await interaction.reply(panelReply(buildCoinShopPanelOptions(0)));
   },
 };
 

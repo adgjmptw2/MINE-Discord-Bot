@@ -33,6 +33,7 @@ const command: SlashCommand = {
       await interaction.reply({
         content: "서버에서만 사용할 수 있습니다.",
         flags: MessageFlags.Ephemeral,
+        allowedMentions: NO_MENTION,
       });
       return;
     }
@@ -47,6 +48,7 @@ const command: SlashCommand = {
         content:
           "상점에 없는 아이템입니다.\n`/상점`에서 목록과 이름을 확인해 주세요.",
         flags: MessageFlags.Ephemeral,
+        allowedMentions: NO_MENTION,
       });
       return;
     }
@@ -56,17 +58,24 @@ const command: SlashCommand = {
       const priceStr = `\`${r.item.price.toLocaleString("ko-KR")} 코인\``;
       const balStr = `\`${r.balanceAfter.toLocaleString("ko-KR")} 코인\``;
 
+      const isTitle = r.item.itemType === "TITLE";
+      const purchaseLine = isTitle
+        ? `<@${userId}>님이 \`${r.item.name}\` 칭호를 구매했습니다.`
+        : `<@${userId}>님이 \`${r.item.name}\` 소비 아이템을 구매했습니다.`;
+      const lines: string[] = [purchaseLine, "", `가격: ${priceStr}`];
+      if (!isTitle && r.consumableQuantityAfter !== undefined) {
+        lines.push(
+          `보유 수량: \`${r.consumableQuantityAfter.toLocaleString("ko-KR")}개\``,
+        );
+      }
+      lines.push(`남은 잔액: ${balStr}`);
+
       await interaction.reply(
         panelReply({
           ephemeral: false,
           panel: {
             title: "🛒 구매 완료",
-            lines: [
-              `<@${userId}>님이 \`${r.item.name}\` 칭호를 구매했습니다.`,
-              "",
-              `가격: ${priceStr}`,
-              `남은 잔액: ${balStr}`,
-            ],
+            lines,
           },
           allowedMentions: NO_MENTION,
         }),
@@ -77,6 +86,7 @@ const command: SlashCommand = {
           await interaction.reply({
             content: "먼저 /출석으로 코인을 받아주세요.",
             flags: MessageFlags.Ephemeral,
+            allowedMentions: NO_MENTION,
           });
           return;
         }
@@ -84,6 +94,7 @@ const command: SlashCommand = {
           await interaction.reply({
             content: "코인이 부족합니다.",
             flags: MessageFlags.Ephemeral,
+            allowedMentions: NO_MENTION,
           });
           return;
         }
@@ -91,6 +102,7 @@ const command: SlashCommand = {
           await interaction.reply({
             content: "이미 보유한 아이템입니다.",
             flags: MessageFlags.Ephemeral,
+            allowedMentions: NO_MENTION,
           });
           return;
         }
@@ -99,6 +111,7 @@ const command: SlashCommand = {
             content:
               "상점에 없는 아이템입니다.\n`/상점`에서 목록을 확인해 주세요.",
             flags: MessageFlags.Ephemeral,
+            allowedMentions: NO_MENTION,
           });
           return;
         }

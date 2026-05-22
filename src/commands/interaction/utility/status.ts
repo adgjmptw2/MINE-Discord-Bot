@@ -6,14 +6,13 @@ import {
   type InteractionReplyOptions,
 } from "discord.js";
 import { panelReply } from "@/utils/discord";
-import { formatKstMinutesAsClock } from "@/utils/date";
 import { formatMemory, truncateText } from "@/utils/runtimeFormat";
-import { formatCoin, formatStockRefreshTime } from "@/utils/stockFormat";
+import { formatStockRefreshTime } from "@/utils/stockFormat";
 import { checkDatabaseHealth } from "@/storage/db";
-import { getOrCreateCoinGuildSettings } from "@/storage/stock";
 import type { MineClient, SlashCommand } from "@/types";
 
 const NO_MENTION = { parse: [] as const };
+const STATUS_ACCENT_GREEN = 0x22c55e;
 
 function replyToEditOptions(
   r: InteractionReplyOptions,
@@ -30,29 +29,18 @@ function safeNumber(value: unknown, fallback = 0): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
-function formatPercent(value: number): string {
-  return `${Math.min(100, Math.max(0, value)).toFixed(1)}%`;
-}
-
-function buildUsageBar(percent: number, size = 12): string {
-  const p = Math.min(100, Math.max(0, percent));
-  const filled = Math.round((p / 100) * size);
-  const f = Math.min(size, Math.max(0, filled));
-  return `${"█".repeat(f)}${"░".repeat(size - f)} ${formatPercent(p)}`;
-}
-
-function formatLatencyLine(ms: number): string {
+function formatLatencyShort(ms: number): string {
   if (!Number.isFinite(ms) || ms < 0) {
-    return "⚪ 확인 불가";
+    return "지연 ⚪";
   }
   const rounded = Math.round(ms);
   if (rounded <= 150) {
-    return `${rounded}ms 🟢 좋음`;
+    return `${rounded}ms 🟢`;
   }
   if (rounded <= 300) {
-    return `${rounded}ms 🟡 양호`;
+    return `${rounded}ms 🟡`;
   }
-  return `${rounded}ms 🔴 지연`;
+  return `${rounded}ms 🔴`;
 }
 
 function formatHealthIcon(ok: boolean): string {
@@ -81,92 +69,26 @@ function formatUptimeWithSeconds(ms: number): string {
 }
 
 function formatBytesGb(bytes: number): string {
-  return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
+  return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
 }
 
-function wsStatusLabel(status: Status): string {
+function wsStatusShort(status: Status): string {
   switch (status) {
     case Status.Ready:
-      return "🟢 준비됨";
+      return "🟢";
     case Status.Connecting:
-      return "🟡 연결 중";
     case Status.Reconnecting:
-      return "🟡 재연결 중";
-    case Status.Idle:
-      return "⚪ 유휴";
     case Status.Nearly:
-      return "🟡 거의 준비";
-    case Status.Disconnected:
-      return "🔴 끊김";
     case Status.WaitingForGuilds:
-      return "🟡 길드 대기";
     case Status.Identifying:
-      return "🟡 식별 중";
     case Status.Resuming:
-      return "🟡 재개 중";
+      return "🟡";
+    case Status.Idle:
+      return "⚪";
+    case Status.Disconnected:
+      return "🔴";
     default:
-      return "⚪ 확인 중";
-  }
-}
-
-function cpuIdleAndTotal(): { idle: number; total: number } {
-  let idle = 0;
-  let total = 0;
-  for (const c of os.cpus()) {
-    const t = c.times.user + c.times.nice + c.times.sys + c.times.idle + c.times.irq;
-    idle += c.times.idle;
-    total += t;
-  }
-  return { idle, total };
-}
-
-async function measureCpuUsagePercent(): Promise<number | null> {
-  const a = cpuIdleAndTotal();
-  await new Promise((r) => setTimeout(r, 380));
-  const b = cpuIdleAndTotal();
-  const idleDelta = b.idle - a.idle;
-  const totalDelta = b.total - a.total;
-  if (totalDelta <= 0) {
-    return null;
-  }
-  const usage = 100 * (1 - idleDelta / totalDelta);
-  return Math.min(100, Math.max(0, usage));
-}
-
-async function fetchHomepageStatusLine(): Promise<string | null> {
-  const raw = process.env.MINE_STATUS_HOMEPAGE_URL?.trim();
-  if (!raw) {
-    return null;
-  }
-  let url: URL;
-  try {
-    url = new URL(raw);
-  } catch {
-    return "홈페이지 ⚪ URL 형식 오류(환경 변수 확인)";
-  }
-  if (!["http:", "https:"].includes(url.protocol)) {
-    return "홈페이지 ⚪ http(s)만 지원";
-  }
-  const started = Date.now();
-  const doFetch = async (method: "HEAD" | "GET") => {
-    return fetch(url.href, {
-      method,
-      signal: AbortSignal.timeout(2000),
-      redirect: "follow",
-    });
-  };
-  try {
-    let res = await doFetch("HEAD");
-    if (!res.ok) {
-      res = await doFetch("GET");
-    }
-    const ms = Date.now() - started;
-    if (res.ok) {
-      return `홈페이지 🟢 응답 ${ms}ms`;
-    }
-    return `홈페이지 🟡 HTTP ${res.status}`;
-  } catch {
-    return "홈페이지 🔴 확인 실패";
+      return "⚪";
   }
 }
 
@@ -193,7 +115,7 @@ function estimateVoiceHumans(client: MineClient): number {
   }, 0);
 }
 
-function summarizeMusic(client: MineClient): string[] {
+function summarizeMusic(client: MineClient): string {
   try {
     const riffy = client.riffy as unknown as {
       initiated?: boolean;
@@ -201,10 +123,10 @@ function summarizeMusic(client: MineClient): string[] {
       players?: Map<string, unknown>;
     };
     if (!riffy) {
-      return ["Lavalink ⚪ 확인 불가", "플레이어 —"];
+      return "Lavalink ⚪ 확인 불가 · 플레이어 —";
     }
     if (!riffy.initiated) {
-      return ["Lavalink ⚪ 초기화 전", "플레이어 —"];
+      return "Lavalink ⚪ 초기화 전 · 플레이어 —";
     }
     let total = 0;
     let connected = 0;
@@ -219,60 +141,38 @@ function summarizeMusic(client: MineClient): string[] {
     }
     const players = riffy.players?.size ?? 0;
     if (total === 0) {
-      return ["Lavalink ⚪ 노드 정보 없음", `플레이어 **${players}**개`];
+      return `Lavalink ⚪ 노드 정보 없음 · 플레이어 ${players}개`;
     }
     const lavOk = connected === total && total > 0;
-    return [
-      `${formatHealthIcon(lavOk)} Lavalink 연결 **${connected}/${total}**노드`,
-      `플레이어 **${players}**개`,
-    ];
+    return `Lavalink ${connected}/${total} ${formatHealthIcon(lavOk)} · 플레이어 ${players}개`;
   } catch {
-    return ["Lavalink ⚪ 확인 불가", "플레이어 —"];
+    return "Lavalink ⚪ 확인 불가 · 플레이어 —";
   }
 }
 
-function summarizeStock(client: MineClient): string[] {
+function summarizeStockCompact(client: MineClient): { line1: string; line2: string } {
   const market = client.stockMarket;
   const stock = client.config.stock;
   const provider = stock.stockPriceProvider;
-  const mode = stock.stockPriceRefreshMode;
 
   if (!market) {
-    return [
-      `Provider **${provider}**`,
-      "캐시 ⚪ 서비스 없음",
-      "마지막 갱신 —",
-      "최근 오류 —",
-    ];
+    return {
+      line1: `${provider} · 캐시 ⚪ 서비스 없음 · 최근 오류 —`,
+      line2: "마지막 갱신 —",
+    };
   }
 
   const ready = market.isReady();
   const last = formatStockRefreshTime(market.getLastRefreshAt());
   const errRaw = market.getLastError();
-  const err = errRaw ? truncateText(errRaw, 100) : "없음";
+  const errShort = errRaw ? truncateText(errRaw, 80) : null;
+  const errLabel = errShort ? `최근 오류 ${errShort}` : "최근 오류 없음";
+  const cacheLabel = ready ? `캐시 ${formatHealthIcon(ready)}` : "캐시 ⚪ 준비 중";
 
-  const lines = [
-    `Provider **${provider}**`,
-    `갱신 모드 **${mode}**`,
-    `${formatHealthIcon(ready)} 캐시 ${ready ? "준비됨" : "비어 있음"}`,
-    `마지막 갱신 **${last}**`,
-    `최근 오류: ${err}`,
-  ];
-
-  if (mode === "scheduled-close") {
-    const clocks = stock.stockScheduledCloseRefreshTimesKst
-      .map((m) => formatKstMinutesAsClock(m))
-      .join(", ");
-    lines.push(`예약 시각(KST): ${clocks || "—"}`);
-  }
-
-  lines.push(
-    stock.stockTradingHoursEnabled
-      ? `모의 매수·매도 시간: 평일 **${formatKstMinutesAsClock(stock.stockTradingStartMinutesKst)}~${formatKstMinutesAsClock(stock.stockTradingEndMinutesKst)}** KST`
-      : "모의 매수·매도 시간: **제한 없음**",
-  );
-
-  return lines;
+  return {
+    line1: `${provider} · ${cacheLabel} · ${errLabel}`,
+    line2: `마지막 갱신 ${last}`,
+  };
 }
 
 const command: SlashCommand = {
@@ -284,114 +184,37 @@ const command: SlashCommand = {
   async run(client: MineClient, interaction) {
     await interaction.deferReply();
 
-    const homepageLinePromise = fetchHomepageStatusLine();
-    const cpuPromise = measureCpuUsagePercent();
-
     const guildCount = client.guilds.cache.size;
     const memberEst = estimateMemberCount(client);
     const voiceN = estimateVoiceHumans(client);
     const cmdN = client.slashCommands.size;
     const ping = client.ws.ping;
-    const wsLabel = wsStatusLabel(client.ws.status);
     const rss = process.memoryUsage().rss;
     const heap = process.memoryUsage();
 
     const totalMem = os.totalmem();
-    const freeMem = os.freemem();
-    const usedMem = totalMem - freeMem;
-    const memPct = (usedMem / totalMem) * 100;
-
-    const heapTotal = Math.max(1, heap.heapTotal);
-    const heapPct = (heap.heapUsed / heapTotal) * 100;
+    const usedMem = totalMem - os.freemem();
 
     const cpus = os.cpus();
-    const cpuModel = cpus[0]?.model?.trim() || "확인 불가";
     const cpuCores = cpus.length;
 
-    const [cpuPct, homepageLine] = await Promise.all([
-      cpuPromise,
-      homepageLinePromise,
-    ]);
-
-    const musicLines = summarizeMusic(client);
-    const stockLines = summarizeStock(client);
+    const musicLine = summarizeMusic(client);
+    const stock = summarizeStockCompact(client);
     const dbOk = checkDatabaseHealth();
 
-    let coinLines: string[];
-    if (!interaction.inGuild() || !interaction.guildId) {
-      coinLines = [
-        "DM에서는 이 서버의 코인 설정을 표시하지 않습니다.",
-        "서버 채널에서 `/상태`를 사용하면 출석·가위바위보 설정을 볼 수 있어요.",
-      ];
-    } else {
-      try {
-        const s = getOrCreateCoinGuildSettings(interaction.guildId);
-        coinLines = [
-          `출석 보상 **${formatCoin(s.attendanceReward)}** 코인`,
-          `가위바위보 **${formatCoin(s.rpsMinBet)}~${formatCoin(s.rpsMaxBet)}** 코인`,
-          `쿨다운 **${s.rpsCooldownSeconds}**초`,
-        ];
-      } catch {
-        coinLines = ["코인 설정 ⚪ 조회 실패"];
-      }
-    }
+    const serviceLine1 = `서버 **${guildCount}**개 · 유저 **${memberEst.toLocaleString("ko-KR")}**명 · 음성 **${voiceN.toLocaleString("ko-KR")}**명`;
+    const serviceLine2 = `커맨드 **${cmdN}**개 · ${formatLatencyShort(ping)} · WS ${wsStatusShort(client.ws.status)}`;
 
-    const osLine = `${os.type()} ${os.release()} · ${os.arch()}`;
-    const runtimeLines = [
-      osLine,
-      `Node.js **${process.version}**`,
-      `CPU **${cpuModel}** · **${cpuCores}**코어`,
-    ];
-
-    if (cpuPct !== null) {
-      runtimeLines.push(
-        `CPU 사용률 **${formatPercent(cpuPct)}**`,
-        buildUsageBar(cpuPct, 12),
-      );
-    } else {
-      runtimeLines.push("CPU 사용률 ⚪ 측정 생략");
-    }
-
-    runtimeLines.push(
-      `MEM **${formatBytesGb(usedMem)}** / **${formatBytesGb(totalMem)}** (${formatPercent(memPct)})`,
-      buildUsageBar(memPct, 12),
-      `HEAP **${formatMemory(heap.heapUsed)}** / **${formatMemory(heap.heapTotal)}** (${formatPercent(heapPct)})`,
-      buildUsageBar(heapPct, 12),
-    );
-
-    const serviceLines = [
-      `서버 **${guildCount}**개 · 유저 추정 **${memberEst.toLocaleString("ko-KR")}**명 · 음성 이용 **${voiceN.toLocaleString("ko-KR")}**명`,
-      `커맨드 **${cmdN}**개 · 레이턴시 ${formatLatencyLine(ping)}`,
-      `WebSocket ${wsLabel} · 봇 메모리 **${formatMemory(rss)}**`,
-    ];
-    if (homepageLine) {
-      serviceLines.push(homepageLine);
-    }
+    const runtimeLine1 = `${os.type()} ${os.arch()} · ${process.version} · CPU **${cpuCores}**코어`;
+    const runtimeLine2 = `RSS **${formatMemory(rss)}** · MEM **${formatBytesGb(usedMem)}** / **${formatBytesGb(totalMem)}** · HEAP **${formatMemory(heap.heapUsed)}** / **${formatMemory(heap.heapTotal)}**`;
 
     const lines: string[] = [
-      "### ⏱️ 업타임",
-      formatUptimeWithSeconds(process.uptime() * 1000),
-      "",
-      "### 📡 서비스",
-      ...serviceLines,
-      "",
-      "### 🎵 음악",
-      ...musicLines,
-      "",
-      "### 🖥️ 런타임",
-      ...runtimeLines,
-      "",
-      "### 💾 저장소",
-      `SQLite ${formatHealthIcon(dbOk)} ${dbOk ? "정상" : "오류"}`,
-      "",
-      "### 📈 모의주식",
-      ...stockLines,
-      "",
-      "### 🪙 코인 설정",
-      ...coinLines,
-      "",
-      "※ 가상 경제·시세는 게임용입니다. 토큰·API 키·DB 경로는 표시하지 않습니다.",
-      "※ 주식 기능은 서버 내 모의투자이며 실제 투자용이 아닙니다.",
+      `**⏱️**\n${formatUptimeWithSeconds(process.uptime() * 1000)}`,
+      `**📡 서비스**\n${serviceLine1}\n${serviceLine2}`,
+      `**🎵 음악**\n${musicLine}`,
+      `**🖥️ 런타임**\n${runtimeLine1}\n${runtimeLine2}`,
+      `**💾 저장소**\nSQLite ${formatHealthIcon(dbOk)} ${dbOk ? "정상" : "오류"}`,
+      `**📈 모의주식**\n${stock.line1}\n${stock.line2}`,
     ];
 
     await interaction.editReply(
@@ -399,9 +222,9 @@ const command: SlashCommand = {
         panelReply({
           ephemeral: false,
           panel: {
-            title: "🛠️ MINE 상태",
-            description: "운영 상태 요약입니다.",
+            title: "🟢 MINE 상태",
             lines,
+            accentColor: STATUS_ACCENT_GREEN,
           },
           allowedMentions: NO_MENTION,
         }),

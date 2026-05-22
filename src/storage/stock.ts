@@ -78,6 +78,9 @@ export interface StockResetCounts {
   deletedHoldings: number;
   deletedTrades: number;
   deletedAttendances: number;
+  deletedSwords: number;
+  deletedDungeonRuns: number;
+  deletedConsumables: number;
 }
 
 export type StockSeasonStatus = "ACTIVE" | "ENDED";
@@ -288,6 +291,7 @@ export interface PurchaseCoinShopItemResult {
   item: CoinShopItem;
   wallet: StockWallet;
   balanceAfter: number;
+  consumableQuantityAfter?: number;
 }
 
 export interface CoinEquippedItem {
@@ -361,7 +365,10 @@ export type StockStorageErrorCode =
   | "ACHIEVEMENT_NOT_FOUND"
   | "ACHIEVEMENT_NOT_COMPLETED"
   | "ACHIEVEMENT_ALREADY_CLAIMED"
-  | "ACHIEVEMENT_REWARD_NOT_AVAILABLE";
+  | "ACHIEVEMENT_REWARD_NOT_AVAILABLE"
+  | "SWORD_MAX_LEVEL"
+  | "INVALID_SWORD_LEVEL"
+  | "INSUFFICIENT_ITEM_QUANTITY";
 
 export class StockStorageError extends Error {
   readonly code: StockStorageErrorCode;
@@ -1389,7 +1396,6 @@ export function removeCoinsFromWallet(
   }
 }
 
-/** 특정 유저의 길드 내 모의투자 데이터 삭제 (거래 → 보유 → 출석 → 지갑 순). */
 export function resetStockUserData(
   guildId: string,
   userId: string,
@@ -1412,6 +1418,21 @@ export function resetStockUserData(
     );
     const deletedAttendances = getStatementChanges();
     db.run(
+      `DELETE FROM coin_dungeon_runs WHERE guild_id = ? AND user_id = ?`,
+      [guildId, userId],
+    );
+    const deletedDungeonRuns = getStatementChanges();
+    db.run(
+      `DELETE FROM coin_consumable_items WHERE guild_id = ? AND user_id = ?`,
+      [guildId, userId],
+    );
+    const deletedConsumables = getStatementChanges();
+    db.run(`DELETE FROM coin_swords WHERE guild_id = ? AND user_id = ?`, [
+      guildId,
+      userId,
+    ]);
+    const deletedSwords = getStatementChanges();
+    db.run(
       `DELETE FROM stock_wallets WHERE guild_id = ? AND user_id = ?`,
       [guildId, userId],
     );
@@ -1422,6 +1443,9 @@ export function resetStockUserData(
       deletedHoldings,
       deletedTrades,
       deletedAttendances,
+      deletedSwords,
+      deletedDungeonRuns,
+      deletedConsumables,
     };
   } catch (e) {
     db.run("ROLLBACK");
@@ -1429,7 +1453,6 @@ export function resetStockUserData(
   }
 }
 
-/** 길드 전체 모의투자 데이터 삭제 (거래 → 보유 → 출석 → 지갑 순). */
 export function resetStockGuildData(guildId: string): StockResetCounts {
   db.run("BEGIN IMMEDIATE");
   try {
@@ -1441,6 +1464,14 @@ export function resetStockGuildData(guildId: string): StockResetCounts {
       guildId,
     ]);
     const deletedAttendances = getStatementChanges();
+    db.run(`DELETE FROM coin_dungeon_runs WHERE guild_id = ?`, [guildId]);
+    const deletedDungeonRuns = getStatementChanges();
+    db.run(`DELETE FROM coin_consumable_items WHERE guild_id = ?`, [
+      guildId,
+    ]);
+    const deletedConsumables = getStatementChanges();
+    db.run(`DELETE FROM coin_swords WHERE guild_id = ?`, [guildId]);
+    const deletedSwords = getStatementChanges();
     db.run(`DELETE FROM stock_wallets WHERE guild_id = ?`, [guildId]);
     const deletedWallets = getStatementChanges();
     db.run("COMMIT");
@@ -1449,6 +1480,9 @@ export function resetStockGuildData(guildId: string): StockResetCounts {
       deletedHoldings,
       deletedTrades,
       deletedAttendances,
+      deletedSwords,
+      deletedDungeonRuns,
+      deletedConsumables,
     };
   } catch (e) {
     db.run("ROLLBACK");
@@ -1702,6 +1736,31 @@ export function getCoinProfileSummary(
   };
 }
 
+function coinAchievementRowCount(sql: string, guildId: string, userId: string): number {
+  const row = db.get<{ n: number }>(sql, [guildId, userId]);
+  return Number(row?.n ?? 0);
+}
+
+function getCoinSwordStatsForAchievement(
+  guildId: string,
+  userId: string,
+): { totalAttempts: number; highestLevel: number } | null {
+  const row = db.get<{
+    total_attempts: number;
+    highest_level: number;
+  }>(
+    `SELECT total_attempts, highest_level FROM coin_swords WHERE guild_id = ? AND user_id = ?`,
+    [guildId, userId],
+  );
+  if (!row) {
+    return null;
+  }
+  return {
+    totalAttempts: Number(row.total_attempts),
+    highestLevel: Number(row.highest_level),
+  };
+}
+
 function isCoinAchievementCompleted(
   guildId: string,
   userId: string,
@@ -1777,6 +1836,134 @@ function isCoinAchievementCompleted(
           `SELECT 1 AS n FROM coin_equipped_items WHERE guild_id = ? AND user_id = ? AND item_type = 'TITLE' LIMIT 1`,
           [guildId, userId],
         ) !== undefined
+      );
+    case "attendance_7":
+      return (
+        coinAchievementRowCount(
+          `SELECT COUNT(*) AS n FROM stock_daily_attendance WHERE guild_id = ? AND user_id = ?`,
+          guildId,
+          userId,
+        ) >= 7
+      );
+    case "attendance_30":
+      return (
+        coinAchievementRowCount(
+          `SELECT COUNT(*) AS n FROM stock_daily_attendance WHERE guild_id = ? AND user_id = ?`,
+          guildId,
+          userId,
+        ) >= 30
+      );
+    case "work_10":
+      return (
+        coinAchievementRowCount(
+          `SELECT COUNT(*) AS n FROM coin_work_logs WHERE guild_id = ? AND user_id = ?`,
+          guildId,
+          userId,
+        ) >= 10
+      );
+    case "fishing_10":
+      return (
+        coinAchievementRowCount(
+          `SELECT COUNT(*) AS n FROM coin_fishing_logs WHERE guild_id = ? AND user_id = ?`,
+          guildId,
+          userId,
+        ) >= 10
+      );
+    case "rps_20":
+      return (
+        coinAchievementRowCount(
+          `SELECT COUNT(*) AS n FROM coin_game_logs WHERE guild_id = ? AND user_id = ? AND game_type = 'RPS'`,
+          guildId,
+          userId,
+        ) >= 20
+      );
+    case "rps_win_10":
+      return (
+        coinAchievementRowCount(
+          `SELECT COUNT(*) AS n FROM coin_game_logs WHERE guild_id = ? AND user_id = ? AND game_type = 'RPS' AND result = 'WIN'`,
+          guildId,
+          userId,
+        ) >= 10
+      );
+    case "shop_title_1":
+      return (
+        coinAchievementRowCount(
+          `SELECT COUNT(*) AS n FROM coin_inventory_items WHERE guild_id = ? AND user_id = ? AND item_type = 'TITLE'`,
+          guildId,
+          userId,
+        ) >= 1
+      );
+    case "shop_title_3":
+      return (
+        coinAchievementRowCount(
+          `SELECT COUNT(*) AS n FROM coin_inventory_items WHERE guild_id = ? AND user_id = ? AND item_type = 'TITLE'`,
+          guildId,
+          userId,
+        ) >= 3
+      );
+    case "stock_trade_10":
+      return (
+        coinAchievementRowCount(
+          `SELECT COUNT(*) AS n FROM stock_trades WHERE guild_id = ? AND user_id = ?`,
+          guildId,
+          userId,
+        ) >= 10
+      );
+    case "stock_diversified_3":
+      return (
+        coinAchievementRowCount(
+          `SELECT COUNT(DISTINCT symbol) AS n FROM stock_holdings WHERE guild_id = ? AND user_id = ? AND quantity_micro > 0`,
+          guildId,
+          userId,
+        ) >= 3
+      );
+    case "sword_first_enhance": {
+      const s = getCoinSwordStatsForAchievement(guildId, userId);
+      return s !== null && s.totalAttempts >= 1;
+    }
+    case "sword_level_5": {
+      const s = getCoinSwordStatsForAchievement(guildId, userId);
+      return s !== null && s.highestLevel >= 5;
+    }
+    case "sword_level_10": {
+      const s = getCoinSwordStatsForAchievement(guildId, userId);
+      return s !== null && s.highestLevel >= 10;
+    }
+    case "sword_level_12": {
+      const s = getCoinSwordStatsForAchievement(guildId, userId);
+      return s !== null && s.highestLevel >= 12;
+    }
+    case "sword_level_15": {
+      const s = getCoinSwordStatsForAchievement(guildId, userId);
+      return s !== null && s.highestLevel >= 15;
+    }
+    case "sword_level_18": {
+      const s = getCoinSwordStatsForAchievement(guildId, userId);
+      return s !== null && s.highestLevel >= 18;
+    }
+    case "sword_level_20": {
+      const s = getCoinSwordStatsForAchievement(guildId, userId);
+      return s !== null && s.highestLevel >= 20;
+    }
+    case "sword_attempt_100": {
+      const s = getCoinSwordStatsForAchievement(guildId, userId);
+      return s !== null && s.totalAttempts >= 100;
+    }
+    case "dungeon_run_7":
+      return (
+        coinAchievementRowCount(
+          `SELECT COUNT(*) AS n FROM coin_dungeon_runs WHERE guild_id = ? AND user_id = ?`,
+          guildId,
+          userId,
+        ) >= 7
+      );
+    case "dungeon_run_30":
+      return (
+        coinAchievementRowCount(
+          `SELECT COUNT(*) AS n FROM coin_dungeon_runs WHERE guild_id = ? AND user_id = ?`,
+          guildId,
+          userId,
+        ) >= 30
       );
     default:
       return false;
@@ -1915,6 +2102,580 @@ export function claimAllCompletedAchievementRewards(
       claimedAchievementKeys: keysToClaim.map((d) => d.key),
       totalReward,
       balanceAfter,
+    };
+  } catch (e) {
+    db.run("ROLLBACK");
+    throw e;
+  }
+}
+
+export interface CoinSword {
+  guildId: string;
+  userId: string;
+  level: number;
+  totalAttempts: number;
+  successCount: number;
+  failCount: number;
+  downgradeCount: number;
+  destroyCount: number;
+  highestLevel: number;
+  lastEnhancedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface CoinSwordRow {
+  guild_id: string;
+  user_id: string;
+  level: number;
+  total_attempts: number;
+  success_count: number;
+  fail_count: number;
+  downgrade_count: number;
+  destroy_count: number;
+  highest_level: number;
+  last_enhanced_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export function mapCoinSwordRow(row: CoinSwordRow): CoinSword {
+  return {
+    guildId: row.guild_id,
+    userId: row.user_id,
+    level: Number(row.level),
+    totalAttempts: Number(row.total_attempts),
+    successCount: Number(row.success_count),
+    failCount: Number(row.fail_count),
+    downgradeCount: Number(row.downgrade_count),
+    destroyCount: Number(row.destroy_count),
+    highestLevel: Number(row.highest_level),
+    lastEnhancedAt: row.last_enhanced_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function getCoinSword(guildId: string, userId: string): CoinSword | null {
+  const row = db.get<CoinSwordRow>(
+    `SELECT guild_id, user_id, level, total_attempts, success_count, fail_count, downgrade_count, destroy_count, highest_level, last_enhanced_at, created_at, updated_at
+     FROM coin_swords WHERE guild_id = ? AND user_id = ?`,
+    [guildId, userId],
+  );
+  return row ? mapCoinSwordRow(row) : null;
+}
+
+export function getOrCreateCoinSword(guildId: string, userId: string): CoinSword {
+  const existing = getCoinSword(guildId, userId);
+  if (existing) {
+    return existing;
+  }
+  const nowIso = new Date().toISOString();
+  db.run(
+    `INSERT OR IGNORE INTO coin_swords (guild_id, user_id, level, total_attempts, success_count, fail_count, downgrade_count, destroy_count, highest_level, last_enhanced_at, created_at, updated_at)
+     VALUES (?, ?, 0, 0, 0, 0, 0, 0, 0, NULL, ?, ?)`,
+    [guildId, userId, nowIso, nowIso],
+  );
+  const row = getCoinSword(guildId, userId);
+  if (!row) {
+    throw new Error("coin_sword_row_missing");
+  }
+  return row;
+}
+
+export const MAX_SWORD_LEVEL = 20;
+
+export const SWORD_DESTROY_RESET_LEVEL = 10;
+
+export const DOWNGRADE_PROTECTION_TICKET_KEY = "downgrade_protection_ticket";
+export const DESTROY_PROTECTION_TICKET_KEY = "destroy_protection_ticket";
+
+const SWORD_ENHANCE_TABLE: readonly {
+  cost: number;
+  success: number;
+  downgrade: number;
+  destroy: number;
+}[] = [
+  { cost: 1_000, success: 95, downgrade: 0, destroy: 0 },
+  { cost: 1_500, success: 90, downgrade: 0, destroy: 0 },
+  { cost: 2_000, success: 85, downgrade: 0, destroy: 0 },
+  { cost: 3_000, success: 80, downgrade: 0, destroy: 0 },
+  { cost: 4_000, success: 75, downgrade: 0, destroy: 0 },
+  { cost: 6_000, success: 68, downgrade: 0, destroy: 0 },
+  { cost: 8_000, success: 62, downgrade: 5, destroy: 0 },
+  { cost: 10_000, success: 56, downgrade: 8, destroy: 0 },
+  { cost: 12_000, success: 50, downgrade: 10, destroy: 0 },
+  { cost: 15_000, success: 45, downgrade: 12, destroy: 0 },
+  { cost: 20_000, success: 38, downgrade: 15, destroy: 0 },
+  { cost: 27_000, success: 32, downgrade: 18, destroy: 1 },
+  { cost: 35_000, success: 26, downgrade: 22, destroy: 2 },
+  { cost: 45_000, success: 21, downgrade: 26, destroy: 3 },
+  { cost: 60_000, success: 16, downgrade: 30, destroy: 4 },
+  { cost: 80_000, success: 12, downgrade: 34, destroy: 6 },
+  { cost: 110_000, success: 9, downgrade: 38, destroy: 8 },
+  { cost: 150_000, success: 6, downgrade: 42, destroy: 10 },
+  { cost: 220_000, success: 4, downgrade: 45, destroy: 13 },
+  { cost: 350_000, success: 2, downgrade: 50, destroy: 16 },
+] as const;
+
+export type SwordEnhanceOutcome =
+  | "SUCCESS"
+  | "FAIL_KEEP"
+  | "FAIL_DOWNGRADE"
+  | "DESTROYED"
+  | "FAIL_DOWNGRADE_PROTECTED"
+  | "DESTROYED_PROTECTED";
+
+export interface SwordEnhanceRate {
+  level: number;
+  cost: number;
+  successPercent: number;
+  downgradePercent: number;
+  destroyPercent: number;
+}
+
+export interface EnhanceCoinSwordOptions {
+  useDowngradeProtection?: boolean;
+  useDestroyProtection?: boolean;
+}
+
+export interface EnhanceCoinSwordResult {
+  outcome: SwordEnhanceOutcome;
+  beforeLevel: number;
+  afterLevel: number;
+  highestLevel: number;
+  cost: number;
+  successPercent: number;
+  downgradePercent: number;
+  destroyPercent: number;
+  wallet: StockWallet;
+  sword: CoinSword;
+  usedDowngradeProtection: boolean;
+  usedDestroyProtection: boolean;
+  selectedDowngradeProtection: boolean;
+  selectedDestroyProtection: boolean;
+}
+
+export function getSwordEnhanceRate(level: number): SwordEnhanceRate | null {
+  if (!Number.isInteger(level) || level < 0 || level > 19) {
+    return null;
+  }
+  const row = SWORD_ENHANCE_TABLE[level]!;
+  return {
+    level,
+    cost: row.cost,
+    successPercent: row.success,
+    downgradePercent: row.downgrade,
+    destroyPercent: row.destroy,
+  };
+}
+
+export function enhanceCoinSword(
+  guildId: string,
+  userId: string,
+  options: EnhanceCoinSwordOptions = {},
+): EnhanceCoinSwordResult {
+  const useDowngradeProtection = Boolean(options.useDowngradeProtection);
+  const useDestroyProtection = Boolean(options.useDestroyProtection);
+  const nowIso = new Date().toISOString();
+  db.run("BEGIN IMMEDIATE");
+  try {
+    const walletRow = getWalletRow(guildId, userId);
+    if (!walletRow) {
+      throw new StockStorageError("WALLET_NOT_FOUND");
+    }
+
+    let swordRow = db.get<CoinSwordRow>(
+      `SELECT guild_id, user_id, level, total_attempts, success_count, fail_count, downgrade_count, destroy_count, highest_level, last_enhanced_at, created_at, updated_at
+       FROM coin_swords WHERE guild_id = ? AND user_id = ?`,
+      [guildId, userId],
+    );
+    if (!swordRow) {
+      db.run(
+        `INSERT OR IGNORE INTO coin_swords (guild_id, user_id, level, total_attempts, success_count, fail_count, downgrade_count, destroy_count, highest_level, last_enhanced_at, created_at, updated_at)
+         VALUES (?, ?, 0, 0, 0, 0, 0, 0, 0, NULL, ?, ?)`,
+        [guildId, userId, nowIso, nowIso],
+      );
+      swordRow = db.get<CoinSwordRow>(
+        `SELECT guild_id, user_id, level, total_attempts, success_count, fail_count, downgrade_count, destroy_count, highest_level, last_enhanced_at, created_at, updated_at
+         FROM coin_swords WHERE guild_id = ? AND user_id = ?`,
+        [guildId, userId],
+      );
+    }
+    if (!swordRow) {
+      throw new Error("coin_sword_row_missing");
+    }
+
+    const beforeLevel = Number(swordRow.level);
+    const prevHighest = Number(swordRow.highest_level);
+    if (beforeLevel >= MAX_SWORD_LEVEL) {
+      throw new StockStorageError("SWORD_MAX_LEVEL");
+    }
+
+    const rate = getSwordEnhanceRate(beforeLevel);
+    if (!rate) {
+      throw new StockStorageError("INVALID_SWORD_LEVEL");
+    }
+
+    if (useDowngradeProtection) {
+      const qRow = db.get<{ quantity: number }>(
+        `SELECT quantity FROM coin_consumable_items WHERE guild_id = ? AND user_id = ? AND item_key = ?`,
+        [guildId, userId, DOWNGRADE_PROTECTION_TICKET_KEY],
+      );
+      const q = qRow ? Number(qRow.quantity) : 0;
+      if (q < 1) {
+        throw new StockStorageError("INSUFFICIENT_ITEM_QUANTITY");
+      }
+    }
+    if (useDestroyProtection) {
+      const qRow = db.get<{ quantity: number }>(
+        `SELECT quantity FROM coin_consumable_items WHERE guild_id = ? AND user_id = ? AND item_key = ?`,
+        [guildId, userId, DESTROY_PROTECTION_TICKET_KEY],
+      );
+      const q = qRow ? Number(qRow.quantity) : 0;
+      if (q < 1) {
+        throw new StockStorageError("INSUFFICIENT_ITEM_QUANTITY");
+      }
+    }
+
+    const cost = rate.cost;
+    const cash = Number(walletRow.cash_balance);
+    if (cash < cost) {
+      throw new StockStorageError("INSUFFICIENT_CASH");
+    }
+
+    db.run(
+      `UPDATE stock_wallets SET cash_balance = cash_balance - ?, updated_at = ?
+       WHERE guild_id = ? AND user_id = ? AND cash_balance >= ?`,
+      [cost, nowIso, guildId, userId, cost],
+    );
+    if (getStatementChanges() !== 1) {
+      throw new StockStorageError("INSUFFICIENT_CASH");
+    }
+
+    const roll = randomInt(0, 100);
+    const s = rate.successPercent;
+    const d = rate.downgradePercent;
+    const x = rate.destroyPercent;
+
+    type RawOutcome = "SUCCESS" | "FAIL_DOWNGRADE" | "DESTROYED" | "FAIL_KEEP";
+    let rawOutcome: RawOutcome;
+    let rawAfterLevel: number;
+
+    if (roll < s) {
+      rawOutcome = "SUCCESS";
+      rawAfterLevel = beforeLevel + 1;
+    } else if (roll < s + d) {
+      rawOutcome = "FAIL_DOWNGRADE";
+      rawAfterLevel = Math.max(0, beforeLevel - 1);
+    } else if (roll < s + d + x) {
+      rawOutcome = "DESTROYED";
+      rawAfterLevel = SWORD_DESTROY_RESET_LEVEL;
+    } else {
+      rawOutcome = "FAIL_KEEP";
+      rawAfterLevel = beforeLevel;
+    }
+
+    let outcome: SwordEnhanceOutcome;
+    let afterLevel: number;
+    let usedDowngradeProtection = false;
+    let usedDestroyProtection = false;
+
+    if (rawOutcome === "DESTROYED" && useDestroyProtection) {
+      consumeCoinConsumableItem(
+        guildId,
+        userId,
+        DESTROY_PROTECTION_TICKET_KEY,
+        1,
+      );
+      usedDestroyProtection = true;
+      outcome = "DESTROYED_PROTECTED";
+      afterLevel = beforeLevel;
+    } else if (rawOutcome === "FAIL_DOWNGRADE" && useDowngradeProtection) {
+      consumeCoinConsumableItem(
+        guildId,
+        userId,
+        DOWNGRADE_PROTECTION_TICKET_KEY,
+        1,
+      );
+      usedDowngradeProtection = true;
+      outcome = "FAIL_DOWNGRADE_PROTECTED";
+      afterLevel = beforeLevel;
+    } else {
+      outcome = rawOutcome;
+      afterLevel = rawAfterLevel;
+    }
+
+    const newHighest =
+      outcome === "SUCCESS"
+        ? Math.max(prevHighest, afterLevel)
+        : prevHighest;
+
+    const ta = Number(swordRow.total_attempts) + 1;
+    let sc = Number(swordRow.success_count);
+    let fc = Number(swordRow.fail_count);
+    let dc = Number(swordRow.downgrade_count);
+    let dst = Number(swordRow.destroy_count);
+
+    if (outcome === "SUCCESS") {
+      sc += 1;
+    } else {
+      fc += 1;
+      if (outcome === "FAIL_DOWNGRADE") {
+        dc += 1;
+      }
+      if (outcome === "DESTROYED") {
+        dst += 1;
+      }
+    }
+
+    db.run(
+      `UPDATE coin_swords SET
+        level = ?,
+        total_attempts = ?,
+        success_count = ?,
+        fail_count = ?,
+        downgrade_count = ?,
+        destroy_count = ?,
+        highest_level = ?,
+        last_enhanced_at = ?,
+        updated_at = ?
+       WHERE guild_id = ? AND user_id = ?`,
+      [
+        afterLevel,
+        ta,
+        sc,
+        fc,
+        dc,
+        dst,
+        newHighest,
+        nowIso,
+        nowIso,
+        guildId,
+        userId,
+      ],
+    );
+    if (getStatementChanges() !== 1) {
+      throw new Error("coin_swords update failed");
+    }
+
+    const wAfter = getWalletRow(guildId, userId);
+    if (!wAfter) {
+      throw new Error("wallet_missing_after_enhance");
+    }
+    const swordAfterRow = db.get<CoinSwordRow>(
+      `SELECT guild_id, user_id, level, total_attempts, success_count, fail_count, downgrade_count, destroy_count, highest_level, last_enhanced_at, created_at, updated_at
+       FROM coin_swords WHERE guild_id = ? AND user_id = ?`,
+      [guildId, userId],
+    );
+    if (!swordAfterRow) {
+      throw new Error("coin_sword_missing_after_enhance");
+    }
+
+    db.run("COMMIT");
+
+    return {
+      outcome,
+      beforeLevel,
+      afterLevel,
+      highestLevel: newHighest,
+      cost,
+      successPercent: s,
+      downgradePercent: d,
+      destroyPercent: x,
+      wallet: mapWallet(wAfter),
+      sword: mapCoinSwordRow(swordAfterRow),
+      usedDowngradeProtection,
+      usedDestroyProtection,
+      selectedDowngradeProtection: useDowngradeProtection,
+      selectedDestroyProtection: useDestroyProtection,
+    };
+  } catch (e) {
+    db.run("ROLLBACK");
+    throw e;
+  }
+}
+
+export function calculateDungeonReward(swordLevel: number): number {
+  const L = Math.max(
+    0,
+    Math.min(MAX_SWORD_LEVEL, Math.trunc(Number(swordLevel))),
+  );
+  let tier = 0;
+  if (L >= 5) {
+    tier += 500;
+  }
+  if (L >= 10) {
+    tier += 1000;
+  }
+  if (L >= 15) {
+    tier += 2500;
+  }
+  if (L >= 20) {
+    tier += 8000;
+  }
+  return 1000 + L * 450 + tier;
+}
+
+export interface CoinDungeonRun {
+  guildId: string;
+  userId: string;
+  date: string;
+  swordLevel: number;
+  rewardAmount: number;
+  balanceAfter: number;
+  createdAt: string;
+}
+
+export interface RunCoinDungeonResult {
+  alreadyCompleted: boolean;
+  run: CoinDungeonRun;
+  wallet: StockWallet;
+  sword: CoinSword;
+}
+
+interface CoinDungeonRunRow {
+  guild_id: string;
+  user_id: string;
+  date: string;
+  sword_level: number;
+  reward_amount: number;
+  balance_after: number;
+  created_at: string;
+}
+
+function mapCoinDungeonRunRow(row: CoinDungeonRunRow): CoinDungeonRun {
+  return {
+    guildId: row.guild_id,
+    userId: row.user_id,
+    date: row.date,
+    swordLevel: Number(row.sword_level),
+    rewardAmount: Number(row.reward_amount),
+    balanceAfter: Number(row.balance_after),
+    createdAt: row.created_at,
+  };
+}
+
+export function getCoinDungeonRun(
+  guildId: string,
+  userId: string,
+  date: string,
+): CoinDungeonRun | null {
+  const row = db.get<CoinDungeonRunRow>(
+    `SELECT guild_id, user_id, date, sword_level, reward_amount, balance_after, created_at
+     FROM coin_dungeon_runs WHERE guild_id = ? AND user_id = ? AND date = ?`,
+    [guildId, userId, date],
+  );
+  return row ? mapCoinDungeonRunRow(row) : null;
+}
+
+function ensureCoinSwordRowInDungeonTx(
+  guildId: string,
+  userId: string,
+  nowIso: string,
+): CoinSwordRow {
+  let swordRow = db.get<CoinSwordRow>(
+    `SELECT guild_id, user_id, level, total_attempts, success_count, fail_count, downgrade_count, destroy_count, highest_level, last_enhanced_at, created_at, updated_at
+     FROM coin_swords WHERE guild_id = ? AND user_id = ?`,
+    [guildId, userId],
+  );
+  if (!swordRow) {
+    db.run(
+      `INSERT OR IGNORE INTO coin_swords (guild_id, user_id, level, total_attempts, success_count, fail_count, downgrade_count, destroy_count, highest_level, last_enhanced_at, created_at, updated_at)
+       VALUES (?, ?, 0, 0, 0, 0, 0, 0, 0, NULL, ?, ?)`,
+      [guildId, userId, nowIso, nowIso],
+    );
+    swordRow = db.get<CoinSwordRow>(
+      `SELECT guild_id, user_id, level, total_attempts, success_count, fail_count, downgrade_count, destroy_count, highest_level, last_enhanced_at, created_at, updated_at
+       FROM coin_swords WHERE guild_id = ? AND user_id = ?`,
+      [guildId, userId],
+    );
+  }
+  if (!swordRow) {
+    throw new Error("coin_sword_row_missing");
+  }
+  return swordRow;
+}
+
+export function runCoinDungeon(
+  guildId: string,
+  userId: string,
+  date: string,
+): RunCoinDungeonResult {
+  const nowIso = new Date().toISOString();
+  db.run("BEGIN IMMEDIATE");
+  try {
+    const existingRun = db.get<CoinDungeonRunRow>(
+      `SELECT guild_id, user_id, date, sword_level, reward_amount, balance_after, created_at
+       FROM coin_dungeon_runs WHERE guild_id = ? AND user_id = ? AND date = ?`,
+      [guildId, userId, date],
+    );
+
+    if (existingRun) {
+      ensureWalletRow(guildId, userId, nowIso);
+      const swordRow = ensureCoinSwordRowInDungeonTx(guildId, userId, nowIso);
+      const w = getWalletRow(guildId, userId);
+      if (!w) {
+        throw new Error("wallet_missing_after_dungeon_check");
+      }
+      db.run("COMMIT");
+      return {
+        alreadyCompleted: true,
+        run: mapCoinDungeonRunRow(existingRun),
+        wallet: mapWallet(w),
+        sword: mapCoinSwordRow(swordRow),
+      };
+    }
+
+    ensureWalletRow(guildId, userId, nowIso);
+    const swordRow = ensureCoinSwordRowInDungeonTx(guildId, userId, nowIso);
+
+    const levelRaw = Number(swordRow.level);
+    const swordLevel = Math.max(
+      0,
+      Math.min(MAX_SWORD_LEVEL, Math.trunc(levelRaw)),
+    );
+    const reward = calculateDungeonReward(swordLevel);
+
+    db.run(
+      `UPDATE stock_wallets SET cash_balance = cash_balance + ?, total_deposit = total_deposit + ?, updated_at = ?
+       WHERE guild_id = ? AND user_id = ?`,
+      [reward, reward, nowIso, guildId, userId],
+    );
+    if (getStatementChanges() !== 1) {
+      throw new Error("dungeon wallet update failed");
+    }
+
+    const wAfter = getWalletRow(guildId, userId);
+    if (!wAfter) {
+      throw new Error("wallet_missing_after_dungeon_reward");
+    }
+    const balanceAfter = Number(wAfter.cash_balance);
+
+    db.run(
+      `INSERT INTO coin_dungeon_runs (guild_id, user_id, date, sword_level, reward_amount, balance_after, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [guildId, userId, date, swordLevel, reward, balanceAfter, nowIso],
+    );
+    if (getStatementChanges() !== 1) {
+      throw new Error("coin_dungeon_runs insert failed");
+    }
+
+    const inserted = db.get<CoinDungeonRunRow>(
+      `SELECT guild_id, user_id, date, sword_level, reward_amount, balance_after, created_at
+       FROM coin_dungeon_runs WHERE guild_id = ? AND user_id = ? AND date = ?`,
+      [guildId, userId, date],
+    );
+    if (!inserted) {
+      throw new Error("coin_dungeon_runs row missing after insert");
+    }
+
+    db.run("COMMIT");
+    return {
+      alreadyCompleted: false,
+      run: mapCoinDungeonRunRow(inserted),
+      wallet: mapWallet(wAfter),
+      sword: mapCoinSwordRow(swordRow),
     };
   } catch (e) {
     db.run("ROLLBACK");
@@ -2469,6 +3230,155 @@ export function hasCoinInventoryItem(
   return row !== undefined;
 }
 
+export interface CoinConsumableItem {
+  guildId: string;
+  userId: string;
+  itemKey: string;
+  itemName: string;
+  quantity: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface CoinConsumableItemRow {
+  guild_id: string;
+  user_id: string;
+  item_key: string;
+  item_name: string;
+  quantity: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export function mapCoinConsumableItemRow(
+  row: CoinConsumableItemRow,
+): CoinConsumableItem {
+  return {
+    guildId: row.guild_id,
+    userId: row.user_id,
+    itemKey: row.item_key,
+    itemName: row.item_name,
+    quantity: Number(row.quantity),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function getCoinConsumableItem(
+  guildId: string,
+  userId: string,
+  itemKey: string,
+): CoinConsumableItem | null {
+  const row = db.get<CoinConsumableItemRow>(
+    `SELECT guild_id, user_id, item_key, item_name, quantity, created_at, updated_at
+     FROM coin_consumable_items WHERE guild_id = ? AND user_id = ? AND item_key = ?`,
+    [guildId, userId, itemKey],
+  );
+  return row ? mapCoinConsumableItemRow(row) : null;
+}
+
+export function listCoinConsumableItems(
+  guildId: string,
+  userId: string,
+): CoinConsumableItem[] {
+  const rows = db.all<CoinConsumableItemRow>(
+    `SELECT guild_id, user_id, item_key, item_name, quantity, created_at, updated_at
+     FROM coin_consumable_items
+     WHERE guild_id = ? AND user_id = ? AND quantity > 0
+     ORDER BY item_key ASC`,
+    [guildId, userId],
+  );
+  return rows.map(mapCoinConsumableItemRow);
+}
+
+/** 트랜잭션 외부에서도 사용 가능. 내부에서 `BEGIN`을 호출하지 않는다. */
+export function addCoinConsumableItem(
+  guildId: string,
+  userId: string,
+  itemKey: string,
+  itemName: string,
+  quantity: number,
+): CoinConsumableItem {
+  if (!Number.isInteger(quantity) || quantity <= 0) {
+    throw new Error("addCoinConsumableItem: quantity must be a positive integer");
+  }
+  const nowIso = new Date().toISOString();
+  const existing = db.get<CoinConsumableItemRow>(
+    `SELECT guild_id, user_id, item_key, item_name, quantity, created_at, updated_at
+     FROM coin_consumable_items WHERE guild_id = ? AND user_id = ? AND item_key = ?`,
+    [guildId, userId, itemKey],
+  );
+  if (existing) {
+    db.run(
+      `UPDATE coin_consumable_items SET quantity = quantity + ?, item_name = ?, updated_at = ?
+       WHERE guild_id = ? AND user_id = ? AND item_key = ?`,
+      [quantity, itemName, nowIso, guildId, userId, itemKey],
+    );
+    if (getStatementChanges() !== 1) {
+      throw new Error("coin_consumable_items update failed");
+    }
+  } else {
+    db.run(
+      `INSERT INTO coin_consumable_items (guild_id, user_id, item_key, item_name, quantity, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [guildId, userId, itemKey, itemName, quantity, nowIso, nowIso],
+    );
+    if (getStatementChanges() !== 1) {
+      throw new Error("coin_consumable_items insert failed");
+    }
+  }
+  const row = db.get<CoinConsumableItemRow>(
+    `SELECT guild_id, user_id, item_key, item_name, quantity, created_at, updated_at
+     FROM coin_consumable_items WHERE guild_id = ? AND user_id = ? AND item_key = ?`,
+    [guildId, userId, itemKey],
+  );
+  if (!row) {
+    throw new Error("coin_consumable_items row missing after add");
+  }
+  return mapCoinConsumableItemRow(row);
+}
+
+/**
+ * 수량 차감. `BEGIN` 없음 — 호출부 트랜잭션 안에서 사용할 수 있다.
+ * 수량이 0이 되면 row를 삭제하고 `null`을 반환한다.
+ */
+export function consumeCoinConsumableItem(
+  guildId: string,
+  userId: string,
+  itemKey: string,
+  quantity: number,
+): CoinConsumableItem | null {
+  if (!Number.isInteger(quantity) || quantity <= 0) {
+    throw new Error("consumeCoinConsumableItem: quantity must be a positive integer");
+  }
+  const nowIso = new Date().toISOString();
+  db.run(
+    `UPDATE coin_consumable_items SET quantity = quantity - ?, updated_at = ?
+     WHERE guild_id = ? AND user_id = ? AND item_key = ? AND quantity >= ?`,
+    [quantity, nowIso, guildId, userId, itemKey, quantity],
+  );
+  if (getStatementChanges() !== 1) {
+    throw new StockStorageError("INSUFFICIENT_ITEM_QUANTITY");
+  }
+  const row = db.get<CoinConsumableItemRow>(
+    `SELECT guild_id, user_id, item_key, item_name, quantity, created_at, updated_at
+     FROM coin_consumable_items WHERE guild_id = ? AND user_id = ? AND item_key = ?`,
+    [guildId, userId, itemKey],
+  );
+  if (!row) {
+    return null;
+  }
+  const q = Number(row.quantity);
+  if (q <= 0) {
+    db.run(
+      `DELETE FROM coin_consumable_items WHERE guild_id = ? AND user_id = ? AND item_key = ?`,
+      [guildId, userId, itemKey],
+    );
+    return null;
+  }
+  return mapCoinConsumableItemRow(row);
+}
+
 /** 상점 구매 — `cash_balance`만 차감, `total_deposit`는 변경하지 않는다. */
 export function purchaseCoinShopItem(params: {
   guildId: string;
@@ -2492,12 +3402,14 @@ export function purchaseCoinShopItem(params: {
     if (!walletRow) {
       throw new StockStorageError("WALLET_NOT_FOUND");
     }
-    const owned = db.get<{ n: number }>(
-      `SELECT 1 AS n FROM coin_inventory_items WHERE guild_id = ? AND user_id = ? AND item_key = ? LIMIT 1`,
-      [guildId, userId, item.itemKey],
-    );
-    if (owned) {
-      throw new StockStorageError("ITEM_ALREADY_OWNED");
+    if (catalog.itemType === "TITLE") {
+      const owned = db.get<{ n: number }>(
+        `SELECT 1 AS n FROM coin_inventory_items WHERE guild_id = ? AND user_id = ? AND item_key = ? LIMIT 1`,
+        [guildId, userId, item.itemKey],
+      );
+      if (owned) {
+        throw new StockStorageError("ITEM_ALREADY_OWNED");
+      }
     }
     const cash = Number(walletRow.cash_balance);
     if (cash < item.price) {
@@ -2506,29 +3418,56 @@ export function purchaseCoinShopItem(params: {
     const nowIso = new Date().toISOString();
     db.run(
       `UPDATE stock_wallets SET cash_balance = cash_balance - ?, updated_at = ?
-       WHERE guild_id = ? AND user_id = ?`,
-      [item.price, nowIso, guildId, userId],
+       WHERE guild_id = ? AND user_id = ? AND cash_balance >= ?`,
+      [item.price, nowIso, guildId, userId, item.price],
     );
     if (getStatementChanges() !== 1) {
-      throw new Error("coin shop wallet update failed");
+      throw new StockStorageError("INSUFFICIENT_CASH");
     }
     const w = getWalletRow(guildId, userId)!;
     const balanceAfter = Number(w.cash_balance);
-    db.run(
-      `INSERT INTO coin_inventory_items (guild_id, user_id, item_key, item_type, item_name, price_paid, purchased_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [
+
+    if (catalog.itemType === "TITLE") {
+      db.run(
+        `INSERT INTO coin_inventory_items (guild_id, user_id, item_key, item_type, item_name, price_paid, purchased_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          guildId,
+          userId,
+          catalog.itemKey,
+          catalog.itemType,
+          catalog.name,
+          catalog.price,
+          nowIso,
+        ],
+      );
+      if (getStatementChanges() !== 1) {
+        throw new Error("coin_inventory_items insert failed");
+      }
+      db.run("COMMIT");
+      return { item: catalog, wallet: mapWallet(w), balanceAfter };
+    }
+
+    if (catalog.itemType === "CONSUMABLE") {
+      addCoinConsumableItem(
         guildId,
         userId,
         catalog.itemKey,
-        catalog.itemType,
         catalog.name,
-        catalog.price,
-        nowIso,
-      ],
-    );
-    db.run("COMMIT");
-    return { item: catalog, wallet: mapWallet(w), balanceAfter };
+        1,
+      );
+      const after = getCoinConsumableItem(guildId, userId, catalog.itemKey);
+      const qty = after?.quantity ?? 1;
+      db.run("COMMIT");
+      return {
+        item: catalog,
+        wallet: mapWallet(w),
+        balanceAfter,
+        consumableQuantityAfter: qty,
+      };
+    }
+
+    throw new StockStorageError("INVALID_ITEM_TYPE");
   } catch (e) {
     db.run("ROLLBACK");
     throw e;

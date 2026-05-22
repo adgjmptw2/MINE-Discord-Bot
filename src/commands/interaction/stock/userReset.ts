@@ -60,7 +60,7 @@ const command: SlashCommand = {
     const target = interaction.options.getUser("유저", true);
     const guildId = interaction.guildId;
 
-    resetStockUserData(guildId, target.id);
+    const counts = resetStockUserData(guildId, target.id);
 
     await interaction.reply(
       panelReply({
@@ -69,6 +69,14 @@ const command: SlashCommand = {
           title: "🧹 유저 데이터 초기화 완료",
           lines: [
             `<@${target.id}>님의 코인/주식 데이터가 초기화되었습니다.`,
+            "",
+            `삭제된 지갑: ${counts.deletedWallets.toLocaleString("ko-KR")}개`,
+            `삭제된 보유 종목: ${counts.deletedHoldings.toLocaleString("ko-KR")}개`,
+            `삭제된 거래 기록: ${counts.deletedTrades.toLocaleString("ko-KR")}개`,
+            `삭제된 출석 기록: ${counts.deletedAttendances.toLocaleString("ko-KR")}개`,
+            `삭제된 던전 기록: ${counts.deletedDungeonRuns.toLocaleString("ko-KR")}개`,
+            `삭제된 소비 아이템: ${counts.deletedConsumables.toLocaleString("ko-KR")}개`,
+            `삭제된 검: ${counts.deletedSwords.toLocaleString("ko-KR")}개`,
           ],
         },
         allowedMentions: NO_MENTION,
