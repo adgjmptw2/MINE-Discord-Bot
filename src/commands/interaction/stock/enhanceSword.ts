@@ -8,7 +8,15 @@ import {
   type EnhanceCoinSwordResult,
   type SwordEnhanceOutcome,
 } from "@/storage/stock";
-import { formatSwordName, SWORD_VIRTUAL_GAME_FOOTER } from "@/utils/swordDisplay";
+import {
+  formatEnhanceArrowCode,
+  formatEnhanceKeepCode,
+  formatSwordName,
+  formatSwordNameBoldNoPlus,
+  formatSwordNameBoldWithPlus,
+  getEnhanceSuccessFlavor,
+  SWORD_VIRTUAL_GAME_FOOTER,
+} from "@/utils/swordDisplay";
 import { panelReply } from "@/utils/discord";
 import { scheduleEphemeralReplyDelete } from "@/utils/ephemeralCleanup";
 import type { MineClient, SlashCommand } from "@/types";
@@ -35,50 +43,14 @@ function outcomeTitle(outcome: SwordEnhanceOutcome): string {
   }
 }
 
-function resultDescription(r: EnhanceCoinSwordResult): string | null {
-  switch (r.outcome) {
-    case "SUCCESS":
-      return null;
-    case "FAIL_KEEP":
-      return "실패 · 단계 유지";
-    case "FAIL_DOWNGRADE":
-      return "단계 하락";
-    case "DESTROYED":
-      return "파괴 → +10 복구";
-    case "FAIL_DOWNGRADE_PROTECTED":
-    case "DESTROYED_PROTECTED":
-      return null;
-    default:
-      return null;
-  }
-}
-
-function protectionExtraLines(r: EnhanceCoinSwordResult): string[] {
-  const out: string[] = [];
-  if (r.usedDowngradeProtection) {
-    out.push("🛡️ 하락 방지권 발동 · 단계 유지.");
-  }
-  if (r.usedDestroyProtection) {
-    out.push("🛡️ 파괴 방지권 발동 · 파괴 방지.");
-  }
+function unusedProtectionLine(r: EnhanceCoinSwordResult): string | null {
   if (
     (r.selectedDowngradeProtection && !r.usedDowngradeProtection) ||
     (r.selectedDestroyProtection && !r.usedDestroyProtection)
   ) {
-    out.push("이번엔 방지권이 소비되지 않았습니다.");
+    return "선택한 방지권은 이번에 소비되지 않았습니다.";
   }
-  return out;
-}
-
-function resultSummaryLine(r: EnhanceCoinSwordResult): string {
-  if (
-    r.outcome === "FAIL_KEEP" ||
-    r.outcome === "FAIL_DOWNGRADE_PROTECTED" ||
-    r.outcome === "DESTROYED_PROTECTED"
-  ) {
-    return `결과: **+${r.beforeLevel} 유지**`;
-  }
-  return `결과: **+${r.beforeLevel} → +${r.afterLevel}**`;
+  return null;
 }
 
 function buildPanelFromResult(r: EnhanceCoinSwordResult): {
@@ -86,34 +58,124 @@ function buildPanelFromResult(r: EnhanceCoinSwordResult): {
   lines: string[];
 } {
   const title = outcomeTitle(r.outcome);
-  const lines: string[] = [
-    `검: ${formatSwordName(r.beforeLevel)}`,
-    "",
-    resultSummaryLine(r),
-    "",
-    `사용: **${r.cost.toLocaleString("ko-KR")} 코인**`,
-    `잔고: **${r.wallet.cashBalance.toLocaleString("ko-KR")} 코인**`,
-    "",
-    "**확률**",
-    `성공 ${r.successPercent}% · 하락 ${r.downgradePercent}% · 파괴 ${r.destroyPercent}%`,
-    "",
-  ];
-  const desc = resultDescription(r);
-  if (desc) {
-    lines.push(desc, "");
-  }
-  const prot = protectionExtraLines(r);
-  if (prot.length > 0) {
-    lines.push(...prot, "");
-  }
-  lines.push(`최고: **+${r.highestLevel}**`);
+  const cost = r.cost.toLocaleString("ko-KR");
+  const bal = r.wallet.cashBalance.toLocaleString("ko-KR");
+  const useLines = [`사용 **${cost} 코인**`, `잔고 **${bal} 코인**`];
 
-  const plainSuccess =
-    r.outcome === "SUCCESS" && prot.length === 0;
-  if (!plainSuccess) {
-    lines.push("", ...SWORD_VIRTUAL_GAME_FOOTER);
+  switch (r.outcome) {
+    case "SUCCESS": {
+      const lines: string[] = [
+        formatSwordNameBoldWithPlus(r.afterLevel),
+        formatEnhanceArrowCode(r.beforeLevel, r.afterLevel),
+        getEnhanceSuccessFlavor(r.afterLevel),
+        "",
+        ...useLines,
+        "",
+        `성공률 **${r.successPercent}%**`,
+        `최고 기록 **+${r.highestLevel}**`,
+      ];
+      const u = unusedProtectionLine(r);
+      if (u) {
+        lines.push("", u);
+      }
+      return { title, lines };
+    }
+    case "FAIL_KEEP": {
+      const lines: string[] = [
+        formatSwordNameBoldWithPlus(r.beforeLevel),
+        formatEnhanceKeepCode(r.beforeLevel),
+        "강화에는 실패했지만 검은 손상되지 않았습니다.",
+        "",
+        ...useLines,
+        "",
+        `성공률 **${r.successPercent}%**`,
+      ];
+      const u = unusedProtectionLine(r);
+      if (u) {
+        lines.push("", u);
+      }
+      return { title, lines };
+    }
+    case "FAIL_DOWNGRADE": {
+      return {
+        title,
+        lines: [
+          formatSwordNameBoldNoPlus(r.beforeLevel),
+          formatEnhanceArrowCode(r.beforeLevel, r.afterLevel),
+          "강화 실패로 검의 힘이 약해졌습니다.",
+          "",
+          ...useLines,
+          "",
+          `성공률 **${r.successPercent}%**`,
+          `하락률 **${r.downgradePercent}%**`,
+          "",
+          ...SWORD_VIRTUAL_GAME_FOOTER,
+        ],
+      };
+    }
+    case "DESTROYED": {
+      return {
+        title,
+        lines: [
+          formatSwordNameBoldNoPlus(r.beforeLevel),
+          formatEnhanceArrowCode(r.beforeLevel, r.afterLevel),
+          "검이 파괴되어 +10으로 복구되었습니다.",
+          "",
+          ...useLines,
+          "",
+          `파괴율 **${r.destroyPercent}%**`,
+          "",
+          ...SWORD_VIRTUAL_GAME_FOOTER,
+        ],
+      };
+    }
+    case "FAIL_DOWNGRADE_PROTECTED": {
+      return {
+        title,
+        lines: [
+          formatSwordNameBoldWithPlus(r.beforeLevel),
+          formatEnhanceKeepCode(r.beforeLevel),
+          "하락 방지권이 발동했습니다.",
+          "단계가 내려가지 않았습니다.",
+          "",
+          ...useLines,
+          "",
+          "하락 방지권 **1개 소비**",
+          "",
+          ...SWORD_VIRTUAL_GAME_FOOTER,
+        ],
+      };
+    }
+    case "DESTROYED_PROTECTED": {
+      return {
+        title,
+        lines: [
+          formatSwordNameBoldWithPlus(r.beforeLevel),
+          formatEnhanceKeepCode(r.beforeLevel),
+          "파괴 방지권이 발동했습니다.",
+          "검이 파괴되지 않았습니다.",
+          "",
+          ...useLines,
+          "",
+          "파괴 방지권 **1개 소비**",
+          "",
+          ...SWORD_VIRTUAL_GAME_FOOTER,
+        ],
+      };
+    }
+    default: {
+      return {
+        title,
+        lines: [
+          formatSwordNameBoldWithPlus(r.beforeLevel),
+          formatEnhanceKeepCode(r.beforeLevel),
+          ...useLines,
+          "",
+          ...SWORD_VIRTUAL_GAME_FOOTER,
+        ],
+      };
+    }
   }
-  return { title, lines };
 }
 
 const command: SlashCommand = {

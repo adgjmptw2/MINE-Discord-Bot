@@ -1,5 +1,6 @@
 import {
   ActionRowBuilder,
+  AttachmentBuilder,
   ContainerBuilder,
   MessageFlags,
   SectionBuilder,
@@ -34,6 +35,7 @@ export interface PanelMessageOptions {
   ephemeral?: boolean;
   /** Reply 시 멘션 파싱 제어 (예: `{ parse: [] }`로 본문의 `<@id>` 알림 방지) */
   allowedMentions?: MessageMentionOptions;
+  files?: readonly AttachmentBuilder[];
 }
 
 export interface PanelEditOptions {
@@ -149,6 +151,9 @@ export function panelReply(
   if (options.allowedMentions !== undefined) {
     reply.allowedMentions = options.allowedMentions;
   }
+  if (options.files !== undefined && options.files.length > 0) {
+    reply.files = [...options.files];
+  }
   return reply;
 }
 
@@ -178,6 +183,9 @@ export function panelMessage(
   };
   if (options.allowedMentions !== undefined) {
     msg.allowedMentions = options.allowedMentions;
+  }
+  if (options.files !== undefined && options.files.length > 0) {
+    msg.files = [...options.files];
   }
   return msg;
 }

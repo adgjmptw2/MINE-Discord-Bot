@@ -1,6 +1,6 @@
 import { MessageFlags } from "discord.js";
 import { getOrCreateCoinSword } from "@/storage/stock";
-import { formatSwordName, getSwordTier } from "@/utils/swordDisplay";
+import { formatMySwordPanelDescription, getSwordTier } from "@/utils/swordDisplay";
 import { panelReply } from "@/utils/discord";
 import { scheduleEphemeralReplyDelete } from "@/utils/ephemeralCleanup";
 import type { MineClient, SlashCommand } from "@/types";
@@ -31,13 +31,11 @@ const command: SlashCommand = {
     const tier = getSwordTier(sword.level);
 
     const lines: string[] = [
-      `등급: **${tier.tier}**`,
-      `현재 강화: **+${sword.level}**`,
-      `최고 강화: **+${sword.highestLevel}**`,
+      `현재 **+${sword.level}** · 최고 **+${sword.highestLevel}**`,
+      `시도 **${sword.totalAttempts}회** · 성공 **${sword.successCount}회** · 실패 **${sword.failCount}회**`,
+      `하락 **${sword.downgradeCount}회** · 파괴 **${sword.destroyCount}회**`,
       "",
-      "**기록**",
-      `시도 ${sword.totalAttempts}회 · 성공 ${sword.successCount}회 · 실패 ${sword.failCount}회`,
-      `하락 ${sword.downgradeCount}회 · 파괴 ${sword.destroyCount}회`,
+      "`/강화` `/강화정보` `/던전`",
     ];
 
     await interaction.reply(
@@ -45,7 +43,7 @@ const command: SlashCommand = {
         ephemeral: false,
         panel: {
           title: `${tier.emoji} 내 검`,
-          description: formatSwordName(sword.level),
+          description: formatMySwordPanelDescription(sword.level),
           lines,
         },
         allowedMentions: NO_MENTION,

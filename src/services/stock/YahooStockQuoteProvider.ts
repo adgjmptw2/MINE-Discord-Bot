@@ -5,6 +5,7 @@
  */
 import { getSupportedStockSymbols } from "@/settings/stockSymbols";
 import type { StockSymbol } from "@/settings/stockSymbols";
+import type { StockChartPoint, StockQuoteDisplayExtras } from "./chartTypes";
 import type { StockQuoteProvider } from "./StockQuoteProvider";
 import type { StockPrice } from "./types";
 
@@ -202,5 +203,85 @@ export class YahooStockQuoteProvider implements StockQuoteProvider {
 
   async getPrices(symbols: string[]): Promise<StockPrice[]> {
     return Promise.all(symbols.map((s) => this.getPrice(s)));
+  }
+
+  private extractDisplayExtrasFromRaw(raw: unknown): StockQuoteDisplayExtras | null {
+    if (!isRecord(raw)) {
+      return null;
+    }
+    const chart = raw.chart;
+    if (!isRecord(chart) || chart.error != null) {
+      return null;
+    }
+    const result = chart.result;
+    if (!Array.isArray(result) || result.length === 0) {
+      return null;
+    }
+    const first = result[0];
+    if (!isRecord(first)) {
+      return null;
+    }
+    const chartMeta = first.meta;
+    if (!isRecord(chartMeta)) {
+      return null;
+    }
+
+    const open =
+      parseFiniteNumber(chartMeta.regularMarketOpen) ??
+      parseFiniteNumber(chartMeta.open);
+    const high = parseFiniteNumber(chartMeta.regularMarketDayHigh);
+    const low = parseFiniteNumber(chartMeta.regularMarketDayLow);
+    const previousClose =
+      parseFiniteNumber(chartMeta.chartPreviousClose) ??
+      parseFiniteNumber(chartMeta.previousClose);
+
+    const points: StockChartPoint[] = [];
+    const tsRaw = first.timestamp;
+    const indicators = first.indicators;
+    if (Array.isArray(tsRaw) && isRecord(indicators)) {
+      const quotes = indicators.quote;
+      if (Array.isArray(quotes) && quotes[0] !== undefined) {
+        const q0 = quotes[0];
+        if (isRecord(q0)) {
+          const closes = q0.close;
+          if (Array.isArray(closes)) {
+            const n = Math.min(tsRaw.length, closes.length);
+            for (let i = 0; i < n; i += 1) {
+              const t = parseFiniteNumber(tsRaw[i]);
+              const c = parseFiniteNumber(closes[i]);
+              if (t === null || c === null) {
+                continue;
+              }
+              const ms = t > 1e12 ? t : t * 1000;
+              points.push({ timestamp: ms, price: Math.round(c) });
+            }
+          }
+        }
+      }
+    }
+
+    return {
+      points,
+      open: open !== null ? Math.round(open) : null,
+      high: high !== null ? Math.round(high) : null,
+      low: low !== null ? Math.round(low) : null,
+      previousClose:
+        previousClose !== null ? Math.round(previousClose) : null,
+    };
+  }
+
+  async fetchQuoteDisplayExtras(symbol: string): Promise<StockQuoteDisplayExtras | null> {
+    try {
+      const meta = this.resolveToSymbol(symbol);
+      const url = buildChartUrl(meta.yahooSymbol);
+      const res = await fetch(url);
+      const raw: unknown = await res.json().catch(() => null);
+      if (!res.ok || raw === null) {
+        return null;
+      }
+      return this.extractDisplayExtrasFromRaw(raw);
+    } catch {
+      return null;
+    }
   }
 }

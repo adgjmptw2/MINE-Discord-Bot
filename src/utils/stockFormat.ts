@@ -37,6 +37,81 @@ export function formatPercent(value: number | null): string {
   return `${sign}${value.toFixed(2)}%`;
 }
 
+export type StockQuoteTrend = "UP" | "DOWN" | "FLAT";
+
+export function classifyStockTrend(changePercent: number | null): StockQuoteTrend {
+  if (changePercent === null || !Number.isFinite(changePercent)) {
+    return "FLAT";
+  }
+  if (changePercent > 0) {
+    return "UP";
+  }
+  if (changePercent < 0) {
+    return "DOWN";
+  }
+  return "FLAT";
+}
+
+export function quoteTrendTitleEmoji(trend: StockQuoteTrend): string {
+  if (trend === "UP") {
+    return "📈";
+  }
+  if (trend === "DOWN") {
+    return "📉";
+  }
+  return "📊";
+}
+
+export function quoteAccentRgb(trend: StockQuoteTrend): number {
+  if (trend === "UP") {
+    return 0xef4444;
+  }
+  if (trend === "DOWN") {
+    return 0x3b82f6;
+  }
+  return 0x9ca3af;
+}
+
+export function formatQuoteCurrentPriceLine(price: number): string {
+  return `현재가: **${formatKrwPrice(price)} 코인**`;
+}
+
+export function formatQuoteDayChangeLine(
+  price: number,
+  changePercent: number | null,
+): string {
+  if (changePercent === null || !Number.isFinite(changePercent)) {
+    return "전일 대비: 확인 불가";
+  }
+  const delta = estimateChangeAmount(price, changePercent);
+  const absCoin = formatKrwPrice(Math.abs(delta));
+  const pct = formatPercent(changePercent);
+  if (changePercent > 0) {
+    return `전일 대비: 🔺 **+${absCoin} 코인 (${pct})**`;
+  }
+  if (changePercent < 0) {
+    return `전일 대비: 🔻 **-${absCoin} 코인 (${pct})**`;
+  }
+  return `전일 대비: ➖ **0 코인 (${pct})**`;
+}
+
+export function formatQuoteOhlcLine(
+  open: number | null,
+  high: number | null,
+): string {
+  const o =
+    open === null ? "-" : `${formatKrwPrice(Math.round(open))} 코인`;
+  const h =
+    high === null ? "-" : `${formatKrwPrice(Math.round(high))} 코인`;
+  return `시가: ${o} · 고가: ${h}`;
+}
+
+export function formatQuoteLowLine(low: number | null): string {
+  const l =
+    low === null ? "-" : `${formatKrwPrice(Math.round(low))} 코인`;
+  return `저가: ${l}`;
+}
+
 /** 서울 기준, 마지막 갱신 시각 표시 */
 export function formatStockRefreshTime(date: Date | null): string {
   if (!date) {
