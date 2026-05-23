@@ -86,6 +86,7 @@ export function resolveSoundroomPlayingImageUrl(
 
 export function resolveSoundroomPanelPlayingImage(
   track: ExtendedTrack,
+  options?: { skipLocalIdleFile?: boolean },
 ): { imageUrl: string | null; files: AttachmentBuilder[] } {
   let imageUrl = resolveSoundroomPlayingImageUrl(track);
   if (imageUrl) {
@@ -94,6 +95,9 @@ export function resolveSoundroomPanelPlayingImage(
   imageUrl = getSoundroomIdleImageUrlFromEnv();
   if (imageUrl) {
     return { imageUrl, files: [] };
+  }
+  if (options?.skipLocalIdleFile) {
+    return { imageUrl: null, files: [] };
   }
   const att = tryLoadSoundroomIdleAttachment();
   if (att) {

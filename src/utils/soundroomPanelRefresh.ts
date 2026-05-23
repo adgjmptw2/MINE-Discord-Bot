@@ -1,7 +1,11 @@
 import { PermissionFlagsBits } from "discord.js";
 import { getPlayer } from "@/utils/commands";
 import { log } from "@/utils/logger";
-import { listSoundroomRecords, setSoundroom } from "@/storage/soundroom";
+import {
+  listSoundroomRecords,
+  setSoundroom,
+  type SoundroomRecord,
+} from "@/storage/soundroom";
 import type { MineClient } from "@/types";
 import {
   buildSoundroomIdlePayload,
@@ -22,6 +26,84 @@ type PanelPassStats = {
   failed: number;
 };
 
+type RoomOutcome = "edited" | "recreated" | "skipped" | "failed";
+
+const SOUNDROOM_PANEL_REFRESH_CONCURRENCY = 5;
+
+const SOUNDROOM_PANEL_REFRESH_OMIT_LOCAL_GIF_OVER = 12;
+
+async function refreshOneSoundroomPanel(
+  client: MineClient,
+  botUserId: string,
+  room: SoundroomRecord,
+  omitLocalGif: boolean,
+): Promise<RoomOutcome> {
+  try {
+    const guild =
+      client.guilds.cache.get(room.guildId) ??
+      (await client.guilds.fetch(room.guildId).catch(() => null));
+    if (!guild) {
+      return "skipped";
+    }
+
+    const me = guild.members.me;
+    if (!me) {
+      return "skipped";
+    }
+
+    const ch =
+      guild.channels.cache.get(room.channelId) ??
+      (await guild.channels.fetch(room.channelId).catch(() => null));
+    if (!ch?.isTextBased() || ch.isDMBased()) {
+      return "skipped";
+    }
+
+    const perms = ch.permissionsFor(me);
+    const need =
+      PermissionFlagsBits.ViewChannel |
+      PermissionFlagsBits.SendMessages |
+      PermissionFlagsBits.EmbedLinks;
+    if (!perms?.has(need)) {
+      return "skipped";
+    }
+
+    const player = getPlayer(client, room.guildId);
+    const payload = player?.current
+      ? buildSoundroomPlayingPayload(client, player, {
+          skipLocalIdleFile: omitLocalGif,
+        })
+      : buildSoundroomIdlePayload(client, room.guildId, {
+          skipLocalIdleAttachment: omitLocalGif,
+        });
+
+    const msg = await fetchSoundroomPanelMessage(client, room.guildId);
+
+    if (msg) {
+      if (!msg.editable || msg.author.id !== botUserId) {
+        return "failed";
+      }
+      try {
+        await msg.edit({ ...payload, allowedMentions: mentionNone });
+        return "edited";
+      } catch {
+        return "failed";
+      }
+    }
+    try {
+      const sent = await ch.send({
+        ...payload,
+        allowedMentions: mentionNone,
+      });
+      setSoundroom(room.guildId, ch.id, sent.id);
+      return "recreated";
+    } catch {
+      return "failed";
+    }
+  } catch {
+    return "failed";
+  }
+}
+
 async function applySoundroomPanelStateToAllGuilds(
   client: MineClient,
 ): Promise<PanelPassStats> {
@@ -37,75 +119,16 @@ async function applySoundroomPanelStateToAllGuilds(
   }
 
   const rooms = listSoundroomRecords();
-  for (const room of rooms) {
-    await new Promise<void>((resolve) => {
-      setTimeout(resolve, 350);
-    });
-    try {
-      const guild =
-        client.guilds.cache.get(room.guildId) ??
-        (await client.guilds.fetch(room.guildId).catch(() => null));
-      if (!guild) {
-        stats.skipped += 1;
-        continue;
-      }
-
-      const me = guild.members.me;
-      if (!me) {
-        stats.skipped += 1;
-        continue;
-      }
-
-      const ch =
-        guild.channels.cache.get(room.channelId) ??
-        (await guild.channels.fetch(room.channelId).catch(() => null));
-      if (!ch?.isTextBased() || ch.isDMBased()) {
-        stats.skipped += 1;
-        continue;
-      }
-
-      const perms = ch.permissionsFor(me);
-      const need =
-        PermissionFlagsBits.ViewChannel |
-        PermissionFlagsBits.SendMessages |
-        PermissionFlagsBits.EmbedLinks;
-      if (!perms?.has(need)) {
-        stats.skipped += 1;
-        continue;
-      }
-
-      const player = getPlayer(client, room.guildId);
-      const payload = player?.current
-        ? buildSoundroomPlayingPayload(client, player)
-        : buildSoundroomIdlePayload(client, room.guildId);
-
-      const msg = await fetchSoundroomPanelMessage(client, room.guildId);
-
-      if (msg) {
-        if (!msg.editable || msg.author.id !== uid) {
-          stats.failed += 1;
-          continue;
-        }
-        try {
-          await msg.edit({ ...payload, allowedMentions: mentionNone });
-          stats.edited += 1;
-        } catch {
-          stats.failed += 1;
-        }
-      } else {
-        try {
-          const sent = await ch.send({
-            ...payload,
-            allowedMentions: mentionNone,
-          });
-          setSoundroom(room.guildId, ch.id, sent.id);
-          stats.recreated += 1;
-        } catch {
-          stats.failed += 1;
-        }
-      }
-    } catch {
-      stats.failed += 1;
+  const omitLocalGif = rooms.length > SOUNDROOM_PANEL_REFRESH_OMIT_LOCAL_GIF_OVER;
+  for (let i = 0; i < rooms.length; i += SOUNDROOM_PANEL_REFRESH_CONCURRENCY) {
+    const chunk = rooms.slice(i, i + SOUNDROOM_PANEL_REFRESH_CONCURRENCY);
+    const outcomes = await Promise.all(
+      chunk.map((room) =>
+        refreshOneSoundroomPanel(client, uid, room, omitLocalGif),
+      ),
+    );
+    for (const o of outcomes) {
+      stats[o] += 1;
     }
   }
   return stats;

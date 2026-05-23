@@ -43,9 +43,13 @@ export function getSoundroomMaintenanceNotice(): string | null {
 export function buildSoundroomIdlePayload(
   client: MineClient,
   guildId?: string,
+  options?: { skipLocalIdleAttachment?: boolean },
 ): BaseMessageOptions {
   const idleUrl = getSoundroomIdleImageUrlFromEnv();
-  const attachment = idleUrl ? null : tryLoadSoundroomIdleAttachment();
+  const attachment =
+    idleUrl || options?.skipLocalIdleAttachment
+      ? null
+      : tryLoadSoundroomIdleAttachment();
 
   const embed = new EmbedBuilder()
     .setTitle("🎵 MINE Soundroom")
@@ -99,6 +103,7 @@ export function buildSoundroomIdlePayload(
 export function buildSoundroomPlayingPayload(
   client: MineClient,
   player: ExtendedPlayer,
+  options?: { skipLocalIdleFile?: boolean },
 ): BaseMessageOptions {
   const track = player.current!;
   const pos = player.position ?? 0;
@@ -111,16 +116,18 @@ export function buildSoundroomPlayingPayload(
   const uid = req?.user?.id ?? req?.id;
   const reqMention = uid ? `<@${uid}>` : "알 수 없음";
 
-  const embed = new EmbedBuilder()
+  const mainEmbed = new EmbedBuilder()
     .setTitle("🎵 지금 재생 중")
     .setColor(client.config.color)
     .setDescription(`**${truncate(track.info.title || "제목 없음", 240)}**`);
 
   const { imageUrl: panelImageUrl, files: panelFiles } =
-    resolveSoundroomPanelPlayingImage(track);
+    resolveSoundroomPanelPlayingImage(track, options);
   if (panelImageUrl) {
-    embed.setImage(panelImageUrl);
+    mainEmbed.setImage(panelImageUrl);
   }
+
+  const detailBlocks: string[] = [];
 
   if (ap.enabled) {
     if (userQueued === 0) {
@@ -128,19 +135,14 @@ export function buildSoundroomPlayingPayload(
       const hintTitle =
         nextAp?.info.title?.trim() || ap.autoplayNextHintTitle?.trim() || "";
       const hintLine = hintTitle ? truncate(hintTitle, 90) : "—";
-      embed.addFields({
-        name: "대기열",
-        value: `대기열이 비어있습니다.\n자동 재생 예정: ${hintLine}`,
-        inline: false,
-      });
+      detailBlocks.push(
+        `**대기열**\n대기열이 비어있습니다.\n자동 재생 예정: ${hintLine}`,
+      );
     }
   } else if (userQueued === 0 && player.queue.length === 0) {
-    embed.addFields({
-      name: "대기열",
-      value:
-        "다음 곡이 없습니다. 재생이 끝난 뒤 1분이 지나면 음성 채널에서 나갑니다.",
-      inline: false,
-    });
+    detailBlocks.push(
+      "**대기열**\n다음 곡이 없습니다. 재생이 끝난 뒤 1분이 지나면 음성 채널에서 나갑니다.",
+    );
   }
 
   const metaLines = [
@@ -151,11 +153,11 @@ export function buildSoundroomPlayingPayload(
   if (maint) {
     metaLines.push(maint);
   }
-  embed.addFields({
-    name: "\u200b",
-    value: metaLines.join("\n"),
-    inline: false,
-  });
+  detailBlocks.push(metaLines.join("\n"));
+
+  const detailEmbed = new EmbedBuilder()
+    .setColor(client.config.color)
+    .setDescription(detailBlocks.join("\n\n"));
 
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
@@ -188,7 +190,7 @@ export function buildSoundroomPlayingPayload(
   );
 
   return {
-    embeds: [embed],
+    embeds: [mainEmbed, detailEmbed],
     components: [row1, row2],
     allowedMentions: MENTION_NONE,
     files: panelFiles,
