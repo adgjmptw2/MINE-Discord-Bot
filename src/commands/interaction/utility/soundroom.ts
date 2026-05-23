@@ -112,7 +112,9 @@ const command: SlashCommand = {
         ],
       });
 
-      const panel = await channel.send(buildSoundroomIdlePayload(client));
+      const panel = await channel.send(
+        buildSoundroomIdlePayload(client, guild.id),
+      );
 
       setSoundroom(guild.id, channel.id, panel.id);
 

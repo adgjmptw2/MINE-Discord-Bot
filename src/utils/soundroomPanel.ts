@@ -1,5 +1,6 @@
 import {
   ActionRowBuilder,
+  AttachmentBuilder,
   ButtonBuilder,
   ButtonStyle,
   EmbedBuilder,
@@ -15,42 +16,18 @@ import {
   getAutoplayState,
   isSoundroomAutoplayTrack,
 } from "@/utils/soundroomAutoplay";
+import {
+  formatSoundroomProgress,
+  getSoundroomIdleImageUrlFromEnv,
+  resolveSoundroomPanelPlayingImage,
+  SOUNDROOM_IDLE_ATTACHMENT_NAME,
+  tryLoadSoundroomIdleAttachment,
+} from "@/utils/soundroomArtwork";
 import type { ExtendedPlayer, ExtendedTrack, MineClient } from "@/types";
 
-function brand(client: MineClient): string {
-  return client.config.soundroom?.brandName?.trim() || "마인";
-}
+const MENTION_NONE = { parse: [] as const };
 
-function thinBar(currentMs: number, totalMs: number, width = 11): string {
-  if (totalMs <= 0) {
-    return "─".repeat(width);
-  }
-  const ratio = Math.max(0, Math.min(1, currentMs / totalMs));
-  const on = Math.round(ratio * width);
-  return `${"─".repeat(Math.max(0, on))}·${"─".repeat(Math.max(0, width - on - 1))}`;
-}
-
-function volumeLabel(volume: number): string {
-  if (volume >= 80) {
-    return "🔊 크게";
-  }
-  if (volume <= 20) {
-    return "🔉 작게";
-  }
-  return "🔊 일반";
-}
-
-const footerTimeFormat = new Intl.DateTimeFormat("ko-KR", {
-  hour: "numeric",
-  minute: "2-digit",
-  hour12: true,
-});
-
-function koreanFooterTime(): string {
-  return `오늘 ${footerTimeFormat.format(new Date())}`;
-}
-
-export const SOUNDROOM_MAINTENANCE_NOTICE_UPTIME_SEC = 60 * 60;
+export const SOUNDROOM_MAINTENANCE_NOTICE_UPTIME_SEC = 2 * 60 * 60;
 
 export function shouldShowSoundroomMaintenanceNotice(): boolean {
   return process.uptime() < SOUNDROOM_MAINTENANCE_NOTICE_UPTIME_SEC;
@@ -60,34 +37,43 @@ export function getSoundroomMaintenanceNotice(): string | null {
   if (!shouldShowSoundroomMaintenanceNotice()) {
     return null;
   }
-  return "-# 가동 후 1시간 이내에는 음악 기능이 불안정할 수 있습니다.";
-}
-
-function appendMaintenanceFooter(base: string): string {
-  const n = getSoundroomMaintenanceNotice();
-  if (!n) {
-    return base;
-  }
-  return `${base}\n\n${n}`;
+  return "-# 현재 점검중이라 음악 기능이 불안정할 수 있습니다.";
 }
 
 export function buildSoundroomIdlePayload(
   client: MineClient,
+  guildId?: string,
 ): BaseMessageOptions {
-  const thumb = client.user?.displayAvatarURL({ size: 256 }) ?? undefined;
-  const b = brand(client);
+  const idleUrl = getSoundroomIdleImageUrlFromEnv();
+  const attachment = idleUrl ? null : tryLoadSoundroomIdleAttachment();
 
   const embed = new EmbedBuilder()
-    .setTitle(`${b} 노래 채널`)
+    .setTitle("🎵 MINE Soundroom")
     .setColor(0x7c5cff)
-    .setDescription(
-      appendMaintenanceFooter(
-        "채팅에 검색어 또는 유튜브 링크를 입력하면 재생됩니다.\n자동 재생은 재생 중 패널 버튼으로 켜고 끌 수 있습니다.",
-      ),
-    );
-  if (thumb) {
-    embed.setThumbnail(thumb);
+    .setDescription("노래 제목이나 URL을 입력하면 재생됩니다.");
+
+  if (idleUrl) {
+    embed.setImage(idleUrl);
+  } else if (attachment) {
+    embed.setImage(`attachment://${SOUNDROOM_IDLE_ATTACHMENT_NAME}`);
   }
+
+  let queueCount = 0;
+  if (guildId) {
+    const p = getPlayer(client, guildId);
+    queueCount = p?.queue?.length ?? 0;
+  }
+
+  const metaLines = ["상태: 대기 중", `대기열: ${queueCount}곡`];
+  const maint = getSoundroomMaintenanceNotice();
+  if (maint) {
+    metaLines.push(maint);
+  }
+  embed.addFields({
+    name: "\u200b",
+    value: metaLines.join("\n"),
+    inline: false,
+  });
 
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
@@ -100,9 +86,13 @@ export function buildSoundroomIdlePayload(
       .setStyle(ButtonStyle.Secondary),
   );
 
+  const files: AttachmentBuilder[] = idleUrl ? [] : attachment ? [attachment] : [];
+
   return {
     embeds: [embed],
     components: [row1],
+    allowedMentions: MENTION_NONE,
+    files,
   };
 }
 
@@ -112,33 +102,26 @@ export function buildSoundroomPlayingPayload(
 ): BaseMessageOptions {
   const track = player.current!;
   const pos = player.position ?? 0;
-  const len = track.info.length || 1;
+  const len = track.info.length > 0 ? track.info.length : 1;
   const volPct = Math.round(player.volume ?? 100);
-  const bar = thinBar(pos, len);
-  const thumb = track.info.thumbnail ?? null;
-
-  const desc = appendMaintenanceFooter(
-    [
-      `[${track.info.title}](${track.info.uri})`,
-      "",
-      `${volumeLabel(player.volume ?? 100)} · 볼륨 ${volPct}%`,
-      "",
-      `(${formatDuration(pos)}) ${bar} (${formatDuration(len)})`,
-    ].join("\n"),
-  );
-
-  const requester = track.info.requester?.user.username ?? "알 수 없음";
-
   const ap = getAutoplayState(player.guildId);
   const userQueued = countUserSoundroomQueue(player);
 
+  const req = track.info.requester;
+  const uid = req?.user?.id ?? req?.id;
+  const reqMention = uid ? `<@${uid}>` : "알 수 없음";
+
   const embed = new EmbedBuilder()
-    .setTitle("지금 재생 중")
+    .setTitle("🎵 지금 재생 중")
     .setColor(client.config.color)
-    .setDescription(desc)
-    .setFooter({
-      text: `신청자: ${requester} | 볼륨: ${volPct}% • 자동 재생 ${ap.enabled ? "ON" : "OFF"} • ${koreanFooterTime()}`,
-    });
+    .setDescription(`**${truncate(track.info.title || "제목 없음", 240)}**`);
+
+  const { imageUrl: panelImageUrl, files: panelFiles } =
+    resolveSoundroomPanelPlayingImage(track);
+  if (panelImageUrl) {
+    embed.setImage(panelImageUrl);
+  }
+
   if (ap.enabled) {
     if (userQueued === 0) {
       const nextAp = player.queue.find(isSoundroomAutoplayTrack);
@@ -159,9 +142,20 @@ export function buildSoundroomPlayingPayload(
       inline: false,
     });
   }
-  if (thumb) {
-    embed.setThumbnail(thumb).setImage(thumb);
+
+  const metaLines = [
+    `신청자: ${reqMention} · 볼륨: ${volPct}% · 자동 재생: ${ap.enabled ? "ON" : "OFF"}`,
+    formatSoundroomProgress(pos, len, track.info.isStream),
+  ];
+  const maint = getSoundroomMaintenanceNotice();
+  if (maint) {
+    metaLines.push(maint);
   }
+  embed.addFields({
+    name: "\u200b",
+    value: metaLines.join("\n"),
+    inline: false,
+  });
 
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
@@ -170,7 +164,7 @@ export function buildSoundroomPlayingPayload(
       .setStyle(ButtonStyle.Danger),
     new ButtonBuilder()
       .setCustomId("sr_seek")
-      .setLabel("구간 이동")
+      .setLabel("구간이동")
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("sr_pause")
@@ -196,6 +190,8 @@ export function buildSoundroomPlayingPayload(
   return {
     embeds: [embed],
     components: [row1, row2],
+    allowedMentions: MENTION_NONE,
+    files: panelFiles,
   };
 }
 
@@ -233,7 +229,7 @@ export async function editSoundroomIdlePanel(
     return;
   }
 
-  await msg.edit(buildSoundroomIdlePayload(client));
+  await msg.edit(buildSoundroomIdlePayload(client, guildId));
 }
 
 export async function editSoundroomPlayingPanel(

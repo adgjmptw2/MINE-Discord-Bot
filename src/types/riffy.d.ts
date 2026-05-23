@@ -44,6 +44,7 @@ declare module "riffy" {
     author: string;
     length: number;
     uri: string;
+    artworkUrl?: string;
     thumbnail?: string;
     isStream?: boolean;
     requester?: GuildMember;

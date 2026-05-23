@@ -77,7 +77,7 @@ async function applySoundroomPanelStateToAllGuilds(
       const player = getPlayer(client, room.guildId);
       const payload = player?.current
         ? buildSoundroomPlayingPayload(client, player)
-        : buildSoundroomIdlePayload(client);
+        : buildSoundroomIdlePayload(client, room.guildId);
 
       const msg = await fetchSoundroomPanelMessage(client, room.guildId);
 

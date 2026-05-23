@@ -67,6 +67,7 @@ export interface ExtendedTrackInfo {
   author: string;
   length: number;
   uri: string;
+  artworkUrl?: string;
   thumbnail?: string;
   isStream?: boolean;
   identifier?: string;
