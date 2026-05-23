@@ -3,7 +3,9 @@ import {
   AttachmentBuilder,
   ButtonBuilder,
   ButtonStyle,
+  ComponentType,
   EmbedBuilder,
+  type GuildMember,
   type Message,
   type BaseMessageOptions,
   type GuildTextBasedChannel,
@@ -27,6 +29,52 @@ import type { ExtendedPlayer, ExtendedTrack, MineClient } from "@/types";
 
 const MENTION_NONE = { parse: [] as const };
 
+function formatSoundroomRequesterDisplay(requester?: GuildMember): string {
+  const uid = requester?.user?.id ?? requester?.id;
+  if (uid) {
+    return `<@${uid}>`;
+  }
+  if (!requester) {
+    return "알 수 없음";
+  }
+  const display = requester.displayName?.trim();
+  if (display) {
+    return truncate(display, 48);
+  }
+  const username = requester.user?.username?.trim();
+  if (username) {
+    return truncate(username, 48);
+  }
+  return "알 수 없음";
+}
+
+export type BuildSoundroomPanelOptions = {
+  includeMedia?: boolean;
+  skipLocalIdleAttachment?: boolean;
+};
+
+export function isSoundroomPanelMessage(message: Message): boolean {
+  if (!message.components?.length) {
+    return false;
+  }
+  for (const row of message.components) {
+    if (row.type !== ComponentType.ActionRow) {
+      continue;
+    }
+    for (const comp of row.components) {
+      if (
+        comp.type === ComponentType.Button &&
+        "customId" in comp &&
+        typeof comp.customId === "string" &&
+        comp.customId.startsWith("sr_")
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 export const SOUNDROOM_MAINTENANCE_NOTICE_UPTIME_SEC = 2 * 60 * 60;
 
 export function shouldShowSoundroomMaintenanceNotice(): boolean {
@@ -43,23 +91,28 @@ export function getSoundroomMaintenanceNotice(): string | null {
 export function buildSoundroomIdlePayload(
   client: MineClient,
   guildId?: string,
-  options?: { skipLocalIdleAttachment?: boolean },
+  options?: BuildSoundroomPanelOptions,
 ): BaseMessageOptions {
-  const idleUrl = getSoundroomIdleImageUrlFromEnv();
-  const attachment =
-    idleUrl || options?.skipLocalIdleAttachment
-      ? null
-      : tryLoadSoundroomIdleAttachment();
+  const includeMedia = options?.includeMedia !== false;
 
   const embed = new EmbedBuilder()
     .setTitle("🎵 MINE Soundroom")
     .setColor(0x7c5cff)
     .setDescription("노래 제목이나 URL을 입력하면 재생됩니다.");
 
-  if (idleUrl) {
-    embed.setImage(idleUrl);
-  } else if (attachment) {
-    embed.setImage(`attachment://${SOUNDROOM_IDLE_ATTACHMENT_NAME}`);
+  let files: AttachmentBuilder[] = [];
+
+  if (includeMedia) {
+    const idleUrl = getSoundroomIdleImageUrlFromEnv();
+    if (idleUrl) {
+      embed.setImage(idleUrl);
+    } else if (!options?.skipLocalIdleAttachment) {
+      const attachment = tryLoadSoundroomIdleAttachment();
+      if (attachment) {
+        embed.setImage(`attachment://${SOUNDROOM_IDLE_ATTACHMENT_NAME}`);
+        files = [attachment];
+      }
+    }
   }
 
   let queueCount = 0;
@@ -90,21 +143,20 @@ export function buildSoundroomIdlePayload(
       .setStyle(ButtonStyle.Secondary),
   );
 
-  const files: AttachmentBuilder[] = idleUrl ? [] : attachment ? [attachment] : [];
-
   return {
     embeds: [embed],
     components: [row1],
     allowedMentions: MENTION_NONE,
-    files,
+    files: includeMedia ? files : [],
   };
 }
 
 export function buildSoundroomPlayingPayload(
   client: MineClient,
   player: ExtendedPlayer,
-  options?: { skipLocalIdleFile?: boolean },
+  options?: BuildSoundroomPanelOptions,
 ): BaseMessageOptions {
+  const includeMedia = options?.includeMedia !== false;
   const track = player.current!;
   const pos = player.position ?? 0;
   const len = track.info.length > 0 ? track.info.length : 1;
@@ -112,52 +164,60 @@ export function buildSoundroomPlayingPayload(
   const ap = getAutoplayState(player.guildId);
   const userQueued = countUserSoundroomQueue(player);
 
-  const req = track.info.requester;
-  const uid = req?.user?.id ?? req?.id;
-  const reqMention = uid ? `<@${uid}>` : "알 수 없음";
+  const requesterDisp = formatSoundroomRequesterDisplay(track.info.requester);
 
-  const mainEmbed = new EmbedBuilder()
+  const embed = new EmbedBuilder()
     .setTitle("🎵 지금 재생 중")
-    .setColor(client.config.color)
-    .setDescription(`**${truncate(track.info.title || "제목 없음", 240)}**`);
+    .setColor(client.config.color);
 
-  const { imageUrl: panelImageUrl, files: panelFiles } =
-    resolveSoundroomPanelPlayingImage(track, options);
-  if (panelImageUrl) {
-    mainEmbed.setImage(panelImageUrl);
-  }
+  const titleLine = `**${truncate(track.info.title || "제목 없음", 240)}**`;
 
-  const detailBlocks: string[] = [];
-
+  const queueHintLines: string[] = [];
   if (ap.enabled) {
     if (userQueued === 0) {
       const nextAp = player.queue.find(isSoundroomAutoplayTrack);
       const hintTitle =
         nextAp?.info.title?.trim() || ap.autoplayNextHintTitle?.trim() || "";
-      const hintLine = hintTitle ? truncate(hintTitle, 90) : "—";
-      detailBlocks.push(
-        `**대기열**\n대기열이 비어있습니다.\n자동 재생 예정: ${hintLine}`,
+      const hintLine = hintTitle ? truncate(hintTitle, 72) : "—";
+      queueHintLines.push(
+        `**대기열**\n비어 있음 · 자동 재생 예정: ${hintLine}`,
       );
     }
   } else if (userQueued === 0 && player.queue.length === 0) {
-    detailBlocks.push(
-      "**대기열**\n다음 곡이 없습니다. 재생이 끝난 뒤 1분이 지나면 음성 채널에서 나갑니다.",
+    queueHintLines.push(
+      "**대기열**\n다음 곡 없음 · 종료 후 1분 뒤 음성 채널에서 나갑니다.",
     );
   }
 
-  const metaLines = [
-    `신청자: ${reqMention} · 볼륨: ${volPct}% · 자동 재생: ${ap.enabled ? "ON" : "OFF"}`,
+  const descParts: string[] = [titleLine];
+  if (queueHintLines.length > 0) {
+    descParts.push("", queueHintLines.join("\n\n"));
+  }
+  descParts.push(
+    "",
+    `신청자: ${requesterDisp} · 볼륨: ${volPct}% · 자동 재생: ${ap.enabled ? "ON" : "OFF"}`,
     formatSoundroomProgress(pos, len, track.info.isStream),
-  ];
+  );
   const maint = getSoundroomMaintenanceNotice();
   if (maint) {
-    metaLines.push(maint);
+    descParts.push("", maint);
   }
-  detailBlocks.push(metaLines.join("\n"));
 
-  const detailEmbed = new EmbedBuilder()
-    .setColor(client.config.color)
-    .setDescription(detailBlocks.join("\n\n"));
+  let description = descParts.join("\n");
+  if (description.length > 4096) {
+    description = `${description.slice(0, 4093)}…`;
+  }
+  embed.setDescription(description);
+
+  let panelFiles: AttachmentBuilder[] = [];
+  if (includeMedia) {
+    const { imageUrl: panelImageUrl, files } =
+      resolveSoundroomPanelPlayingImage(track);
+    panelFiles = files;
+    if (panelImageUrl) {
+      embed.setImage(panelImageUrl);
+    }
+  }
 
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
@@ -190,10 +250,10 @@ export function buildSoundroomPlayingPayload(
   );
 
   return {
-    embeds: [mainEmbed, detailEmbed],
+    embeds: [embed],
     components: [row1, row2],
     allowedMentions: MENTION_NONE,
-    files: panelFiles,
+    files: includeMedia ? panelFiles : [],
   };
 }
 
@@ -225,18 +285,20 @@ export async function fetchSoundroomPanelMessage(
 export async function editSoundroomIdlePanel(
   client: MineClient,
   guildId: string,
+  options?: BuildSoundroomPanelOptions,
 ): Promise<void> {
   const msg = await fetchSoundroomPanelMessage(client, guildId);
   if (!msg?.editable) {
     return;
   }
 
-  await msg.edit(buildSoundroomIdlePayload(client, guildId));
+  await msg.edit(buildSoundroomIdlePayload(client, guildId, options));
 }
 
 export async function editSoundroomPlayingPanel(
   client: MineClient,
   guildId: string,
+  options?: BuildSoundroomPanelOptions,
 ): Promise<void> {
   const player = getPlayer(client, guildId);
   if (!player?.current) {
@@ -248,16 +310,14 @@ export async function editSoundroomPlayingPanel(
     return;
   }
 
-  await msg.edit(buildSoundroomPlayingPayload(client, player));
+  await msg.edit(buildSoundroomPlayingPayload(client, player, options));
 }
 
 export async function sendSoundroomAddNotification(
   channel: GuildTextBasedChannel,
   track: ExtendedTrack,
   volumePercent: number,
-  /** 재생목록(플레이리스트)으로 여러 곡이 한 번에 들어갈 때 총 곡 수 */
   playlistTotalTracks?: number,
-  /** Lavalink가 알려 준 재생목록 이름 (없으면 제목만 숫자로 표시) */
   playlistName?: string | null,
 ): Promise<void> {
   const isPlaylist =

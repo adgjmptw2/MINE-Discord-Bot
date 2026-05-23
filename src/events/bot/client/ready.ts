@@ -2,7 +2,7 @@ import { ActivityType, Events } from "discord.js";
 import { createStockMarketService } from "@/services/stock/createStockMarketService";
 import type { MineClient } from "@/types";
 import { log } from "@/utils/logger";
-import { refreshSoundroomPanelsOnReady } from "@/utils/soundroomPanelRefresh";
+import { scheduleSoundroomReadyRefresh } from "@/utils/soundroomPanelRefresh";
 
 export default function registerReady(client: MineClient): void {
   client.on(Events.ClientReady, async (readyClient) => {
@@ -25,11 +25,6 @@ export default function registerReady(client: MineClient): void {
       log("warn", "stock", `Stock market service disabled: ${msg}`);
     }
 
-    setTimeout(() => {
-      void refreshSoundroomPanelsOnReady(client).catch((err) => {
-        const m = err instanceof Error ? err.message : String(err);
-        log("warn", "client", `Soundroom panel refresh: ${m}`);
-      });
-    }, 3000);
+    scheduleSoundroomReadyRefresh(client);
   });
 }

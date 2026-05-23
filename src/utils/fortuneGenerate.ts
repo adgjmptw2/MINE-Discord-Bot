@@ -145,14 +145,13 @@ export function computeFortune(
   };
 }
 
-/** 시안 1: 별자리·날짜는 표시용(시드와 무관). 운세 문구는 기존 해시 선택 결과를 그대로 사용합니다. */
 export function fortuneResultPanelFields(
   f: FortuneComputed,
   normalizedBirthDate: string,
 ): { description: string; lines: string[] } {
   const zodiac = getZodiacSignFromBirthDate(normalizedBirthDate);
   const luckyLine = `${f.color} · ${f.luckyNum} · ${truncate(f.keyword, 24)}`;
-  const description = `**${zodiac} · ${f.todayKst}**\n\n${f.overall}`;
+  const description = `**${zodiac} · ${f.todayKst}**`;
   const lines = [
     "☀️ **오늘의 흐름**",
     f.overall,

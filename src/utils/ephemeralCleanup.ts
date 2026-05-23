@@ -1,11 +1,18 @@
-/**
- * Ephemeral “토스트” 답변을 일정 시간 뒤 자동 삭제합니다.
- */
-
 import { InteractionWebhook, type Client } from "discord.js";
 
 export const SOUNDROOM_TOAST_DELETE_MS = 12_000;
-/** 노래 채널 대기열 패널(ephemeral) 자동 삭제까지 대기 시간 */
+
+export function scheduleEphemeralFollowUpDelete(
+  interaction: { webhook: InteractionWebhook },
+  messageId: string,
+  delayMs: number = SOUNDROOM_TOAST_DELETE_MS,
+): void {
+  const { webhook } = interaction;
+  setTimeout(() => {
+    void webhook.deleteMessage(messageId).catch(() => undefined);
+  }, delayMs);
+}
+
 export const SOUNDROOM_QUEUE_PANEL_DELETE_MS = 60_000;
 
 export function scheduleEphemeralReplyDelete(
@@ -18,7 +25,6 @@ export function scheduleEphemeralReplyDelete(
 }
 
 const queuePanelDeleteTimers = new Map<string, ReturnType<typeof setTimeout>>();
-/** interaction 응답으로 만든 ephemeral는 interaction token으로만 삭제 가능 */
 const queuePanelWebhookCtx = new Map<
   string,
   { client: Client<true>; applicationId: string; token: string }
@@ -29,13 +35,6 @@ type InteractionWithWebhook = {
   webhook: InteractionWebhook;
 };
 
-/**
- * 대기열 패널(ephemeral)을 일정 시간 뒤 삭제합니다.
- * Discord는 interaction으로 보낸 ephemeral를 `message.delete()`가 아니라 **interaction webhook**으로만 지웁니다.
- *
- * @param interaction 마지막으로 이 패널을 `reply`/`update`한 인터랙션(토큰 갱신). 모달 직후 `edit`만 한 경우엔 `null`로 두면 이전에 저장된 토큰을 유지합니다.
- * @param message 삭제할 메시지 id만 사용합니다.
- */
 export function scheduleQueuePanelEphemeralDelete(
   interaction: InteractionWithWebhook | null | undefined,
   message: Pick<{ id: string }, "id">,

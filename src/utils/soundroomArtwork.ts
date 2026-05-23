@@ -34,6 +34,16 @@ export function tryLoadSoundroomIdleAttachment(): AttachmentBuilder | null {
   }
 }
 
+function normalizeYoutubePanelThumbUrl(url: string): string {
+  const m = url.match(
+    /^https:\/\/img\.youtube\.com\/vi\/([\w-]{11})\/(?:maxresdefault|hqdefault|sddefault)\.jpg/i,
+  );
+  if (m?.[1]) {
+    return `https://img.youtube.com/vi/${m[1]}/mqdefault.jpg`;
+  }
+  return url;
+}
+
 export function extractYoutubeVideoId(uri: string): string | null {
   const t = uri.trim();
   if (!t) {
@@ -63,7 +73,7 @@ export function resolveSoundroomPlayingImageUrl(
 ): string | null {
   const art = track.info.artworkUrl?.trim();
   if (art && /^https?:\/\//i.test(art)) {
-    return art;
+    return normalizeYoutubePanelThumbUrl(art);
   }
   const uri = track.info.uri ?? "";
   const sn = (track.info.sourceName ?? "").toLowerCase();
@@ -81,12 +91,11 @@ export function resolveSoundroomPlayingImageUrl(
   if (!id) {
     return null;
   }
-  return `https://img.youtube.com/vi/${encodeURIComponent(id)}/hqdefault.jpg`;
+  return `https://img.youtube.com/vi/${encodeURIComponent(id)}/mqdefault.jpg`;
 }
 
 export function resolveSoundroomPanelPlayingImage(
   track: ExtendedTrack,
-  options?: { skipLocalIdleFile?: boolean },
 ): { imageUrl: string | null; files: AttachmentBuilder[] } {
   let imageUrl = resolveSoundroomPlayingImageUrl(track);
   if (imageUrl) {
@@ -95,9 +104,6 @@ export function resolveSoundroomPanelPlayingImage(
   imageUrl = getSoundroomIdleImageUrlFromEnv();
   if (imageUrl) {
     return { imageUrl, files: [] };
-  }
-  if (options?.skipLocalIdleFile) {
-    return { imageUrl: null, files: [] };
   }
   const att = tryLoadSoundroomIdleAttachment();
   if (att) {
@@ -115,10 +121,10 @@ export function formatSoundroomProgress(
   isStream?: boolean,
 ): string {
   if (isStream) {
-    return "▰▰▰▰▰ LIVE";
+    return "▰▰▰▰▰▰▰ LIVE";
   }
   const total = durationMs > 0 ? durationMs : 1;
-  const width = 8;
+  const width = 7;
   const ratio = Math.max(0, Math.min(1, currentMs / total));
   const filled = Math.round(ratio * width);
   const on = Math.max(0, Math.min(width, filled));

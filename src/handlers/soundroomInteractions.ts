@@ -24,13 +24,18 @@ import { formatDuration, truncate } from "@/utils/discord";
 import { sanitizeYoutubeQueryForLavalink } from "@/utils/youtubeLavalinkQuery";
 import { stopSoundroomProgress } from "@/utils/soundroomProgress";
 import {
+  buildSoundroomIdlePayload,
+  buildSoundroomPlayingPayload,
   editSoundroomIdlePanel,
   editSoundroomPlayingPanel,
   sendSoundroomAddNotification,
+  type BuildSoundroomPanelOptions,
 } from "@/utils/soundroomPanel";
 import { prioritizeYoutubeTracks } from "@/utils/youtubePlaylist";
 import { buildSoundroomQueuePanelPayload } from "@/handlers/soundroomQueuePanel";
 import {
+  SOUNDROOM_TOAST_DELETE_MS,
+  scheduleEphemeralFollowUpDelete,
   scheduleEphemeralReplyDelete,
   scheduleQueuePanelEphemeralDelete,
 } from "@/utils/ephemeralCleanup";
@@ -43,6 +48,27 @@ import {
   toggleAutoplay,
 } from "@/utils/soundroomAutoplay";
 import type { ExtendedPlayer, ExtendedTrack, MineClient } from "@/types";
+
+function logSoundroomButtonError(
+  action: string,
+  guildId: string,
+  error: unknown,
+): void {
+  const message =
+    error instanceof Error
+      ? error.message.slice(0, 160)
+      : String(error).slice(0, 160);
+  const code =
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code !== undefined
+      ? String((error as { code: unknown }).code)
+      : "-";
+  console.warn(
+    `Soundroom button failed action=${action} guild=${guildId} code=${code} msg=${message}`,
+  );
+}
 
 async function resolveSoundroomChannel(
   client: MineClient,
@@ -288,24 +314,56 @@ export async function handleSoundroomButton(
 
   if (interaction.customId === "sr_autoplay_toggle") {
     const enabled = toggleAutoplay(guildId);
-    await interaction.reply({
-      content: enabled ? "자동 재생을 켰습니다." : "자동 재생을 껐습니다.",
-      flags: MessageFlags.Ephemeral,
-    });
-    scheduleEphemeralReplyDelete(interaction);
-    const pl = getPlayer(client, guildId);
-    if (pl && !enabled) {
-      removeAutoplayTracksFromQueue(pl);
-    }
-    if (pl?.current) {
-      await editSoundroomPlayingPanel(client, guildId).catch(() => undefined);
-      if (enabled) {
+    await interaction.deferUpdate().catch(() => undefined);
+    try {
+      const pl = getPlayer(client, guildId);
+      if (pl && !enabled) {
+        removeAutoplayTracksFromQueue(pl);
+      }
+      if (pl?.current) {
+        const payload = buildSoundroomPlayingPayload(client, pl);
+        await interaction.message
+          .edit(payload)
+          .catch(async () => {
+            await editSoundroomPlayingPanel(client, guildId).catch(
+              () => undefined,
+            );
+          });
+      } else {
+        const payload = buildSoundroomIdlePayload(client, guildId);
+        await interaction.message
+          .edit(payload)
+          .catch(async () => {
+            await editSoundroomIdlePanel(client, guildId).catch(
+              () => undefined,
+            );
+          });
+      }
+      const toast = await interaction.followUp({
+        content: enabled ? "자동 재생을 켰습니다." : "자동 재생을 껐습니다.",
+        flags: MessageFlags.Ephemeral,
+        fetchReply: true,
+      });
+      scheduleEphemeralFollowUpDelete(
+        interaction,
+        toast.id,
+        SOUNDROOM_TOAST_DELETE_MS,
+      );
+      if (enabled && pl?.current) {
         void prefetchAutoplayNextHint(client, pl).then(() => {
           void editSoundroomPlayingPanel(client, guildId).catch(
             () => undefined,
           );
         });
       }
+    } catch (error) {
+      logSoundroomButtonError("autoplay_toggle", guildId, error);
+      await interaction
+        .followUp({
+          content: "자동 재생 설정을 바꾸는 중 오류가 났습니다.",
+          flags: MessageFlags.Ephemeral,
+        })
+        .catch(() => undefined);
     }
     return true;
   }
@@ -384,19 +442,58 @@ export async function handleSoundroomButton(
   }
 
   if (interaction.customId === "sr_stop") {
+    await interaction.deferUpdate().catch(() => undefined);
+
     resetAutoplaySession(guildId);
     player.queue.clear();
     stopSoundroomProgress(guildId);
     player.message = undefined;
-    await player.destroy();
-    if (getSoundroom(guildId)) {
-      await editSoundroomIdlePanel(client, guildId).catch(() => undefined);
+
+    try {
+      await player.destroy();
+    } catch (error) {
+      logSoundroomButtonError("stop-destroy", guildId, error);
     }
-    await interaction.reply({
-      content: "재생을 종료했습니다.",
-      flags: MessageFlags.Ephemeral,
-    });
-    scheduleEphemeralReplyDelete(interaction);
+
+    const lightIdleOpts: BuildSoundroomPanelOptions = {
+      includeMedia: false,
+      skipLocalIdleAttachment: true,
+    };
+    const idlePayload = buildSoundroomIdlePayload(
+      client,
+      guildId,
+      lightIdleOpts,
+    );
+
+    try {
+      await interaction.message.edit(idlePayload);
+    } catch (error) {
+      logSoundroomButtonError("stop-panel-edit", guildId, error);
+      await editSoundroomIdlePanel(client, guildId, lightIdleOpts).catch(
+        (fallbackError) =>
+          logSoundroomButtonError(
+            "stop-panel-edit-fallback",
+            guildId,
+            fallbackError,
+          ),
+      );
+    }
+
+    const toast = await interaction
+      .followUp({
+        content: "재생을 종료했습니다.",
+        flags: MessageFlags.Ephemeral,
+        fetchReply: true,
+      })
+      .catch(() => null);
+    if (toast) {
+      scheduleEphemeralFollowUpDelete(
+        interaction,
+        toast.id,
+        SOUNDROOM_TOAST_DELETE_MS,
+      );
+    }
+
     return true;
   }
 
@@ -410,13 +507,49 @@ export async function handleSoundroomButton(
       return true;
     }
 
-    await player.pause(!player.paused);
-    await editSoundroomPlayingPanel(client, guildId);
-    await interaction.reply({
-      content: player.paused ? "일시정지했습니다." : "다시 재생했습니다.",
-      flags: MessageFlags.Ephemeral,
-    });
-    scheduleEphemeralReplyDelete(interaction);
+    await interaction.deferUpdate().catch(() => undefined);
+    try {
+      await player.pause(!player.paused);
+      const pl = getPlayer(client, guildId);
+      if (!pl?.current) {
+        const idlePayload = buildSoundroomIdlePayload(client, guildId);
+        await interaction.message
+          .edit(idlePayload)
+          .catch(async () => {
+            await editSoundroomIdlePanel(client, guildId).catch(
+              () => undefined,
+            );
+          });
+      } else {
+        const playingPayload = buildSoundroomPlayingPayload(client, pl);
+        await interaction.message
+          .edit(playingPayload)
+          .catch(async () => {
+            await editSoundroomPlayingPanel(client, guildId).catch(
+              () => undefined,
+            );
+          });
+      }
+      const pausedNow = pl?.paused ?? player.paused;
+      const toast = await interaction.followUp({
+        content: pausedNow ? "일시정지했습니다." : "다시 재생했습니다.",
+        flags: MessageFlags.Ephemeral,
+        fetchReply: true,
+      });
+      scheduleEphemeralFollowUpDelete(
+        interaction,
+        toast.id,
+        SOUNDROOM_TOAST_DELETE_MS,
+      );
+    } catch (error) {
+      logSoundroomButtonError("pause", guildId, error);
+      await interaction
+        .followUp({
+          content: "일시정지 처리 중 오류가 났습니다.",
+          flags: MessageFlags.Ephemeral,
+        })
+        .catch(() => undefined);
+    }
     return true;
   }
 
@@ -430,12 +563,42 @@ export async function handleSoundroomButton(
       return true;
     }
 
-    await player.stop();
-    await interaction.reply({
-      content: "다음 곡으로 넘겼습니다.",
-      flags: MessageFlags.Ephemeral,
-    });
-    scheduleEphemeralReplyDelete(interaction);
+    await interaction.deferUpdate().catch(() => undefined);
+    try {
+      await player.stop();
+      await Promise.resolve();
+      const pl = getPlayer(client, guildId);
+      const payload = pl?.current
+        ? buildSoundroomPlayingPayload(client, pl)
+        : buildSoundroomIdlePayload(client, guildId);
+      await interaction.message.edit(payload).catch(async () => {
+        if (pl?.current) {
+          await editSoundroomPlayingPanel(client, guildId).catch(
+            () => undefined,
+          );
+        } else {
+          await editSoundroomIdlePanel(client, guildId).catch(() => undefined);
+        }
+      });
+      const toast = await interaction.followUp({
+        content: "다음 곡으로 넘겼습니다.",
+        flags: MessageFlags.Ephemeral,
+        fetchReply: true,
+      });
+      scheduleEphemeralFollowUpDelete(
+        interaction,
+        toast.id,
+        SOUNDROOM_TOAST_DELETE_MS,
+      );
+    } catch (error) {
+      logSoundroomButtonError("skip", guildId, error);
+      await interaction
+        .followUp({
+          content: "스킵 처리 중 오류가 났습니다.",
+          flags: MessageFlags.Ephemeral,
+        })
+        .catch(() => undefined);
+    }
     return true;
   }
 
