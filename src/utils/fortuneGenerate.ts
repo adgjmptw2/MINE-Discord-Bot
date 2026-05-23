@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import type { FortuneGender } from "@/utils/fortuneInput";
+import { truncate } from "@/utils/discord";
+import { getZodiacSignFromBirthDate, type FortuneGender } from "@/utils/fortuneInput";
 
 const OVERALL_FORTUNES = [
   "오늘은 작은 정리와 점검이 행운으로 이어질 수 있어요.",
@@ -29,7 +30,7 @@ const RELATIONSHIP_FORTUNES = [
 
 const COIN_FORTUNES = [
   "오늘은 코인을 쓰기보다 모으는 쪽이 잘 맞을 수 있어요.",
-  "작은 보상을 챙기기 좋은 날이에요. 출석과 미션을 확인해 보세요.",
+  "작은 보상을 챙기기 좋은 날이에요.",
   "충동적인 코인 사용보다 목표를 정하는 쪽이 좋아요.",
   "오늘은 ‘오늘만 쓸 예산’을 정해 두면 마음이 편해요.",
   "가벼운 참여부터 시작하면 부담이 줄어들 수 있어요.",
@@ -144,27 +145,29 @@ export function computeFortune(
   };
 }
 
-export function fortuneResultLines(f: FortuneComputed): string[] {
-  return [
-    `날짜: **${f.todayKst} KST**`,
-    "",
-    "### 🌤️ 오늘의 흐름",
+/** 시안 1: 별자리·날짜는 표시용(시드와 무관). 운세 문구는 기존 해시 선택 결과를 그대로 사용합니다. */
+export function fortuneResultPanelFields(
+  f: FortuneComputed,
+  normalizedBirthDate: string,
+): { description: string; lines: string[] } {
+  const zodiac = getZodiacSignFromBirthDate(normalizedBirthDate);
+  const luckyLine = `${f.color} · ${f.luckyNum} · ${truncate(f.keyword, 24)}`;
+  const description = `**${zodiac} · ${f.todayKst}**\n\n${f.overall}`;
+  const lines = [
+    "☀️ **오늘의 흐름**",
     f.overall,
     "",
-    "### 💬 대인운",
+    "💬 **대인운**",
     f.relation,
     "",
-    "### 💰 코인운",
+    "💰 **코인운**",
     f.coin,
     "",
-    "### 🎮 게임운",
+    "🎮 **게임운**",
     f.game,
     "",
-    `행운 키워드: **${f.keyword}**`,
-    `행운 색상: **${f.color}**`,
-    `행운 숫자: **${f.luckyNum}**`,
-    "",
-    "※ 재미용 운세입니다. 실제 의사결정, 투자, 건강, 법률, 재정 판단에 사용하지 마세요.",
-    "※ MINE의 코인과 주식 기능은 서버 내 가상 기능이며 실제 돈, 환전, 현물 보상과 관련이 없습니다.",
+    "🍀 **행운 포인트**",
+    luckyLine,
   ];
+  return { description, lines };
 }

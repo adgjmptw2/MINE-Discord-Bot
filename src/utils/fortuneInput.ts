@@ -95,3 +95,37 @@ export function parseGenderInput(raw: string): {
   }
   return { gender: "private", unknownAsPrivate: true };
 }
+
+/** 생년월일 `YYYY-MM-DD`의 월·일만으로 별자리(한글)를 반환합니다. 연도는 사용하지 않습니다. */
+export function getZodiacSignFromBirthDate(normalizedBirthDate: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(normalizedBirthDate.trim());
+  if (!m) {
+    return "생년월일 기반";
+  }
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  if (
+    !Number.isFinite(month) ||
+    !Number.isFinite(day) ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31
+  ) {
+    return "생년월일 기반";
+  }
+  const md = month * 100 + day;
+  if (md >= 321 && md <= 419) return "양자리";
+  if (md >= 420 && md <= 520) return "황소자리";
+  if (md >= 521 && md <= 621) return "쌍둥이자리";
+  if (md >= 622 && md <= 722) return "게자리";
+  if (md >= 723 && md <= 822) return "사자자리";
+  if (md >= 823 && md <= 922) return "처녀자리";
+  if (md >= 923 && md <= 1022) return "천칭자리";
+  if (md >= 1023 && md <= 1122) return "전갈자리";
+  if (md >= 1123 && md <= 1221) return "사수자리";
+  if (md >= 1222 || md <= 119) return "염소자리";
+  if (md >= 120 && md <= 218) return "물병자리";
+  if (md >= 219 && md <= 320) return "물고기자리";
+  return "생년월일 기반";
+}

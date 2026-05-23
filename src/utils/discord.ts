@@ -41,6 +41,9 @@ export interface PanelMessageOptions {
 export interface PanelEditOptions {
   panel: PanelOptions;
   components?: ActionRowBuilder<MessageActionRowComponentBuilder>[];
+  /** editReply/update 시 멘션 파싱 제어 */
+  allowedMentions?: MessageMentionOptions;
+  files?: readonly AttachmentBuilder[];
 }
 
 export function formatTrackDuration(track: ExtendedTrack): string {
@@ -160,13 +163,20 @@ export function panelReply(
 export function panelEdit(
   options: PanelEditOptions,
 ): InteractionUpdateOptions & MessageEditOptions {
-  return {
+  const edit: InteractionUpdateOptions & MessageEditOptions = {
     flags: MessageFlags.IsComponentsV2,
     components: [
       buildPanel(options.panel),
       ...(options.components ?? []),
     ] as any,
   };
+  if (options.allowedMentions !== undefined) {
+    edit.allowedMentions = options.allowedMentions;
+  }
+  if (options.files !== undefined && options.files.length > 0) {
+    edit.files = [...options.files];
+  }
+  return edit;
 }
 
 export function panelMessage(

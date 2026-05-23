@@ -7,8 +7,10 @@ import {
   findStockSymbol,
   getSupportedStockSymbols,
 } from "@/settings/stockSymbols";
+import type { StockMarketService } from "@/services/stock/StockMarketService";
+import type { StockPrice } from "@/services/stock/types";
 import { YahooStockQuoteProvider } from "@/services/stock/YahooStockQuoteProvider";
-import { panelReply } from "@/utils/discord";
+import { panelEdit, panelReply } from "@/utils/discord";
 import { scheduleEphemeralReplyDelete } from "@/utils/ephemeralCleanup";
 import {
   classifyStockTrend,
@@ -24,8 +26,44 @@ import type { MineClient, SlashCommand } from "@/types";
 
 const NO_MENTION = { parse: [] as const };
 
+const YAHOO_EXTRAS_MS = 2000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(fallback), ms);
+    void promise
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch(() => {
+        clearTimeout(timer);
+        resolve(fallback);
+      });
+  });
+}
+
+async function resolveStockPriceForDisplay(
+  market: StockMarketService | undefined,
+  symbol: string,
+): Promise<StockPrice | null> {
+  const cached = market?.getCachedPrice(symbol);
+  if (cached) {
+    return cached;
+  }
+  const prov = market?.provider;
+  if (!prov) {
+    return null;
+  }
+  try {
+    return await prov.getPrice(symbol);
+  } catch {
+    return null;
+  }
+}
+
 const command: SlashCommand = {
-  name: "시세",
+  name: "주식",
   description: "종목의 현재 시세와 그래프를 확인합니다.",
   category: "stock",
   guildOnly: true,
@@ -77,85 +115,100 @@ const command: SlashCommand = {
       return;
     }
 
-    const market = client.stockMarket;
-    const p = market?.getCachedPrice(sym.symbol);
+    await interaction.deferReply();
 
-    if (!p) {
-      await interaction.reply(
-        panelReply({
-          ephemeral: false,
+    const market = client.stockMarket;
+
+    const editUnavailable = () =>
+      interaction.editReply(
+        panelEdit({
           panel: {
             title: "📊 종목 시세",
-            description: "시세 준비 중입니다. 잠시 후 다시 시도해 주세요.",
-            lines: [`**${sym.nameKo}** (${sym.code})`],
+            description: "시세를 표시하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+            lines: [
+              `${sym.nameKo} (${sym.code})`,
+              "데이터 제공자 응답이 없거나 시세 갱신이 지연 중입니다.",
+            ],
             accentColor: quoteAccentRgb("FLAT"),
           },
           allowedMentions: NO_MENTION,
         }),
       );
-      return;
-    }
 
-    const trend = classifyStockTrend(p.changePercent);
-    const title = `${quoteTrendTitleEmoji(trend)} ${p.nameKo} (${p.code})`;
-    const lines: string[] = [
-      formatQuoteCurrentPriceLine(p.price),
-      formatQuoteDayChangeLine(p.price, p.changePercent),
-      "",
-    ];
+    try {
+      const p = await resolveStockPriceForDisplay(market, sym.symbol);
 
-    let open: number | null = null;
-    let high: number | null = null;
-    let low: number | null = null;
-    let chartPoints: readonly { timestamp: number; price: number }[] | null =
-      null;
+      if (!p) {
+        await editUnavailable();
+        return;
+      }
 
-    const prov = market?.provider;
-    if (prov instanceof YahooStockQuoteProvider) {
-      const extras = await prov.fetchQuoteDisplayExtras(sym.symbol);
-      if (extras) {
-        open = extras.open;
-        high = extras.high;
-        low = extras.low;
-        if (extras.points.length >= 2) {
-          chartPoints = extras.points;
+      const trend = classifyStockTrend(p.changePercent);
+      const title = `${quoteTrendTitleEmoji(trend)} ${p.nameKo} (${p.code})`;
+      const lines: string[] = [
+        formatQuoteCurrentPriceLine(p.price),
+        formatQuoteDayChangeLine(p.price, p.changePercent),
+        "",
+      ];
+
+      let open: number | null = null;
+      let high: number | null = null;
+      let low: number | null = null;
+      let chartPoints: readonly { timestamp: number; price: number }[] | null =
+        null;
+
+      const prov = market?.provider;
+      if (prov instanceof YahooStockQuoteProvider) {
+        const extras = await withTimeout(
+          prov.fetchQuoteDisplayExtras(sym.symbol),
+          YAHOO_EXTRAS_MS,
+          null,
+        );
+        if (extras) {
+          open = extras.open;
+          high = extras.high;
+          low = extras.low;
+          if (extras.points.length >= 2) {
+            chartPoints = extras.points;
+          }
         }
       }
-    }
 
-    lines.push(formatQuoteOhlcLine(open, high), formatQuoteLowLine(low));
+      lines.push(formatQuoteOhlcLine(open, high), formatQuoteLowLine(low));
 
-    const files: AttachmentBuilder[] = [];
-    if (chartPoints !== null && chartPoints.length >= 2) {
-      try {
-        const rendered = renderStockLineChartSvg({
-          title: `${p.nameKo} (${p.code})`,
-          points: chartPoints,
-          trend,
-        });
-        files.push(
-          new AttachmentBuilder(rendered.buffer, {
-            name: `stock-${sym.code}-1d.svg`,
-            description: undefined,
-          }),
-        );
-      } catch {
-        /* 그래프 생략 */
+      const files: AttachmentBuilder[] = [];
+      if (chartPoints !== null && chartPoints.length >= 2) {
+        try {
+          const rendered = renderStockLineChartSvg({
+            title: `${p.nameKo} (${p.code})`,
+            points: chartPoints,
+            trend,
+          });
+          files.push(
+            new AttachmentBuilder(rendered.buffer, {
+              name: `stock-${sym.code}-1d.svg`,
+              description: undefined,
+            }),
+          );
+        } catch {
+          /* 그래프 생략 */
+        }
       }
-    }
 
-    await interaction.reply(
-      panelReply({
-        ephemeral: false,
-        panel: {
-          title,
-          lines,
-          accentColor: quoteAccentRgb(trend),
-        },
-        files: files.length > 0 ? files : undefined,
-        allowedMentions: NO_MENTION,
-      }),
-    );
+      await interaction.editReply(
+        panelEdit({
+          panel: {
+            title,
+            lines,
+            accentColor: quoteAccentRgb(trend),
+          },
+          files: files.length > 0 ? files : undefined,
+          allowedMentions: NO_MENTION,
+        }),
+      );
+    } catch {
+      await editUnavailable().catch(() => undefined);
+    }
   },
 };
 
