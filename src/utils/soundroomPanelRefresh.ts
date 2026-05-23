@@ -7,31 +7,36 @@ import {
   buildSoundroomIdlePayload,
   buildSoundroomPlayingPayload,
   fetchSoundroomPanelMessage,
+  shouldShowSoundroomMaintenanceNotice,
+  SOUNDROOM_MAINTENANCE_NOTICE_UPTIME_SEC,
 } from "@/utils/soundroomPanel";
 
 let soundroomPanelReadyRefreshDone = false;
 
 const mentionNone = { parse: [] as const };
 
-export async function refreshSoundroomPanelsOnReady(
+type PanelPassStats = {
+  edited: number;
+  recreated: number;
+  skipped: number;
+  failed: number;
+};
+
+async function applySoundroomPanelStateToAllGuilds(
   client: MineClient,
-): Promise<void> {
-  if (soundroomPanelReadyRefreshDone) {
-    return;
-  }
+): Promise<PanelPassStats> {
   const uid = client.user?.id;
+  const stats: PanelPassStats = {
+    edited: 0,
+    recreated: 0,
+    skipped: 0,
+    failed: 0,
+  };
   if (!uid) {
-    return;
+    return stats;
   }
-  soundroomPanelReadyRefreshDone = true;
 
-  log("info", "client", "Refreshing Soundroom panels...");
   const rooms = listSoundroomRecords();
-  let edited = 0;
-  let recreated = 0;
-  let skipped = 0;
-  let failed = 0;
-
   for (const room of rooms) {
     await new Promise<void>((resolve) => {
       setTimeout(resolve, 350);
@@ -41,13 +46,13 @@ export async function refreshSoundroomPanelsOnReady(
         client.guilds.cache.get(room.guildId) ??
         (await client.guilds.fetch(room.guildId).catch(() => null));
       if (!guild) {
-        skipped += 1;
+        stats.skipped += 1;
         continue;
       }
 
       const me = guild.members.me;
       if (!me) {
-        skipped += 1;
+        stats.skipped += 1;
         continue;
       }
 
@@ -55,7 +60,7 @@ export async function refreshSoundroomPanelsOnReady(
         guild.channels.cache.get(room.channelId) ??
         (await guild.channels.fetch(room.channelId).catch(() => null));
       if (!ch?.isTextBased() || ch.isDMBased()) {
-        skipped += 1;
+        stats.skipped += 1;
         continue;
       }
 
@@ -65,7 +70,7 @@ export async function refreshSoundroomPanelsOnReady(
         PermissionFlagsBits.SendMessages |
         PermissionFlagsBits.EmbedLinks;
       if (!perms?.has(need)) {
-        skipped += 1;
+        stats.skipped += 1;
         continue;
       }
 
@@ -78,14 +83,14 @@ export async function refreshSoundroomPanelsOnReady(
 
       if (msg) {
         if (!msg.editable || msg.author.id !== uid) {
-          failed += 1;
+          stats.failed += 1;
           continue;
         }
         try {
           await msg.edit({ ...payload, allowedMentions: mentionNone });
-          edited += 1;
+          stats.edited += 1;
         } catch {
-          failed += 1;
+          stats.failed += 1;
         }
       } else {
         try {
@@ -94,19 +99,67 @@ export async function refreshSoundroomPanelsOnReady(
             allowedMentions: mentionNone,
           });
           setSoundroom(room.guildId, ch.id, sent.id);
-          recreated += 1;
+          stats.recreated += 1;
         } catch {
-          failed += 1;
+          stats.failed += 1;
         }
       }
     } catch {
-      failed += 1;
+      stats.failed += 1;
     }
   }
+  return stats;
+}
 
-  log(
-    "info",
-    "client",
-    `Soundroom panel refresh done: edited ${edited}, recreated ${recreated}, skipped ${skipped}, failed ${failed}`,
+function scheduleSoundroomPanelNoticeRemoval(client: MineClient): void {
+  if (!shouldShowSoundroomMaintenanceNotice()) {
+    return;
+  }
+  const msUntil = Math.ceil(
+    SOUNDROOM_MAINTENANCE_NOTICE_UPTIME_SEC * 1000 - process.uptime() * 1000,
   );
+  if (msUntil <= 0) {
+    return;
+  }
+  setTimeout(() => {
+    void (async () => {
+      try {
+        const s = await applySoundroomPanelStateToAllGuilds(client);
+        log(
+          "info",
+          "client",
+          `Soundroom panel notice expiry: edited ${s.edited}, recreated ${s.recreated}, skipped ${s.skipped}, failed ${s.failed}`,
+        );
+      } catch (err) {
+        const m = err instanceof Error ? err.message : String(err);
+        log("warn", "client", `Soundroom panel notice expiry: ${m}`);
+      }
+    })();
+  }, msUntil);
+}
+
+export async function refreshSoundroomPanelsOnReady(
+  client: MineClient,
+): Promise<void> {
+  if (soundroomPanelReadyRefreshDone) {
+    return;
+  }
+  if (!client.user?.id) {
+    return;
+  }
+  soundroomPanelReadyRefreshDone = true;
+
+  log("info", "client", "Refreshing Soundroom panels...");
+  try {
+    const s = await applySoundroomPanelStateToAllGuilds(client);
+    log(
+      "info",
+      "client",
+      `Soundroom panel refresh done: edited ${s.edited}, recreated ${s.recreated}, skipped ${s.skipped}, failed ${s.failed}`,
+    );
+    scheduleSoundroomPanelNoticeRemoval(client);
+  } catch (err) {
+    const m = err instanceof Error ? err.message : String(err);
+    log("warn", "client", `Soundroom panel refresh: ${m}`);
+  }
 }

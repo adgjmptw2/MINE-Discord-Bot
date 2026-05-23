@@ -50,15 +50,17 @@ function koreanFooterTime(): string {
   return `오늘 ${footerTimeFormat.format(new Date())}`;
 }
 
+export const SOUNDROOM_MAINTENANCE_NOTICE_UPTIME_SEC = 60 * 60;
+
 export function shouldShowSoundroomMaintenanceNotice(): boolean {
-  return process.uptime() < 2 * 60 * 60;
+  return process.uptime() < SOUNDROOM_MAINTENANCE_NOTICE_UPTIME_SEC;
 }
 
 export function getSoundroomMaintenanceNotice(): string | null {
   if (!shouldShowSoundroomMaintenanceNotice()) {
     return null;
   }
-  return "-# 현재 점검중이라 음악 기능이 불안정할 수 있습니다.";
+  return "-# 가동 후 1시간 이내에는 음악 기능이 불안정할 수 있습니다.";
 }
 
 function appendMaintenanceFooter(base: string): string {
