@@ -50,6 +50,25 @@ function koreanFooterTime(): string {
   return `오늘 ${footerTimeFormat.format(new Date())}`;
 }
 
+export function shouldShowSoundroomMaintenanceNotice(): boolean {
+  return process.uptime() < 2 * 60 * 60;
+}
+
+export function getSoundroomMaintenanceNotice(): string | null {
+  if (!shouldShowSoundroomMaintenanceNotice()) {
+    return null;
+  }
+  return "-# 현재 점검중이라 음악 기능이 불안정할 수 있습니다.";
+}
+
+function appendMaintenanceFooter(base: string): string {
+  const n = getSoundroomMaintenanceNotice();
+  if (!n) {
+    return base;
+  }
+  return `${base}\n\n${n}`;
+}
+
 export function buildSoundroomIdlePayload(
   client: MineClient,
 ): BaseMessageOptions {
@@ -60,7 +79,9 @@ export function buildSoundroomIdlePayload(
     .setTitle(`${b} 노래 채널`)
     .setColor(0x7c5cff)
     .setDescription(
-      "채팅에 검색어 또는 유튜브 링크를 입력하면 재생됩니다.\n자동 재생은 재생 중 패널 버튼으로 켜고 끌 수 있습니다.",
+      appendMaintenanceFooter(
+        "채팅에 검색어 또는 유튜브 링크를 입력하면 재생됩니다.\n자동 재생은 재생 중 패널 버튼으로 켜고 끌 수 있습니다.",
+      ),
     );
   if (thumb) {
     embed.setThumbnail(thumb);
@@ -94,13 +115,15 @@ export function buildSoundroomPlayingPayload(
   const bar = thinBar(pos, len);
   const thumb = track.info.thumbnail ?? null;
 
-  const desc = [
-    `[${track.info.title}](${track.info.uri})`,
-    "",
-    `${volumeLabel(player.volume ?? 100)} · 볼륨 ${volPct}%`,
-    "",
-    `(${formatDuration(pos)}) ${bar} (${formatDuration(len)})`,
-  ].join("\n");
+  const desc = appendMaintenanceFooter(
+    [
+      `[${track.info.title}](${track.info.uri})`,
+      "",
+      `${volumeLabel(player.volume ?? 100)} · 볼륨 ${volPct}%`,
+      "",
+      `(${formatDuration(pos)}) ${bar} (${formatDuration(len)})`,
+    ].join("\n"),
+  );
 
   const requester = track.info.requester?.user.username ?? "알 수 없음";
 

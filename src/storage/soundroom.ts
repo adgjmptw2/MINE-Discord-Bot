@@ -11,6 +11,24 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
+export function listSoundroomRecords(): SoundroomRecord[] {
+  const rows = db.all<{
+    guild_id: string;
+    channel_id: string;
+    panel_message_id: string;
+    updated_at: string;
+  }>(
+    "SELECT guild_id, channel_id, panel_message_id, updated_at FROM soundroom",
+    [],
+  );
+  return rows.map((row) => ({
+    guildId: row.guild_id,
+    channelId: row.channel_id,
+    panelMessageId: row.panel_message_id,
+    updatedAt: row.updated_at,
+  }));
+}
+
 export function getSoundroom(guildId: string): SoundroomRecord | undefined {
   const row = db.get<{
     guild_id: string;
