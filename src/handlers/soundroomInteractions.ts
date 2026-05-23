@@ -352,12 +352,15 @@ export async function handleSoundroomButton(
       guildId,
       interaction.user.id,
     );
-    const panelMsg = await interaction.reply({
+    const res = await interaction.reply({
       flags: MessageFlags.Ephemeral,
-      fetchReply: true,
+      withResponse: true,
       ...panel,
     });
-    scheduleQueuePanelEphemeralDelete(interaction, panelMsg);
+    const panelMsg = res.resource?.message;
+    if (panelMsg) {
+      scheduleQueuePanelEphemeralDelete(interaction, panelMsg);
+    }
     return true;
   }
 

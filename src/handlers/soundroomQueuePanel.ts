@@ -402,8 +402,11 @@ export async function handleSoundroomQueuePanelInteraction(
       guildId,
       openerUserId,
     );
-    const updated = await interaction.update({ ...payload, fetchReply: true });
-    scheduleQueuePanelEphemeralDelete(interaction, updated);
+    const res = await interaction.update({ ...payload, withResponse: true });
+    const updated = res.resource?.message;
+    if (updated) {
+      scheduleQueuePanelEphemeralDelete(interaction, updated);
+    }
     return true;
   }
 
@@ -436,11 +439,14 @@ export async function handleSoundroomQueuePanelInteraction(
         guildId,
         openerUserId,
       );
-      const updated = await interaction.update({
+      const res = await interaction.update({
         ...payload,
-        fetchReply: true,
+        withResponse: true,
       });
-      scheduleQueuePanelEphemeralDelete(interaction, updated);
+      const updated = res.resource?.message;
+      if (updated) {
+        scheduleQueuePanelEphemeralDelete(interaction, updated);
+      }
       return true;
     }
 
