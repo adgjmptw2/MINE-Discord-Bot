@@ -1,6 +1,7 @@
 import type { GuildMember } from "discord.js";
 import { getSoundroom } from "@/storage/soundroom";
 import type { ExtendedPlayer, ExtendedTrack, MineClient } from "@/types";
+import { sanitizeYoutubeQueryForLavalink } from "@/utils/youtubeLavalinkQuery";
 
 type GuildAutoplayState = {
   enabled: boolean;
@@ -296,13 +297,12 @@ function extractYoutubeVideoId(uri: string): string | null {
   return null;
 }
 
-/** 유튜브 라디오 주소를 만들어 연관곡 후보를 받습니다. */
 function buildYoutubeRadioQuery(uri: string): string | null {
   const id = extractYoutubeVideoId(uri);
   if (!id) {
     return null;
   }
-  return `https://www.youtube.com/watch?v=${encodeURIComponent(id)}&list=RD${encodeURIComponent(id)}`;
+  return `https://www.youtube.com/watch?v=${encodeURIComponent(id)}`;
 }
 
 /** 단일 영상으로 안 잡히는 경우가 있어 라디오 주소와 제목 검색을 차례로 시도합니다. */
@@ -314,7 +314,7 @@ async function resolveAutoplayTracks(
   searchFallbackTitle: string | null,
 ): Promise<ExtendedTrack[]> {
   const attempts: string[] = [];
-  const primary = sourceUri.trim();
+  const primary = sanitizeYoutubeQueryForLavalink(sourceUri.trim());
   if (primary) {
     attempts.push(primary);
   }

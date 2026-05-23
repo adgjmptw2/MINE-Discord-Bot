@@ -21,6 +21,7 @@ import {
 } from "@/utils/commands";
 import { convertHmsToMs } from "@/utils/convert";
 import { formatDuration, truncate } from "@/utils/discord";
+import { sanitizeYoutubeQueryForLavalink } from "@/utils/youtubeLavalinkQuery";
 import { stopSoundroomProgress } from "@/utils/soundroomProgress";
 import {
   editSoundroomIdlePanel,
@@ -212,7 +213,7 @@ export async function handleSoundroomButton(
     );
     try {
       const resolve = await client.riffy.resolve({
-        query: stored.playlistUrl,
+        query: sanitizeYoutubeQueryForLavalink(stored.playlistUrl),
         requester: member,
       });
       const rawTracks = resolve.tracks as ExtendedTrack[];

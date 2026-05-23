@@ -7,6 +7,7 @@ import {
   addTracksRespectingSoundroomAutoplay,
 } from "@/utils/soundroomAutoplay";
 import type { ExtendedTrack, MineClient } from "@/types";
+import { sanitizeYoutubeQueryForLavalink } from "@/utils/youtubeLavalinkQuery";
 
 /** 일반 검색어는 그대로 넘겨 Riffy의 기본 검색 설정을 타게 둡니다. */
 export function buildSoundroomResolveQuery(raw: string): string {
@@ -15,7 +16,7 @@ export function buildSoundroomResolveQuery(raw: string): string {
     return trimmed;
   }
   if (/^https?:\/\//i.test(trimmed)) {
-    return trimmed;
+    return sanitizeYoutubeQueryForLavalink(trimmed);
   }
   if (/^[a-z][a-z0-9]*:/i.test(trimmed)) {
     return trimmed;

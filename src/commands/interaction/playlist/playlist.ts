@@ -9,6 +9,7 @@ import {
 } from "@/storage/playlists";
 import { ensurePlayerConnection, getPlayer } from "@/utils/commands";
 import { panelEdit, panelReply } from "@/utils/discord";
+import { sanitizeYoutubeQueryForLavalink } from "@/utils/youtubeLavalinkQuery";
 import {
   onQueueMayHaveItems,
   addTracksRespectingSoundroomAutoplay,
@@ -235,7 +236,7 @@ const command: SlashCommand = {
       let added = 0;
       for (const entry of playlist.tracks) {
         const resolve = await client.riffy.resolve({
-          query: entry.uri,
+          query: sanitizeYoutubeQueryForLavalink(entry.uri),
           requester: member,
         });
         const resolved = resolve.tracks[0] as ExtendedTrack | undefined;
