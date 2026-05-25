@@ -102,3 +102,8 @@ export interface AuthGuildsResponseDto {
 export interface AuthOkResponseDto {
   ok: true;
 }
+
+export interface AuthSoundroomStateResponseDto {
+  ok: true;
+  state: SoundroomGuildStateDto;
+}

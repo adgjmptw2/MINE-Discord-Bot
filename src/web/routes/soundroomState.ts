@@ -1,9 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { MineClient } from "@/types";
+import { GUILD_ID_PATTERN } from "@/web/authz";
 import { sendError, sendJson } from "@/web/http";
 import { buildSoundroomGuildStateDto } from "@/web/soundroomDto";
-
-const GUILD_ID_PATTERN = /^\d{17,20}$/;
 
 export function handleSoundroomGuildState(
   _req: IncomingMessage,

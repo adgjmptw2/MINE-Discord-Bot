@@ -20,6 +20,7 @@ import {
   handleDiscordCallback,
   handleDiscordLogin,
 } from "@/web/routes/auth";
+import { handleAuthSoundroomGuildState } from "@/web/routes/authSoundroomState";
 import { handleAuthGuilds } from "@/web/routes/guilds";
 import { handleHealth, markWebDashboardServerStarted } from "@/web/routes/health";
 import { handleSoundroomGuildState } from "@/web/routes/soundroomState";
@@ -27,6 +28,9 @@ import { log } from "@/utils/logger";
 
 const SOUNDROOM_STATE_PATH =
   /^\/api\/soundroom\/guilds\/(\d{17,20})\/state\/?$/;
+
+const AUTH_SOUNDROOM_STATE_PATH =
+  /^\/api\/auth\/guilds\/(\d{17,20})\/soundroom-state\/?$/;
 
 async function handleRequest(
   client: MineClient,
@@ -92,6 +96,21 @@ async function handleRequest(
       return;
     }
 
+    const authSoundroomStateMatch = pathname.match(AUTH_SOUNDROOM_STATE_PATH);
+    if (authSoundroomStateMatch) {
+      if (method !== "GET") {
+        sendMethodNotAllowed(res);
+        return;
+      }
+      handleAuthSoundroomGuildState(
+        req,
+        res,
+        client,
+        authSoundroomStateMatch[1],
+      );
+      return;
+    }
+
     if (pathname === "/api/auth/guilds") {
       if (method !== "GET") {
         sendMethodNotAllowed(res);
@@ -104,6 +123,7 @@ async function handleRequest(
     if (
       pathname === "/health" ||
       stateMatch ||
+      authSoundroomStateMatch ||
       pathname.startsWith("/api/auth/") ||
       pathname.startsWith("/api/soundroom/")
     ) {
