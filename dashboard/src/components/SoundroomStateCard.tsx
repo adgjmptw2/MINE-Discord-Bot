@@ -1,3 +1,4 @@
+import { getSearchAddDisabledState } from "../controlErrors";
 import { formatDurationMs } from "../format";
 import type {
   SoundroomControlAction,
@@ -6,6 +7,7 @@ import type {
 } from "../types";
 import { QueueList } from "./QueueList";
 import { SoundroomControls } from "./SoundroomControls";
+import { SoundroomSearchPanel } from "./SoundroomSearchPanel";
 
 type SoundroomStateCardProps = {
   guildId: string | null;
@@ -19,6 +21,7 @@ type SoundroomStateCardProps = {
   onControlSuccess?: (action: SoundroomControlAction) => void;
   onUnauthorized?: () => void;
   onSkipDone?: () => void;
+  onSearchAdded?: () => void;
 };
 
 function playbackStatus(state: SoundroomGuildStateDto): string {
@@ -58,6 +61,7 @@ export function SoundroomStateCard({
   onControlSuccess,
   onUnauthorized,
   onSkipDone,
+  onSearchAdded,
 }: SoundroomStateCardProps) {
   if (loading && !state) {
     return (
@@ -96,6 +100,12 @@ export function SoundroomStateCard({
 
   const current = state.current;
   const pct = progressPercent(state);
+  const searchDisabled = getSearchAddDisabledState(
+    state.soundroomConfigured,
+    controlStatusLoading,
+    controlStatusError,
+    controlStatus,
+  );
 
   return (
     <div className="state-card">
@@ -167,6 +177,17 @@ export function SoundroomStateCard({
           onControlSuccess={onControlSuccess}
           onUnauthorized={onUnauthorized}
           onSkipDone={onSkipDone}
+        />
+      ) : null}
+
+      {guildId && onStateChange ? (
+        <SoundroomSearchPanel
+          guildId={guildId}
+          disabled={searchDisabled.disabled || loading}
+          disabledReason={searchDisabled.reason}
+          onStateChange={onStateChange}
+          onAdded={onSearchAdded}
+          onUnauthorized={onUnauthorized}
         />
       ) : null}
 

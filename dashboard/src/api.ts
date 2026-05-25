@@ -3,9 +3,12 @@ import type {
   AuthGuildsResponse,
   AuthMeResponse,
   AuthSoundroomStateResponse,
+  SoundroomAddRequestDto,
+  SoundroomAddResponseDto,
   SoundroomControlRequestDto,
   SoundroomControlResponseDto,
   SoundroomControlStatusResponseDto,
+  SoundroomSearchResponseDto,
 } from "./types";
 
 const DEFAULT_API_BASE = "http://127.0.0.1:3077";
@@ -132,5 +135,37 @@ export async function getSoundroomControlStatus(
   return apiFetch<SoundroomControlStatusResponseDto>(
     `/api/auth/guilds/${encodeURIComponent(guildId)}/soundroom/control-status`,
     { signal },
+  );
+}
+
+export async function searchSoundroomTracks(
+  guildId: string,
+  query: string,
+  signal?: AbortSignal,
+): Promise<SoundroomSearchResponseDto> {
+  return apiFetch<SoundroomSearchResponseDto>(
+    `/api/auth/guilds/${encodeURIComponent(guildId)}/soundroom/search`,
+    {
+      method: "POST",
+      signal,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query }),
+    },
+  );
+}
+
+export async function addSoundroomTrack(
+  guildId: string,
+  request: SoundroomAddRequestDto,
+  signal?: AbortSignal,
+): Promise<SoundroomAddResponseDto> {
+  return apiFetch<SoundroomAddResponseDto>(
+    `/api/auth/guilds/${encodeURIComponent(guildId)}/soundroom/add`,
+    {
+      method: "POST",
+      signal,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+    },
   );
 }

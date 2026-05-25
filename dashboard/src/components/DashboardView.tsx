@@ -21,6 +21,7 @@ import { SoundroomStateCard } from "./SoundroomStateCard";
 const STORAGE_KEY = "mine_soundroom_selected_guild";
 const POLL_MS = 8000;
 const SKIP_REFRESH_MS = 1500;
+const ADD_REFRESH_MS = 1500;
 
 type DashboardViewProps = {
   user: DiscordOAuthUserDto;
@@ -275,6 +276,19 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
     }, SKIP_REFRESH_MS);
   };
 
+  const handleSearchAdded = () => {
+    const gid = selectedIdRef.current;
+    if (!gid) {
+      return;
+    }
+    void loadControlStatus(gid, { silent: true });
+    window.setTimeout(() => {
+      if (selectedIdRef.current === gid) {
+        void loadState(gid, { silent: true });
+      }
+    }, ADD_REFRESH_MS);
+  };
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -361,6 +375,7 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
             onControlSuccess={handleControlSuccess}
             onUnauthorized={onLogout}
             onSkipDone={handleSkipDone}
+            onSearchAdded={handleSearchAdded}
           />
         </main>
       </div>

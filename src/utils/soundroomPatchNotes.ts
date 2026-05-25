@@ -13,10 +13,16 @@ export interface SoundroomPatchNote {
 /** 최신 항목이 위에 오도록 관리합니다. */
 export const SOUNDROOM_PATCH_NOTES: SoundroomPatchNote[] = [
   {
+    icon: "🎧",
+    timestamp: "5월 26일 02:30",
+    title: "대시보드 노래 검색·추가 UI",
+    detail: "웹 대시보드에서 검색어 또는 URL로 노래를 찾아 대기열에 추가",
+  },
+  {
     icon: "🔎",
     timestamp: "5월 25일 15:00",
     title: "웹 노래 검색·추가 API",
-    detail: "대시보드용 검색·대기열 추가 백엔드 (UI는 다음 단계)",
+    detail: "대시보드용 검색·대기열 추가 백엔드",
   },
   {
     icon: "🔁",

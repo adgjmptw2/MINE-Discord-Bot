@@ -1,3 +1,16 @@
+export function formatTrackDurationLabel(
+  durationMs: number | null | undefined,
+  isStream: boolean,
+): string {
+  if (isStream) {
+    return "LIVE";
+  }
+  if (durationMs == null || !Number.isFinite(durationMs) || durationMs < 0) {
+    return "길이 알 수 없음";
+  }
+  return formatDurationMs(durationMs);
+}
+
 export function formatDurationMs(ms: number | null | undefined): string {
   if (ms == null || !Number.isFinite(ms) || ms < 0) {
     return "—";
