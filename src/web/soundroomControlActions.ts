@@ -5,7 +5,12 @@ import {
   type BuildSoundroomPanelOptions,
 } from "@/utils/soundroomPanel";
 import { bumpSoundroomPanelRevision } from "@/utils/soundroomPanelRevision";
-import { resetAutoplaySession } from "@/utils/soundroomAutoplay";
+import {
+  prefetchAutoplayNextHint,
+  removeAutoplayTracksFromQueue,
+  resetAutoplaySession,
+  toggleAutoplay,
+} from "@/utils/soundroomAutoplay";
 import { getPlayer, hasCurrentTrack } from "@/utils/commands";
 import type { ExtendedPlayer, MineClient } from "@/types";
 import { log } from "@/utils/logger";
@@ -90,6 +95,34 @@ export async function executeSoundroomStop(
     await editSoundroomIdlePanel(client, guildId, lightIdleOpts);
   } catch (error) {
     logControlWarn("stop-panel", guildId, error);
+  }
+}
+
+export async function executeSoundroomToggleAutoplay(
+  client: MineClient,
+  guildId: string,
+): Promise<void> {
+  const enabled = toggleAutoplay(guildId);
+  bumpSoundroomPanelRevision(guildId);
+  const pl = getPlayer(client, guildId);
+
+  if (pl && !enabled) {
+    removeAutoplayTracksFromQueue(pl);
+  }
+
+  try {
+    if (pl?.current) {
+      await editSoundroomPlayingPanel(client, guildId).catch(() => undefined);
+      if (enabled) {
+        void prefetchAutoplayNextHint(client, pl).then(() => {
+          void editSoundroomPlayingPanel(client, guildId).catch(() => undefined);
+        });
+      }
+    } else {
+      await editSoundroomIdlePanel(client, guildId).catch(() => undefined);
+    }
+  } catch (error) {
+    logControlWarn("toggleAutoplay-panel", guildId, error);
   }
 }
 

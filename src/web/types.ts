@@ -112,7 +112,8 @@ export type SoundroomControlAction =
   | "togglePause"
   | "skip"
   | "stop"
-  | "setVolume";
+  | "setVolume"
+  | "toggleAutoplay";
 
 export interface SoundroomControlRequestDto {
   action: SoundroomControlAction;

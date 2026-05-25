@@ -165,6 +165,12 @@ export function SoundroomControls({
         error={controlStatusError}
       />
 
+      <p
+        className={`autoplay-badge${state.autoplay ? " autoplay-badge--on" : " autoplay-badge--off"}`}
+      >
+        자동재생 {state.autoplay ? "ON" : "OFF"}
+      </p>
+
       {notice ? (
         <p className="controls-notice" role="status">
           {notice}
@@ -182,6 +188,22 @@ export function SoundroomControls({
       ) : null}
 
       <div className="controls-buttons">
+        <button
+          type="button"
+          className={`btn btn-autoplay${state.autoplay ? " btn-autoplay--on" : ""}`}
+          disabled={disabled}
+          onClick={() => {
+            void runControl(
+              "toggleAutoplay",
+              { action: "toggleAutoplay" },
+              state.autoplay
+                ? "자동재생을 껐습니다."
+                : "자동재생을 켰습니다.",
+            );
+          }}
+        >
+          {state.autoplay ? "자동재생 끄기" : "자동재생 켜기"}
+        </button>
         <button
           type="button"
           className="btn btn-secondary"

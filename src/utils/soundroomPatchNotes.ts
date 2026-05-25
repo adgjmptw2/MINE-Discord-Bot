@@ -13,6 +13,18 @@ export interface SoundroomPatchNote {
 /** 최신 항목이 위에 오도록 관리합니다. */
 export const SOUNDROOM_PATCH_NOTES: SoundroomPatchNote[] = [
   {
+    icon: "🔁",
+    timestamp: "5월 25일 14:00",
+    title: "웹 대시보드 자동재생 토글",
+    detail: "같은 음성 채널에서 자동재생 켜기·끄기 지원",
+  },
+  {
+    icon: "🎛️",
+    timestamp: "5월 25일 13:30",
+    title: "웹 대시보드 음악 조작",
+    detail: "일시정지·스킵·정지·볼륨·조작 가능 여부 안내",
+  },
+  {
     icon: "🟢",
     timestamp: "5월 25일 12:00",
     title: "패치노트 버튼 추가",

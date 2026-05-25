@@ -632,3 +632,42 @@ img {
   border-color: rgba(237, 66, 69, 0.35);
   color: #f5a6a8;
 }
+
+.autoplay-badge {
+  display: inline-block;
+  margin-bottom: 0.75rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.autoplay-badge--on {
+  background: rgba(59, 165, 93, 0.18);
+  color: #9fd4a8;
+}
+
+.autoplay-badge--off {
+  background: rgba(154, 166, 188, 0.15);
+  color: var(--text-muted);
+}
+
+.btn-autoplay {
+  background: rgba(88, 101, 242, 0.18);
+  color: #c5caff;
+  border: 1px solid rgba(88, 101, 242, 0.4);
+}
+
+.btn-autoplay:hover:not(:disabled) {
+  background: rgba(88, 101, 242, 0.3);
+}
+
+.btn-autoplay--on {
+  background: rgba(59, 165, 93, 0.15);
+  border-color: rgba(59, 165, 93, 0.4);
+  color: #9fd4a8;
+}
+
+.btn-autoplay--on:hover:not(:disabled) {
+  background: rgba(59, 165, 93, 0.28);
+}

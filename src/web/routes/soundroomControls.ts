@@ -8,6 +8,7 @@ import {
   executeSoundroomSetVolume,
   executeSoundroomSkip,
   executeSoundroomStop,
+  executeSoundroomToggleAutoplay,
   executeSoundroomTogglePause,
   isValidSoundroomVolume,
 } from "@/web/soundroomControlActions";
@@ -28,6 +29,7 @@ const CONTROL_ACTIONS: ReadonlySet<SoundroomControlAction> = new Set([
   "skip",
   "stop",
   "setVolume",
+  "toggleAutoplay",
 ]);
 
 function sendAuthzFailure(res: ServerResponse, err: WebAuthzError): void {
@@ -120,6 +122,8 @@ export async function handleSoundroomControl(
         return;
       }
       await executeSoundroomSetVolume(client, guildId, player, volume);
+    } else if (action === "toggleAutoplay") {
+      await executeSoundroomToggleAutoplay(client, guildId);
     }
   } catch (error) {
     if (error instanceof ControlNothingPlayingError) {
