@@ -1,27 +1,34 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { getWebDashboardAllowedOrigin } from "@/web/config";
 
 const JSON_CONTENT_TYPE = "application/json; charset=utf-8";
-
-export function getWebDashboardAllowedOrigin(): string {
-  return (
-    process.env.WEB_DASHBOARD_ALLOWED_ORIGIN?.trim() ||
-    "http://localhost:3000"
-  );
-}
 
 export function readRequestUrl(req: IncomingMessage): URL {
   const host = req.headers.host ?? "127.0.0.1";
   return new URL(req.url ?? "/", `http://${host}`);
 }
 
-export function setCorsHeaders(req: IncomingMessage, res: ServerResponse): void {
+export function getRequestHost(req: IncomingMessage): string {
+  return req.headers.host ?? "127.0.0.1";
+}
+
+export function getRequestOrigin(req: IncomingMessage): string | null {
   const origin = req.headers.origin;
+  if (typeof origin !== "string" || origin.length === 0) {
+    return null;
+  }
+  return origin;
+}
+
+export function setCorsHeaders(req: IncomingMessage, res: ServerResponse): void {
+  const origin = getRequestOrigin(req);
   const allowed = getWebDashboardAllowedOrigin();
   if (origin && origin === allowed) {
     res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
     res.setHeader("Vary", "Origin");
   }
-  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 }
 
@@ -46,7 +53,89 @@ export function sendError(
   sendJson(res, statusCode, { ok: false, code, message });
 }
 
+export function sendRedirect(
+  res: ServerResponse,
+  location: string,
+  statusCode = 302,
+): void {
+  res.statusCode = statusCode;
+  res.setHeader("Location", location);
+  res.end();
+}
+
 export function sendOptionsNoContent(res: ServerResponse): void {
   res.statusCode = 204;
   res.end();
+}
+
+export function sendMethodNotAllowed(res: ServerResponse): void {
+  sendError(res, 405, "METHOD_NOT_ALLOWED", "허용되지 않은 HTTP 메서드입니다.");
+}
+
+export function parseCookies(req: IncomingMessage): Record<string, string> {
+  const header = req.headers.cookie;
+  if (!header) {
+    return {};
+  }
+  const out: Record<string, string> = {};
+  for (const part of header.split(";")) {
+    const idx = part.indexOf("=");
+    if (idx <= 0) {
+      continue;
+    }
+    const key = part.slice(0, idx).trim();
+    const value = part.slice(idx + 1).trim();
+    if (key) {
+      out[key] = decodeURIComponent(value);
+    }
+  }
+  return out;
+}
+
+export interface CookieOptions {
+  maxAgeSeconds?: number;
+  httpOnly?: boolean;
+  sameSite?: "Lax" | "Strict" | "None";
+  path?: string;
+  secure?: boolean;
+}
+
+export function setCookie(
+  res: ServerResponse,
+  name: string,
+  value: string,
+  options: CookieOptions = {},
+): void {
+  const parts = [`${name}=${encodeURIComponent(value)}`];
+  const path = options.path ?? "/";
+  parts.push(`Path=${path}`);
+  if (options.maxAgeSeconds !== undefined) {
+    parts.push(`Max-Age=${Math.max(0, Math.floor(options.maxAgeSeconds))}`);
+  }
+  if (options.httpOnly !== false) {
+    parts.push("HttpOnly");
+  }
+  parts.push(`SameSite=${options.sameSite ?? "Lax"}`);
+  if (options.secure) {
+    parts.push("Secure");
+  }
+  const existing = res.getHeader("Set-Cookie");
+  const next = parts.join("; ");
+  if (Array.isArray(existing)) {
+    res.setHeader("Set-Cookie", [...existing, next]);
+  } else if (typeof existing === "string") {
+    res.setHeader("Set-Cookie", [existing, next]);
+  } else {
+    res.setHeader("Set-Cookie", next);
+  }
+}
+
+export function clearCookie(res: ServerResponse, name: string): void {
+  setCookie(res, name, "", {
+    maxAgeSeconds: 0,
+    httpOnly: true,
+    sameSite: "Lax",
+    path: "/",
+    secure: false,
+  });
 }

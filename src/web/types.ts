@@ -43,8 +43,62 @@ export interface HealthResponseDto {
   timestamp: string;
 }
 
-export interface ApiErrorDto {
+export interface ApiErrorResponseDto {
   ok: false;
   code: string;
   message: string;
+}
+
+export interface DiscordOAuthUserDto {
+  id: string;
+  username: string;
+  globalName: string | null;
+  avatar: string | null;
+  avatarUrl: string | null;
+}
+
+export interface DiscordOAuthGuildDto {
+  id: string;
+  name: string;
+  icon: string | null;
+  iconUrl: string | null;
+  owner: boolean;
+  permissions: string;
+}
+
+export interface WebSessionDto {
+  id: string;
+  user: DiscordOAuthUserDto;
+  guilds: DiscordOAuthGuildDto[];
+  createdAt: number;
+  expiresAt: number;
+}
+
+export interface WebDashboardGuildDto {
+  id: string;
+  name: string;
+  icon: string | null;
+  iconUrl: string | null;
+  owner: boolean;
+  permissions: string;
+  botInGuild: boolean;
+  soundroomConfigured: boolean;
+  soundroomChannelId: string | null;
+  hasManageGuild: boolean;
+  hasAdministrator: boolean;
+}
+
+export interface AuthMeResponseDto {
+  ok: true;
+  user: DiscordOAuthUserDto;
+  expiresAt: string;
+}
+
+export interface AuthGuildsResponseDto {
+  ok: true;
+  guilds: WebDashboardGuildDto[];
+}
+
+export interface AuthOkResponseDto {
+  ok: true;
 }
