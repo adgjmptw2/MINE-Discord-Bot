@@ -20,6 +20,7 @@ import {
   shouldShowSoundroomMaintenanceNotice,
   SOUNDROOM_MAINTENANCE_NOTICE_UPTIME_SEC,
 } from "@/utils/soundroomPanel";
+import { bumpSoundroomPanelRevision } from "@/utils/soundroomPanelRevision";
 
 const LIGHT_PANEL: { includeMedia: false } = { includeMedia: false };
 
@@ -412,6 +413,7 @@ async function refreshOneSoundroomPanel(
     return "failed";
   }
 
+  bumpSoundroomPanelRevision(record.guildId);
   const payload = buildSoundroomPayloadForGuild(client, record.guildId);
 
   const t0 = performance.now();

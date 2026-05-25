@@ -2,6 +2,7 @@ import { getSoundroom, isSoundroomTextChannel } from "@/storage/soundroom";
 import { panelMessage } from "@/utils/discord";
 import { stopSoundroomProgress } from "@/utils/soundroomProgress";
 import { editSoundroomIdlePanel } from "@/utils/soundroomPanel";
+import { bumpSoundroomPanelRevision } from "@/utils/soundroomPanelRevision";
 import {
   armIdleLeaveTimer,
   ensureSeedTrack,
@@ -54,6 +55,7 @@ export default function registerQueueEnd(client: MineClient): void {
       }
 
       stopSoundroomProgress(guildId);
+      bumpSoundroomPanelRevision(guildId);
       player.message = undefined;
       await editSoundroomIdlePanel(client, guildId).catch(() => undefined);
 
@@ -70,6 +72,7 @@ export default function registerQueueEnd(client: MineClient): void {
             return;
           }
           stopSoundroomProgress(guildId);
+          bumpSoundroomPanelRevision(guildId);
           p.message = undefined;
           if (getSoundroom(guildId)) {
             await editSoundroomIdlePanel(client, guildId).catch(

@@ -25,6 +25,10 @@ import {
   SOUNDROOM_IDLE_ATTACHMENT_NAME,
   tryLoadSoundroomIdleAttachment,
 } from "@/utils/soundroomArtwork";
+import {
+  getSoundroomPanelRevision,
+  isSoundroomPanelRevisionCurrent,
+} from "@/utils/soundroomPanelRevision";
 import type { ExtendedPlayer, ExtendedTrack, MineClient } from "@/types";
 
 const MENTION_NONE = { parse: [] as const };
@@ -286,31 +290,53 @@ export async function editSoundroomIdlePanel(
   client: MineClient,
   guildId: string,
   options?: BuildSoundroomPanelOptions,
-): Promise<void> {
+): Promise<boolean> {
+  const revision = getSoundroomPanelRevision(guildId);
   const msg = await fetchSoundroomPanelMessage(client, guildId);
   if (!msg?.editable) {
-    return;
+    return false;
   }
 
-  await msg.edit(buildSoundroomIdlePayload(client, guildId, options));
+  if (!isSoundroomPanelRevisionCurrent(guildId, revision)) {
+    return false;
+  }
+
+  try {
+    await msg.edit(buildSoundroomIdlePayload(client, guildId, options));
+  } catch {
+    return false;
+  }
+
+  return isSoundroomPanelRevisionCurrent(guildId, revision);
 }
 
 export async function editSoundroomPlayingPanel(
   client: MineClient,
   guildId: string,
   options?: BuildSoundroomPanelOptions,
-): Promise<void> {
+): Promise<boolean> {
+  const revision = getSoundroomPanelRevision(guildId);
   const player = getPlayer(client, guildId);
   if (!player?.current) {
-    return;
+    return false;
   }
 
   const msg = await fetchSoundroomPanelMessage(client, guildId);
   if (!msg?.editable) {
-    return;
+    return false;
   }
 
-  await msg.edit(buildSoundroomPlayingPayload(client, player, options));
+  if (!isSoundroomPanelRevisionCurrent(guildId, revision)) {
+    return false;
+  }
+
+  try {
+    await msg.edit(buildSoundroomPlayingPayload(client, player, options));
+  } catch {
+    return false;
+  }
+
+  return isSoundroomPanelRevisionCurrent(guildId, revision);
 }
 
 export async function sendSoundroomAddNotification(

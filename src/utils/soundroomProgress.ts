@@ -8,40 +8,47 @@ const inFlightGuilds = new Set<string>();
 
 const TICK_MS = 8000;
 
+async function runSoundroomProgressTick(
+  client: MineClient,
+  guildId: string,
+): Promise<void> {
+  if (inFlightGuilds.has(guildId)) {
+    return;
+  }
+
+  inFlightGuilds.add(guildId);
+  try {
+    const lounge = getSoundroom(guildId);
+    if (!lounge) {
+      stopSoundroomProgress(guildId);
+      return;
+    }
+
+    const player = getPlayer(client, guildId);
+    if (!player?.playing || !player.current) {
+      return;
+    }
+
+    if (player.textChannel !== lounge.channelId) {
+      return;
+    }
+
+    await editSoundroomPlayingPanel(client, guildId).catch(() => undefined);
+  } finally {
+    inFlightGuilds.delete(guildId);
+  }
+}
+
 export function startSoundroomProgress(
   client: MineClient,
   guildId: string,
 ): void {
   stopSoundroomProgress(guildId);
 
+  void runSoundroomProgressTick(client, guildId);
+
   const id = setInterval(() => {
-    if (inFlightGuilds.has(guildId)) {
-      return;
-    }
-
-    void (async () => {
-      inFlightGuilds.add(guildId);
-      try {
-        const lounge = getSoundroom(guildId);
-        if (!lounge) {
-          stopSoundroomProgress(guildId);
-          return;
-        }
-
-        const player = getPlayer(client, guildId);
-        if (!player?.playing || !player.current) {
-          return;
-        }
-
-        if (player.textChannel !== lounge.channelId) {
-          return;
-        }
-
-        await editSoundroomPlayingPanel(client, guildId).catch(() => undefined);
-      } finally {
-        inFlightGuilds.delete(guildId);
-      }
-    })();
+    void runSoundroomProgressTick(client, guildId);
   }, TICK_MS);
 
   intervals.set(guildId, id);

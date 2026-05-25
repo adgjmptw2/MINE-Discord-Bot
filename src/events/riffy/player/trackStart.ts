@@ -9,10 +9,10 @@ import { isSoundroomTextChannel } from "@/storage/soundroom";
 import { startSoundroomProgress } from "@/utils/soundroomProgress";
 import { buildPanel, formatTrackDuration, truncate } from "@/utils/discord";
 import {
-  buildSoundroomPlayingPayload,
   editSoundroomPlayingPanel,
   fetchSoundroomPanelMessage,
 } from "@/utils/soundroomPanel";
+import { bumpSoundroomPanelRevision } from "@/utils/soundroomPanelRevision";
 import { prefetchAutoplayNextHint } from "@/utils/soundroomAutoplay";
 import type { ExtendedPlayer, ExtendedTrack, MineClient } from "@/types";
 
@@ -50,10 +50,13 @@ export default function registerTrackStart(client: MineClient): void {
     );
 
     if (isSoundroomTextChannel(player.guildId, player.textChannel)) {
+      bumpSoundroomPanelRevision(player.guildId);
       const msg = await fetchSoundroomPanelMessage(client, player.guildId);
       if (msg?.editable) {
         player.message = msg as never;
-        await msg.edit(buildSoundroomPlayingPayload(client, player));
+        await editSoundroomPlayingPanel(client, player.guildId).catch(
+          () => undefined,
+        );
         startSoundroomProgress(client, player.guildId);
         void prefetchAutoplayNextHint(client, player).then(() => {
           void editSoundroomPlayingPanel(client, player.guildId).catch(

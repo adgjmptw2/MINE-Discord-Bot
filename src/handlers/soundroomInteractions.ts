@@ -31,6 +31,7 @@ import {
   sendSoundroomAddNotification,
   type BuildSoundroomPanelOptions,
 } from "@/utils/soundroomPanel";
+import { bumpSoundroomPanelRevision } from "@/utils/soundroomPanelRevision";
 import { prioritizeYoutubeTracks } from "@/utils/youtubePlaylist";
 import { buildSoundroomQueuePanelPayload } from "@/handlers/soundroomQueuePanel";
 import {
@@ -316,6 +317,7 @@ export async function handleSoundroomButton(
     const enabled = toggleAutoplay(guildId);
     await interaction.deferUpdate().catch(() => undefined);
     try {
+      bumpSoundroomPanelRevision(guildId);
       const pl = getPlayer(client, guildId);
       if (pl && !enabled) {
         removeAutoplayTracksFromQueue(pl);
@@ -447,6 +449,7 @@ export async function handleSoundroomButton(
     resetAutoplaySession(guildId);
     player.queue.clear();
     stopSoundroomProgress(guildId);
+    bumpSoundroomPanelRevision(guildId);
     player.message = undefined;
 
     try {
@@ -509,6 +512,7 @@ export async function handleSoundroomButton(
 
     await interaction.deferUpdate().catch(() => undefined);
     try {
+      bumpSoundroomPanelRevision(guildId);
       await player.pause(!player.paused);
       const pl = getPlayer(client, guildId);
       if (!pl?.current) {
@@ -566,20 +570,6 @@ export async function handleSoundroomButton(
     await interaction.deferUpdate().catch(() => undefined);
     try {
       await player.stop();
-      await Promise.resolve();
-      const pl = getPlayer(client, guildId);
-      const payload = pl?.current
-        ? buildSoundroomPlayingPayload(client, pl)
-        : buildSoundroomIdlePayload(client, guildId);
-      await interaction.message.edit(payload).catch(async () => {
-        if (pl?.current) {
-          await editSoundroomPlayingPanel(client, guildId).catch(
-            () => undefined,
-          );
-        } else {
-          await editSoundroomIdlePanel(client, guildId).catch(() => undefined);
-        }
-      });
       const toast = await interaction.followUp({
         content: "다음 곡으로 넘겼습니다.",
         flags: MessageFlags.Ephemeral,
