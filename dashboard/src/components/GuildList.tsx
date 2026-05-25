@@ -51,7 +51,7 @@ export function GuildList({ guilds, selectedId, onSelect }: GuildListProps) {
                         : "badge badge-muted"
                     }
                   >
-                    {g.soundroomConfigured ? "Soundroom 설정됨" : "Soundroom 미설정"}
+                    {g.soundroomConfigured ? "노래채널 설정됨" : "노래채널 미설정"}
                   </span>
                   {g.hasAdministrator || g.hasManageGuild ? (
                     <span className="badge badge-info">관리 가능</span>

@@ -145,3 +145,45 @@ export interface SoundroomControlStatusResponseDto {
   botVoiceChannelId: string | null;
   botVoiceChannelName: string | null;
 }
+
+export interface SoundroomSearchRequestDto {
+  query: string;
+}
+
+export interface SoundroomSearchResultDto {
+  id: string;
+  title: string;
+  uri: string | null;
+  author: string | null;
+  durationMs: number | null;
+  isStream: boolean;
+  thumbnailUrl: string | null;
+}
+
+export interface SoundroomSearchResponseDto {
+  ok: true;
+  query: string;
+  results: SoundroomSearchResultDto[];
+}
+
+export interface SoundroomAddRequestDto {
+  query?: string;
+  uri?: string;
+}
+
+export interface SoundroomAddedTrackDto {
+  title: string;
+  uri: string | null;
+  author: string | null;
+  durationMs: number | null;
+  isStream: boolean;
+  thumbnailUrl: string | null;
+  requesterId: string | null;
+  requesterName: string | null;
+}
+
+export interface SoundroomAddResponseDto {
+  ok: true;
+  added: SoundroomAddedTrackDto;
+  state: SoundroomGuildStateDto;
+}

@@ -128,7 +128,7 @@ export async function buildSoundroomControlStatus(
       ...base,
       canControl: false,
       code: "SOUNDROOM_NOT_CONFIGURED",
-      message: "이 서버에는 Soundroom이 설정되어 있지 않습니다.",
+      message: "이 서버에는 노래채널이 설정되어 있지 않습니다.",
     };
   }
 
@@ -179,7 +179,7 @@ function statusToAuthError(
     case "PLAYER_NOT_CONNECTED":
       return authError(409, status.code, status.message);
     default:
-      return authError(500, "INTERNAL_ERROR", "Soundroom 조작 권한을 확인할 수 없습니다.");
+      return authError(500, "INTERNAL_ERROR", "노래채널 조작 권한을 확인할 수 없습니다.");
   }
 }
 
@@ -231,6 +231,78 @@ export async function getSoundroomControlStatus(
   }
 
   return buildSoundroomControlStatus(client, session, guildId, guild);
+}
+
+export interface WebSoundroomQueueContext {
+  session: WebSession;
+  guildId: string;
+  guild: Guild;
+  userVoiceChannelId: string;
+  soundroomChannelId: string;
+}
+
+/** 검색·대기열 추가: 음성 입장·같은 채널(봇 연결 시). 봇 미연결 시에도 추가 시 ensurePlayerConnection 허용. */
+export async function requireWebSoundroomQueueAccess(
+  client: MineClient,
+  req: IncomingMessage,
+  guildId: string,
+): Promise<WebSoundroomQueueContext | WebAuthzError> {
+  const statusOrError = await getSoundroomControlStatus(client, req, guildId);
+  if ("status" in statusOrError) {
+    return statusOrError;
+  }
+
+  if (!statusOrError.soundroomConfigured) {
+    return statusToAuthError({
+      ...statusOrError,
+      canControl: false,
+      code: "SOUNDROOM_NOT_CONFIGURED",
+      message: "이 서버에는 노래채널이 설정되어 있지 않습니다.",
+    });
+  }
+
+  if (!statusOrError.userVoiceChannelId) {
+    return statusToAuthError({
+      ...statusOrError,
+      canControl: false,
+      code: "USER_NOT_IN_VOICE_CHANNEL",
+      message: "먼저 음성 채널에 들어가 주세요.",
+    });
+  }
+
+  const botVoiceChannelId = statusOrError.botVoiceChannelId;
+  if (
+    botVoiceChannelId &&
+    botVoiceChannelId !== statusOrError.userVoiceChannelId
+  ) {
+    return statusToAuthError({
+      ...statusOrError,
+      canControl: false,
+      code: "NOT_SAME_VOICE_CHANNEL",
+      message: "봇과 같은 음성 채널에서만 조작할 수 있습니다.",
+    });
+  }
+
+  const room = getSoundroom(guildId);
+  if (!room) {
+    return statusToAuthError({
+      ...statusOrError,
+      canControl: false,
+      code: "SOUNDROOM_NOT_CONFIGURED",
+      message: "이 서버에는 노래채널이 설정되어 있지 않습니다.",
+    });
+  }
+
+  const session = getAuthenticatedSession(req)!;
+  const guild = client.guilds.cache.get(guildId)!;
+
+  return {
+    session,
+    guildId,
+    guild,
+    userVoiceChannelId: statusOrError.userVoiceChannelId,
+    soundroomChannelId: room.channelId,
+  };
 }
 
 export async function requireWebSoundroomControlAccess(

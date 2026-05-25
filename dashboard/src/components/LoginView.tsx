@@ -9,9 +9,9 @@ export function LoginView() {
     <div className="login-view">
       <div className="login-card">
         <p className="eyebrow">읽기 전용</p>
-        <h1>MINE Soundroom</h1>
+        <h1>MINE 노래채널</h1>
         <p className="login-desc">
-          Discord로 로그인해서 참여 중인 서버의 Soundroom 상태를 확인하세요.
+          Discord로 로그인해서 참여 중인 서버의 노래채널 상태를 확인하세요.
         </p>
         <button type="button" className="btn btn-primary" onClick={goLogin}>
           Discord로 로그인

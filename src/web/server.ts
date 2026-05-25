@@ -24,6 +24,10 @@ import { handleAuthSoundroomGuildState } from "@/web/routes/authSoundroomState";
 import { handleAuthGuilds } from "@/web/routes/guilds";
 import { handleSoundroomControl } from "@/web/routes/soundroomControls";
 import { handleSoundroomControlStatus } from "@/web/routes/soundroomControlStatus";
+import {
+  handleSoundroomAdd,
+  handleSoundroomSearch,
+} from "@/web/routes/soundroomSearch";
 import { handleHealth, markWebDashboardServerStarted } from "@/web/routes/health";
 import { handleSoundroomGuildState } from "@/web/routes/soundroomState";
 import { log } from "@/utils/logger";
@@ -39,6 +43,12 @@ const AUTH_SOUNDROOM_CONTROL_STATUS_PATH =
 
 const AUTH_SOUNDROOM_CONTROL_PATH =
   /^\/api\/auth\/guilds\/(\d{17,20})\/soundroom\/control\/?$/;
+
+const AUTH_SOUNDROOM_SEARCH_PATH =
+  /^\/api\/auth\/guilds\/(\d{17,20})\/soundroom\/search\/?$/;
+
+const AUTH_SOUNDROOM_ADD_PATH =
+  /^\/api\/auth\/guilds\/(\d{17,20})\/soundroom\/add\/?$/;
 
 async function handleRequest(
   client: MineClient,
@@ -136,6 +146,31 @@ async function handleRequest(
       return;
     }
 
+    const authSoundroomSearchMatch = pathname.match(AUTH_SOUNDROOM_SEARCH_PATH);
+    if (authSoundroomSearchMatch) {
+      if (method !== "POST") {
+        sendMethodNotAllowed(res);
+        return;
+      }
+      await handleSoundroomSearch(
+        req,
+        res,
+        client,
+        authSoundroomSearchMatch[1],
+      );
+      return;
+    }
+
+    const authSoundroomAddMatch = pathname.match(AUTH_SOUNDROOM_ADD_PATH);
+    if (authSoundroomAddMatch) {
+      if (method !== "POST") {
+        sendMethodNotAllowed(res);
+        return;
+      }
+      await handleSoundroomAdd(req, res, client, authSoundroomAddMatch[1]);
+      return;
+    }
+
     const authSoundroomStateMatch = pathname.match(AUTH_SOUNDROOM_STATE_PATH);
     if (authSoundroomStateMatch) {
       if (method !== "GET") {
@@ -165,6 +200,8 @@ async function handleRequest(
       stateMatch ||
       authSoundroomControlStatusMatch ||
       authSoundroomControlMatch ||
+      authSoundroomSearchMatch ||
+      authSoundroomAddMatch ||
       authSoundroomStateMatch ||
       pathname.startsWith("/api/auth/") ||
       pathname.startsWith("/api/soundroom/")

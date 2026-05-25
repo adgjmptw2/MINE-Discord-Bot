@@ -302,9 +302,9 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
       <header className="dashboard-header">
         <div>
           <p className="eyebrow">
-            조작 가능 여부 안내 · 8초마다 상태 자동 갱신
+            노래채널 조작 가능 여부 · 8초마다 상태 자동 갱신
           </p>
-          <h1>MINE Soundroom</h1>
+          <h1>MINE 노래채널</h1>
         </div>
         <div className="user-bar">
           {user.avatarUrl ? (
@@ -339,7 +339,7 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
 
         <main className="state-panel">
           <div className="state-toolbar">
-            <h2>Soundroom 상태</h2>
+            <h2>노래채널 상태</h2>
             <button
               type="button"
               className="btn btn-secondary"

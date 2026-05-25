@@ -92,7 +92,7 @@ export async function handleSoundroomControl(
       res,
       400,
       "INVALID_ACTION",
-      "지원하지 않는 Soundroom 조작입니다.",
+      "지원하지 않는 노래채널 조작입니다.",
     );
     return;
   }
@@ -139,7 +139,7 @@ export async function handleSoundroomControl(
       res,
       500,
       "INTERNAL_ERROR",
-      "Soundroom 조작 중 오류가 발생했습니다.",
+      "노래채널 조작 중 오류가 발생했습니다.",
     );
     return;
   }

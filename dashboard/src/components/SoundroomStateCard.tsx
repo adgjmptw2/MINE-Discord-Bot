@@ -62,7 +62,7 @@ export function SoundroomStateCard({
   if (loading && !state) {
     return (
       <div className="state-card">
-        <p className="muted">Soundroom 상태를 불러오는 중…</p>
+        <p className="muted">노래채널 상태를 불러오는 중…</p>
       </div>
     );
   }
@@ -78,7 +78,7 @@ export function SoundroomStateCard({
   if (!state) {
     return (
       <div className="state-card">
-        <p className="muted">서버를 선택하면 Soundroom 상태가 표시됩니다.</p>
+        <p className="muted">서버를 선택하면 노래채널 상태가 표시됩니다.</p>
       </div>
     );
   }
@@ -87,9 +87,9 @@ export function SoundroomStateCard({
     return (
       <div className="state-card">
         <p className="state-notice">
-          이 서버에는 Soundroom이 아직 설정되지 않았습니다.
+          이 서버에는 노래채널이 아직 설정되지 않았습니다.
         </p>
-        <p className="muted badge-line">Soundroom 미설정</p>
+        <p className="muted badge-line">노래채널 미설정</p>
       </div>
     );
   }

@@ -4,7 +4,7 @@ import type { SoundroomControlStatusCode } from "./types";
 const STATUS_UI_MESSAGES: Record<SoundroomControlStatusCode, string> = {
   READY: "조작 가능 · 같은 음성 채널에 있습니다.",
   SOUNDROOM_NOT_CONFIGURED:
-    "이 서버에는 Soundroom이 설정되어 있지 않습니다.",
+    "이 서버에는 노래채널이 설정되어 있지 않습니다.",
   USER_NOT_IN_VOICE_CHANNEL:
     "먼저 Discord 음성 채널에 들어가 주세요.",
   PLAYER_NOT_CONNECTED: "봇이 음성 채널에 연결되어 있지 않습니다.",
