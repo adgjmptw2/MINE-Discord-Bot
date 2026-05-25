@@ -528,13 +528,37 @@ img {
 
 .queue-actions {
   flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
 }
 
-.queue-actions--hidden {
-  width: 0;
-  overflow: hidden;
-  padding: 0;
-  margin: 0;
+.queue-move-group {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.btn-queue-move {
+  min-width: 2rem;
+  padding: 0.3rem 0.45rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1;
+  border-radius: 6px;
+  border: 1px solid rgba(88, 101, 242, 0.45);
+  background: rgba(88, 101, 242, 0.15);
+  color: #c5caff;
+}
+
+.btn-queue-move:hover:not(:disabled) {
+  background: rgba(88, 101, 242, 0.28);
+}
+
+.btn-queue-move:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .btn-queue-remove {
@@ -563,8 +587,6 @@ img {
 
   .queue-actions {
     width: 100%;
-    display: flex;
-    justify-content: flex-end;
     margin-top: 0.15rem;
   }
 }

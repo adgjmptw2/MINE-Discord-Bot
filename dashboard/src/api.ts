@@ -10,6 +10,8 @@ import type {
   SoundroomControlStatusResponseDto,
   SoundroomQueueRemoveRequestDto,
   SoundroomQueueRemoveResponseDto,
+  SoundroomQueueSwapRequestDto,
+  SoundroomQueueSwapResponseDto,
   SoundroomSearchResponseDto,
 } from "./types";
 
@@ -179,6 +181,22 @@ export async function removeSoundroomQueueItem(
 ): Promise<SoundroomQueueRemoveResponseDto> {
   return apiFetch<SoundroomQueueRemoveResponseDto>(
     `/api/auth/guilds/${encodeURIComponent(guildId)}/soundroom/queue/remove`,
+    {
+      method: "POST",
+      signal,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+    },
+  );
+}
+
+export async function swapSoundroomQueueItems(
+  guildId: string,
+  request: SoundroomQueueSwapRequestDto,
+  signal?: AbortSignal,
+): Promise<SoundroomQueueSwapResponseDto> {
+  return apiFetch<SoundroomQueueSwapResponseDto>(
+    `/api/auth/guilds/${encodeURIComponent(guildId)}/soundroom/queue/swap`,
     {
       method: "POST",
       signal,

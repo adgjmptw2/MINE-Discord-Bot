@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { removeSoundroomQueueItem } from "../api";
+import { removeSoundroomQueueItem, swapSoundroomQueueItems } from "../api";
 import {
   isControlUnauthorized,
   mapQueueRemoveError,
+  mapQueueSwapError,
 } from "../controlErrors";
 import { formatDurationMs } from "../format";
 import type {
@@ -38,6 +39,7 @@ export function QueueList({
   onUnauthorized,
 }: QueueListProps) {
   const [removingIndex, setRemovingIndex] = useState<number | null>(null);
+  const [swapping, setSwapping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const guildIdRef = useRef(guildId);
@@ -46,6 +48,7 @@ export function QueueList({
   useEffect(() => {
     guildIdRef.current = guildId;
     setRemovingIndex(null);
+    setSwapping(false);
     setError(null);
     setSuccess(null);
   }, [guildId]);
@@ -58,7 +61,7 @@ export function QueueList({
     };
   }, []);
 
-  const showSuccess = (message: string) => {
+  const showNotice = (message: string) => {
     setSuccess(message);
     if (noticeTimer.current != null) {
       window.clearTimeout(noticeTimer.current);
@@ -69,8 +72,11 @@ export function QueueList({
     }, NOTICE_MS);
   };
 
+  const busy = removingIndex != null || swapping;
+  const showMoveControls = canModifyQueue && queue.length >= 2;
+
   const handleRemove = async (item: SoundroomQueueItemDto) => {
-    if (!canModifyQueue || removingIndex != null) {
+    if (!canModifyQueue || busy) {
       return;
     }
     if (!item.requesterId || item.requesterId !== currentUserId) {
@@ -90,7 +96,7 @@ export function QueueList({
         return;
       }
       onStateChange(res.state);
-      showSuccess(`「${item.title}」을(를) 대기열에서 삭제했습니다.`);
+      showNotice(`「${item.title}」을(를) 대기열에서 삭제했습니다.`);
       onQueueChanged?.();
     } catch (err) {
       if (guildIdRef.current !== gid) {
@@ -106,6 +112,48 @@ export function QueueList({
     }
   };
 
+  const handleSwap = async (
+    fromItem: SoundroomQueueItemDto,
+    toItem: SoundroomQueueItemDto,
+  ) => {
+    if (!canModifyQueue || busy) {
+      return;
+    }
+
+    const gid = guildIdRef.current;
+    setSwapping(true);
+    setError(null);
+    try {
+      const res = await swapSoundroomQueueItems(gid, {
+        fromQueueIndex: fromItem.index,
+        toQueueIndex: toItem.index,
+        expectedFromUri: fromItem.uri,
+        expectedFromTitle: fromItem.title,
+        expectedToUri: toItem.uri,
+        expectedToTitle: toItem.title,
+      });
+      if (guildIdRef.current !== gid) {
+        return;
+      }
+      onStateChange(res.state);
+      showNotice(
+        "대기열 순서를 변경했습니다. 노래채널에 변경 안내가 잠시 표시됩니다.",
+      );
+      onQueueChanged?.();
+    } catch (err) {
+      if (guildIdRef.current !== gid) {
+        return;
+      }
+      if (isControlUnauthorized(err)) {
+        onUnauthorized?.();
+        return;
+      }
+      setError(mapQueueSwapError(err));
+    } finally {
+      setSwapping(false);
+    }
+  };
+
   if (queue.length === 0) {
     return (
       <div className="queue-panel">
@@ -118,8 +166,6 @@ export function QueueList({
       </div>
     );
   }
-
-  const busy = removingIndex != null;
 
   return (
     <div className="queue-panel">
@@ -142,12 +188,20 @@ export function QueueList({
       ) : null}
 
       <ol className="queue-list">
-        {queue.map((item) => {
+        {queue.map((item, arrayPos) => {
           const owned =
             Boolean(item.requesterId) && item.requesterId === currentUserId;
           const showRemove = owned;
+          const prevItem = arrayPos > 0 ? queue[arrayPos - 1] : null;
+          const nextItem =
+            arrayPos < queue.length - 1 ? queue[arrayPos + 1] : null;
+
           const removeDisabled =
             !canModifyQueue || busy || !owned || removingIndex === item.index;
+
+          const canMoveUp = showMoveControls && prevItem != null;
+          const canMoveDown = showMoveControls && nextItem != null;
+          const moveDisabled = !canModifyQueue || busy || swapping;
 
           let removeTitle = "대기열에서 삭제";
           if (!canModifyQueue && disabledReason) {
@@ -155,8 +209,15 @@ export function QueueList({
           } else if (!owned) {
             removeTitle = "본인이 추가한 곡만 삭제할 수 있습니다";
           } else if (busy && removingIndex !== item.index) {
-            removeTitle = "다른 항목 삭제 중";
+            removeTitle = "다른 항목 처리 중";
           }
+
+          const moveHint =
+            !canModifyQueue && disabledReason
+              ? disabledReason
+              : swapping
+                ? "순서 변경 중"
+                : "위·아래로 순서 변경";
 
           return (
             <li key={itemKey(item)} className="queue-item">
@@ -169,8 +230,40 @@ export function QueueList({
                   {formatDurationMs(item.durationMs)}
                 </span>
               </span>
-              {showRemove ? (
-                <span className="queue-actions">
+              <span className="queue-actions">
+                {showMoveControls ? (
+                  <span className="queue-move-group">
+                    <button
+                      type="button"
+                      className="btn btn-queue-move"
+                      disabled={!canMoveUp || moveDisabled}
+                      title={moveHint}
+                      aria-label={`${item.title} 위로 이동`}
+                      onClick={() => {
+                        if (prevItem) {
+                          void handleSwap(item, prevItem);
+                        }
+                      }}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-queue-move"
+                      disabled={!canMoveDown || moveDisabled}
+                      title={moveHint}
+                      aria-label={`${item.title} 아래로 이동`}
+                      onClick={() => {
+                        if (nextItem) {
+                          void handleSwap(item, nextItem);
+                        }
+                      }}
+                    >
+                      ↓
+                    </button>
+                  </span>
+                ) : null}
+                {showRemove ? (
                   <button
                     type="button"
                     className="btn btn-queue-remove"
@@ -181,13 +274,8 @@ export function QueueList({
                   >
                     {removingIndex === item.index ? "삭제 중…" : "삭제"}
                   </button>
-                </span>
-              ) : (
-                <span
-                  className="queue-actions queue-actions--hidden"
-                  aria-hidden
-                />
-              )}
+                ) : null}
+              </span>
             </li>
           );
         })}
