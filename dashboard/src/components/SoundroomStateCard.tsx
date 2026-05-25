@@ -1,4 +1,4 @@
-import { getSearchAddDisabledState } from "../controlErrors";
+import { getCanModifyQueue, getSearchAddDisabledState } from "../controlErrors";
 import { formatDurationMs } from "../format";
 import type {
   SoundroomControlAction,
@@ -22,6 +22,8 @@ type SoundroomStateCardProps = {
   onUnauthorized?: () => void;
   onSkipDone?: () => void;
   onSearchAdded?: () => void;
+  onQueueChanged?: () => void;
+  currentUserId?: string;
 };
 
 function playbackStatus(state: SoundroomGuildStateDto): string {
@@ -62,6 +64,8 @@ export function SoundroomStateCard({
   onUnauthorized,
   onSkipDone,
   onSearchAdded,
+  onQueueChanged,
+  currentUserId,
 }: SoundroomStateCardProps) {
   if (loading && !state) {
     return (
@@ -101,6 +105,12 @@ export function SoundroomStateCard({
   const current = state.current;
   const pct = progressPercent(state);
   const searchDisabled = getSearchAddDisabledState(
+    state.soundroomConfigured,
+    controlStatusLoading,
+    controlStatusError,
+    controlStatus,
+  );
+  const queueModify = getCanModifyQueue(
     state.soundroomConfigured,
     controlStatusLoading,
     controlStatusError,
@@ -193,7 +203,22 @@ export function SoundroomStateCard({
 
       <section className="queue-section">
         <h3>대기열</h3>
-        <QueueList queue={state.queue} />
+        <QueueList
+          queue={state.queue}
+          guildId={guildId ?? ""}
+          currentUserId={currentUserId ?? ""}
+          canModifyQueue={Boolean(
+            guildId &&
+              onStateChange &&
+              currentUserId &&
+              queueModify.canModify &&
+              !loading,
+          )}
+          disabledReason={queueModify.reason}
+          onStateChange={onStateChange ?? (() => undefined)}
+          onQueueChanged={onQueueChanged}
+          onUnauthorized={onUnauthorized}
+        />
       </section>
     </div>
   );

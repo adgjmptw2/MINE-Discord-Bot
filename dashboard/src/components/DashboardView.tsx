@@ -289,6 +289,10 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
     }, ADD_REFRESH_MS);
   };
 
+  const handleQueueChanged = () => {
+    handleSearchAdded();
+  };
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -376,6 +380,8 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
             onUnauthorized={onLogout}
             onSkipDone={handleSkipDone}
             onSearchAdded={handleSearchAdded}
+            onQueueChanged={handleQueueChanged}
+            currentUserId={user.id}
           />
         </main>
       </div>

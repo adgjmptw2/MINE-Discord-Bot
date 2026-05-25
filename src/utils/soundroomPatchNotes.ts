@@ -14,6 +14,12 @@ export interface SoundroomPatchNote {
 export const SOUNDROOM_PATCH_NOTES: SoundroomPatchNote[] = [
   {
     icon: "🗑️",
+    timestamp: "5월 26일 03:30",
+    title: "대시보드 대기열 삭제 UI",
+    detail: "웹에서 본인이 추가한 대기열 곡을 삭제할 수 있게 개선",
+  },
+  {
+    icon: "🗑️",
     timestamp: "5월 26일 03:00",
     title: "웹 대기열 삭제 API",
     detail: "본인이 추가한 대기열 곡을 웹에서 삭제할 수 있도록 백엔드 기반 추가",
