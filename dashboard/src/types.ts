@@ -1,3 +1,25 @@
+export interface DiscordOAuthUserDto {
+  id: string;
+  username: string;
+  globalName: string | null;
+  avatar: string | null;
+  avatarUrl: string | null;
+}
+
+export interface WebDashboardGuildDto {
+  id: string;
+  name: string;
+  icon: string | null;
+  iconUrl: string | null;
+  owner: boolean;
+  permissions: string;
+  botInGuild: boolean;
+  soundroomConfigured: boolean;
+  soundroomChannelId: string | null;
+  hasManageGuild: boolean;
+  hasAdministrator: boolean;
+}
+
 export interface SoundroomTrackDto {
   title: string;
   uri: string | null;
@@ -35,77 +57,26 @@ export interface SoundroomGuildStateDto {
   updatedAt: string;
 }
 
-export interface HealthResponseDto {
-  ok: true;
-  service: "mine-soundroom-web-api";
-  uptimeSec: number;
-  guildCount: number;
-  timestamp: string;
-}
-
-export interface ApiErrorResponseDto {
-  ok: false;
-  code: string;
-  message: string;
-}
-
-export interface DiscordOAuthUserDto {
-  id: string;
-  username: string;
-  globalName: string | null;
-  avatar: string | null;
-  avatarUrl: string | null;
-}
-
-export interface DiscordOAuthGuildDto {
-  id: string;
-  name: string;
-  icon: string | null;
-  iconUrl: string | null;
-  owner: boolean;
-  permissions: string;
-}
-
-export interface WebSessionDto {
-  id: string;
-  user: DiscordOAuthUserDto;
-  guilds: DiscordOAuthGuildDto[];
-  createdAt: number;
-  expiresAt: number;
-}
-
-export interface WebDashboardGuildDto {
-  id: string;
-  name: string;
-  icon: string | null;
-  iconUrl: string | null;
-  owner: boolean;
-  permissions: string;
-  botInGuild: boolean;
-  soundroomConfigured: boolean;
-  soundroomChannelId: string | null;
-  hasManageGuild: boolean;
-  hasAdministrator: boolean;
-}
-
-export interface AuthMeResponseDto {
+export interface AuthMeResponse {
   ok: true;
   user: DiscordOAuthUserDto;
   expiresAt: string;
 }
 
-export interface AuthGuildsResponseDto {
+export interface AuthGuildsResponse {
   ok: true;
   guilds: WebDashboardGuildDto[];
 }
 
-export interface AuthOkResponseDto {
-  ok: true;
-}
-
-export interface AuthSoundroomStateResponseDto {
+export interface AuthSoundroomStateResponse {
   ok: true;
   state: SoundroomGuildStateDto;
+}
+
+export interface ApiErrorResponse {
+  ok: false;
+  code: string;
+  message: string;
 }
 
 export type SoundroomControlAction =

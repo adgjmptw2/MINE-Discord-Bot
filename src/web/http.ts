@@ -1,7 +1,63 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { getWebDashboardAllowedOrigin } from "@/web/config";
 
+export type ReadJsonBodyResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; status: 413; code: "PAYLOAD_TOO_LARGE" }
+  | { ok: false; status: 400; code: "INVALID_JSON" };
+
 const JSON_CONTENT_TYPE = "application/json; charset=utf-8";
+
+export async function readRequestBody(
+  req: IncomingMessage,
+  maxBytes = 8192,
+): Promise<Buffer | "too_large" | "error"> {
+  return new Promise((resolve) => {
+    const chunks: Buffer[] = [];
+    let total = 0;
+
+    req.on("data", (chunk: Buffer) => {
+      total += chunk.length;
+      if (total > maxBytes) {
+        req.destroy();
+        resolve("too_large");
+        return;
+      }
+      chunks.push(chunk);
+    });
+
+    req.on("end", () => {
+      resolve(Buffer.concat(chunks));
+    });
+
+    req.on("error", () => {
+      resolve("error");
+    });
+  });
+}
+
+export async function readJsonBody<T>(
+  req: IncomingMessage,
+  maxBytes = 8192,
+): Promise<ReadJsonBodyResult<T>> {
+  const raw = await readRequestBody(req, maxBytes);
+  if (raw === "too_large") {
+    return { ok: false, status: 413, code: "PAYLOAD_TOO_LARGE" };
+  }
+  if (raw === "error") {
+    return { ok: false, status: 400, code: "INVALID_JSON" };
+  }
+
+  if (raw.length === 0) {
+    return { ok: false, status: 400, code: "INVALID_JSON" };
+  }
+
+  try {
+    return { ok: true, data: JSON.parse(raw.toString("utf8")) as T };
+  } catch {
+    return { ok: false, status: 400, code: "INVALID_JSON" };
+  }
+}
 
 export function readRequestUrl(req: IncomingMessage): URL {
   const host = req.headers.host ?? "127.0.0.1";

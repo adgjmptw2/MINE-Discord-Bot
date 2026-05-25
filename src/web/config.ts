@@ -26,7 +26,7 @@ function parsePositiveInt(raw: string | undefined, fallback: number): number {
 
 export function getWebDashboardAllowedOrigin(): string {
   const origin = process.env.WEB_DASHBOARD_ALLOWED_ORIGIN?.trim();
-  return origin && origin.length > 0 ? origin : "http://localhost:3000";
+  return origin && origin.length > 0 ? origin : "http://127.0.0.1:3000";
 }
 
 export function isWebDashboardEnabled(): boolean {
