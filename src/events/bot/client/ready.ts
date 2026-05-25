@@ -3,6 +3,7 @@ import { createStockMarketService } from "@/services/stock/createStockMarketServ
 import type { MineClient } from "@/types";
 import { log } from "@/utils/logger";
 import { scheduleSoundroomReadyRefresh } from "@/utils/soundroomPanelRefresh";
+import { startWebDashboardServer } from "@/web/server";
 
 export default function registerReady(client: MineClient): void {
   client.on(Events.ClientReady, async (readyClient) => {
@@ -26,5 +27,9 @@ export default function registerReady(client: MineClient): void {
     }
 
     scheduleSoundroomReadyRefresh(client);
+
+    void startWebDashboardServer(client).catch(() => {
+      log("warn", "web", "Web API failed to start");
+    });
   });
 }
