@@ -114,10 +114,7 @@ export function buildSoundroomGuildStateDto(
   }
 
   const currentTrack = player.current;
-  const current =
-    currentTrack && (player.playing || player.paused)
-      ? trackToSoundroomTrackDto(currentTrack)
-      : null;
+  const current = currentTrack ? trackToSoundroomTrackDto(currentTrack) : null;
 
   return {
     guildId,

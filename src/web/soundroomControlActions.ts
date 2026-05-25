@@ -11,7 +11,7 @@ import {
   resetAutoplaySession,
   toggleAutoplay,
 } from "@/utils/soundroomAutoplay";
-import { getPlayer, hasCurrentTrack } from "@/utils/commands";
+import { getPlayer, hasControllableTrack } from "@/utils/commands";
 import type { ExtendedPlayer, MineClient } from "@/types";
 import { log } from "@/utils/logger";
 
@@ -26,6 +26,24 @@ function logControlWarn(action: string, guildId: string, error: unknown): void {
   log("warn", "web", `Soundroom control ${action} guild=${guildId} ${message}`);
 }
 
+function refreshSoundroomPanelBestEffort(
+  client: MineClient,
+  guildId: string,
+): void {
+  void (async () => {
+    const pl = getPlayer(client, guildId);
+    try {
+      if (pl?.current) {
+        await editSoundroomPlayingPanel(client, guildId);
+      } else {
+        await editSoundroomIdlePanel(client, guildId);
+      }
+    } catch (error) {
+      logControlWarn("panel-refresh", guildId, error);
+    }
+  })();
+}
+
 export function isValidSoundroomVolume(volume: number): boolean {
   return (
     Number.isInteger(volume) && volume >= MIN_VOLUME && volume <= MAX_VOLUME
@@ -37,23 +55,13 @@ export async function executeSoundroomTogglePause(
   guildId: string,
   player: ExtendedPlayer,
 ): Promise<void> {
-  if (!hasCurrentTrack(player)) {
+  if (!hasControllableTrack(player)) {
     throw new ControlNothingPlayingError();
   }
 
   bumpSoundroomPanelRevision(guildId);
   await Promise.resolve(player.pause(!player.paused));
-
-  const pl = getPlayer(client, guildId);
-  try {
-    if (!pl?.current) {
-      await editSoundroomIdlePanel(client, guildId).catch(() => undefined);
-    } else {
-      await editSoundroomPlayingPanel(client, guildId).catch(() => undefined);
-    }
-  } catch (error) {
-    logControlWarn("togglePause-panel", guildId, error);
-  }
+  refreshSoundroomPanelBestEffort(client, guildId);
 }
 
 /** skip 직후 패널 즉시 edit 없음 — trackStart/idle 흐름에 맡김 */
@@ -62,7 +70,7 @@ export async function executeSoundroomSkip(
   _guildId: string,
   player: ExtendedPlayer,
 ): Promise<void> {
-  if (!hasCurrentTrack(player)) {
+  if (!hasControllableTrack(player)) {
     throw new ControlNothingPlayingError();
   }
 
@@ -91,11 +99,9 @@ export async function executeSoundroomStop(
     skipLocalIdleAttachment: true,
   };
 
-  try {
-    await editSoundroomIdlePanel(client, guildId, lightIdleOpts);
-  } catch (error) {
+  void editSoundroomIdlePanel(client, guildId, lightIdleOpts).catch((error) => {
     logControlWarn("stop-panel", guildId, error);
-  }
+  });
 }
 
 export async function executeSoundroomToggleAutoplay(
@@ -110,19 +116,17 @@ export async function executeSoundroomToggleAutoplay(
     removeAutoplayTracksFromQueue(pl);
   }
 
-  try {
-    if (pl?.current) {
-      await editSoundroomPlayingPanel(client, guildId).catch(() => undefined);
-      if (enabled) {
-        void prefetchAutoplayNextHint(client, pl).then(() => {
-          void editSoundroomPlayingPanel(client, guildId).catch(() => undefined);
-        });
-      }
-    } else {
-      await editSoundroomIdlePanel(client, guildId).catch(() => undefined);
+  if (pl?.current) {
+    refreshSoundroomPanelBestEffort(client, guildId);
+    if (enabled) {
+      void prefetchAutoplayNextHint(client, pl).then(() => {
+        refreshSoundroomPanelBestEffort(client, guildId);
+      });
     }
-  } catch (error) {
-    logControlWarn("toggleAutoplay-panel", guildId, error);
+  } else {
+    void editSoundroomIdlePanel(client, guildId).catch((error) => {
+      logControlWarn("toggleAutoplay-panel", guildId, error);
+    });
   }
 }
 
@@ -134,14 +138,7 @@ export async function executeSoundroomSetVolume(
 ): Promise<void> {
   bumpSoundroomPanelRevision(guildId);
   await Promise.resolve(player.setVolume(volume));
-
-  try {
-    if (hasCurrentTrack(getPlayer(client, guildId))) {
-      await editSoundroomPlayingPanel(client, guildId).catch(() => undefined);
-    }
-  } catch (error) {
-    logControlWarn("setVolume-panel", guildId, error);
-  }
+  refreshSoundroomPanelBestEffort(client, guildId);
 }
 
 export class ControlNothingPlayingError extends Error {

@@ -50,6 +50,15 @@ export function hasCurrentTrack(
   return Boolean(player?.current && (player.playing || player.paused));
 }
 
+/** 웹·전환 구간: current만 있어도 조작 허용 (playing/paused 플래그 지연 시 NOTHING_PLAYING 방지) */
+export function hasControllableTrack(
+  player: ExtendedPlayer | undefined,
+): player is ExtendedPlayer & {
+  current: NonNullable<ExtendedPlayer["current"]>;
+} {
+  return Boolean(player?.current);
+}
+
 export async function ensurePlayerConnection(
   client: MineClient,
   guildId: string,

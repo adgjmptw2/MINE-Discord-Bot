@@ -20,15 +20,13 @@ type SoundroomControlsProps = {
   controlStatusError?: string | null;
   disabled?: boolean;
   onStateChange: (state: SoundroomGuildStateDto) => void;
-  onControlSuccess?: () => void;
+  onControlSuccess?: (action: SoundroomControlAction) => void;
   onUnauthorized?: () => void;
   onSkipDone?: () => void;
 };
 
 function hasPlayableCurrent(state: SoundroomGuildStateDto): boolean {
-  return Boolean(
-    state.current && (state.playing || state.paused),
-  );
+  return Boolean(state.current);
 }
 
 function parseVolumeDraft(raw: string): number | null {
@@ -110,7 +108,7 @@ export function SoundroomControls({
     try {
       const res = await controlSoundroom(guildId, body);
       onStateChange(res.state);
-      onControlSuccess?.();
+      onControlSuccess?.(action);
       showNotice(successNotice);
       if (action === "skip") {
         onSkipDone?.();

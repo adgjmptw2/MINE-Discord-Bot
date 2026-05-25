@@ -1,5 +1,6 @@
 import { formatDurationMs } from "../format";
 import type {
+  SoundroomControlAction,
   SoundroomControlStatusResponseDto,
   SoundroomGuildStateDto,
 } from "../types";
@@ -15,7 +16,7 @@ type SoundroomStateCardProps = {
   controlStatusLoading?: boolean;
   controlStatusError?: string | null;
   onStateChange?: (state: SoundroomGuildStateDto) => void;
-  onControlSuccess?: () => void;
+  onControlSuccess?: (action: SoundroomControlAction) => void;
   onUnauthorized?: () => void;
   onSkipDone?: () => void;
 };

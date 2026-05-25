@@ -8,6 +8,7 @@ import {
 } from "../api";
 import type {
   DiscordOAuthUserDto,
+  SoundroomControlAction,
   SoundroomControlStatusResponseDto,
   SoundroomGuildStateDto,
   WebDashboardGuildDto,
@@ -251,8 +252,13 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
     setStateError(null);
   };
 
-  const handleControlSuccess = () => {
-    if (selectedId) {
+  const handleControlSuccess = (action: SoundroomControlAction) => {
+    if (
+      selectedId &&
+      (action === "stop" ||
+        action === "skip" ||
+        action === "toggleAutoplay")
+    ) {
       void loadControlStatus(selectedId, { silent: true });
     }
   };
