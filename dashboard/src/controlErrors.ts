@@ -15,13 +15,25 @@ const STATUS_UI_MESSAGES: Record<SoundroomControlStatusCode, string> = {
     "봇과 같은 음성 채널에서만 조작할 수 있습니다.",
 };
 
+function apiErrorMessage(
+  err: ApiClientError,
+  fallback: Record<string, string>,
+): string {
+  const mapped =
+    err.code && err.code in fallback ? fallback[err.code] : undefined;
+  if (err.message.trim().length > 0) {
+    return err.message;
+  }
+  if (mapped) {
+    return mapped;
+  }
+  return err.message;
+}
+
 export function mapControlError(err: unknown): string {
   if (err instanceof ApiClientError) {
     if (err.code && err.code in STATUS_UI_MESSAGES) {
-      return (
-        err.message ||
-        STATUS_UI_MESSAGES[err.code as SoundroomControlStatusCode]
-      );
+      return apiErrorMessage(err, STATUS_UI_MESSAGES);
     }
     return err.message;
   }
@@ -58,7 +70,7 @@ const SEARCH_ADD_UI_MESSAGES: Record<string, string> = {
 export function mapSearchAddError(err: unknown): string {
   if (err instanceof ApiClientError) {
     if (err.code && err.code in SEARCH_ADD_UI_MESSAGES) {
-      return err.message || SEARCH_ADD_UI_MESSAGES[err.code]!;
+      return apiErrorMessage(err, SEARCH_ADD_UI_MESSAGES);
     }
     return err.message;
   }
@@ -134,7 +146,7 @@ const QUEUE_REMOVE_UI_MESSAGES: Record<string, string> = {
 export function mapQueueRemoveError(err: unknown): string {
   if (err instanceof ApiClientError) {
     if (err.code && err.code in QUEUE_REMOVE_UI_MESSAGES) {
-      return err.message || QUEUE_REMOVE_UI_MESSAGES[err.code]!;
+      return apiErrorMessage(err, QUEUE_REMOVE_UI_MESSAGES);
     }
     return err.message;
   }
