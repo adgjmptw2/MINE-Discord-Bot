@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { controlSoundroom } from "../api";
 import { isControlUnauthorized, mapControlError } from "../controlErrors";
+import { useTransientNotice } from "../hooks/useTransientNotice";
+import { isStaleGuild } from "../utils/requestGuards";
 import { ControlStatusNotice } from "./ControlStatusNotice";
 import type {
   SoundroomControlAction,
@@ -10,7 +12,6 @@ import type {
 
 const MIN_VOLUME = 0;
 const MAX_VOLUME = 150;
-const NOTICE_MS = 3500;
 
 type SoundroomControlsProps = {
   guildId: string;
@@ -23,6 +24,8 @@ type SoundroomControlsProps = {
   onControlSuccess?: (action: SoundroomControlAction) => void;
   onUnauthorized?: () => void;
   onSkipDone?: () => void;
+  onUserActionStart?: () => void;
+  onUserActionEnd?: () => void;
 };
 
 function hasPlayableCurrent(state: SoundroomGuildStateDto): boolean {
@@ -52,13 +55,16 @@ export function SoundroomControls({
   onControlSuccess,
   onUnauthorized,
   onSkipDone,
+  onUserActionStart,
+  onUserActionEnd,
 }: SoundroomControlsProps) {
   const [busy, setBusy] = useState(false);
   const [controlError, setControlError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const { message: notice, show: showNotice } = useTransientNotice();
   const [volumeDraft, setVolumeDraft] = useState(String(Math.round(state.volume)));
   const volumeFocused = useRef(false);
-  const noticeTimer = useRef<number | null>(null);
+  const guildIdRef = useRef(guildId);
+  const wasBusyRef = useRef(false);
 
   const canControlByStatus =
     !controlStatusLoading &&
@@ -71,29 +77,24 @@ export function SoundroomControls({
   const canVolume = state.playerConnected;
 
   useEffect(() => {
+    guildIdRef.current = guildId;
+  }, [guildId]);
+
+  useEffect(() => {
     if (!volumeFocused.current) {
       setVolumeDraft(String(Math.round(state.volume)));
     }
   }, [state.volume, state.guildId]);
 
   useEffect(() => {
-    return () => {
-      if (noticeTimer.current != null) {
-        window.clearTimeout(noticeTimer.current);
-      }
-    };
-  }, []);
-
-  const showNotice = (message: string) => {
-    setNotice(message);
-    if (noticeTimer.current != null) {
-      window.clearTimeout(noticeTimer.current);
+    if (busy && !wasBusyRef.current) {
+      onUserActionStart?.();
     }
-    noticeTimer.current = window.setTimeout(() => {
-      setNotice(null);
-      noticeTimer.current = null;
-    }, NOTICE_MS);
-  };
+    if (!busy && wasBusyRef.current) {
+      onUserActionEnd?.();
+    }
+    wasBusyRef.current = busy;
+  }, [busy, onUserActionStart, onUserActionEnd]);
 
   const runControl = async (
     action: SoundroomControlAction,
@@ -103,10 +104,14 @@ export function SoundroomControls({
     if (disabled) {
       return;
     }
+    const gid = guildIdRef.current;
     setBusy(true);
     setControlError(null);
     try {
-      const res = await controlSoundroom(guildId, body);
+      const res = await controlSoundroom(gid, body);
+      if (isStaleGuild(gid, guildIdRef.current)) {
+        return;
+      }
       onStateChange(res.state);
       onControlSuccess?.(action);
       showNotice(successNotice);
@@ -114,6 +119,9 @@ export function SoundroomControls({
         onSkipDone?.();
       }
     } catch (err) {
+      if (isStaleGuild(gid, guildIdRef.current)) {
+        return;
+      }
       if (isControlUnauthorized(err)) {
         onUnauthorized?.();
         return;
@@ -125,7 +133,10 @@ export function SoundroomControls({
   };
 
   const handleTogglePause = () => {
-    void runControl("togglePause", { action: "togglePause" }, "요청을 보냈습니다.");
+    const msg = state.paused
+      ? "재생을 재개했습니다."
+      : "일시정지했습니다.";
+    void runControl("togglePause", { action: "togglePause" }, msg);
   };
 
   const handleSkip = () => {
@@ -137,7 +148,11 @@ export function SoundroomControls({
   };
 
   const handleStop = () => {
-    void runControl("stop", { action: "stop" }, "재생을 종료했습니다.");
+    void runControl(
+      "stop",
+      { action: "stop" },
+      "재생을 정지하고 대기열을 비웠습니다.",
+    );
   };
 
   const handleApplyVolume = () => {

@@ -5,15 +5,18 @@ import type {
 } from "./types";
 
 const STATUS_UI_MESSAGES: Record<SoundroomControlStatusCode, string> = {
-  READY: "조작 가능 · 같은 음성 채널에 있습니다.",
+  READY: "조작 가능 · 같은 노래채널에 있습니다.",
   SOUNDROOM_NOT_CONFIGURED:
     "이 서버에는 노래채널이 설정되어 있지 않습니다.",
   USER_NOT_IN_VOICE_CHANNEL:
-    "먼저 Discord 음성 채널에 들어가 주세요.",
-  PLAYER_NOT_CONNECTED: "봇이 음성 채널에 연결되어 있지 않습니다.",
+    "먼저 Discord 노래채널에 들어가 주세요.",
+  PLAYER_NOT_CONNECTED: "봇이 노래채널에 연결되어 있지 않습니다.",
   NOT_SAME_VOICE_CHANNEL:
-    "봇과 같은 음성 채널에서만 조작할 수 있습니다.",
+    "봇과 같은 노래채널에서만 조작할 수 있습니다.",
 };
+
+export const QUEUE_ITEM_CHANGED_UI =
+  "대기열이 이미 변경되었습니다. 새로고침 후 다시 시도해 주세요.";
 
 function apiErrorMessage(
   err: ApiClientError,
@@ -42,6 +45,10 @@ export function mapControlError(err: unknown): string {
 
 export function isControlUnauthorized(err: unknown): boolean {
   return err instanceof ApiClientError && err.status === 401;
+}
+
+export function isQueueItemChangedError(err: unknown): boolean {
+  return err instanceof ApiClientError && err.code === "QUEUE_ITEM_CHANGED";
 }
 
 export function controlStatusHeadline(
@@ -133,8 +140,7 @@ export function getSearchAddDisabledState(
 
 const QUEUE_REMOVE_UI_MESSAGES: Record<string, string> = {
   INVALID_QUEUE_INDEX: "삭제할 대기열 항목이 올바르지 않습니다.",
-  QUEUE_ITEM_CHANGED:
-    "대기열이 변경되었습니다. 새로고침 후 다시 시도해 주세요.",
+  QUEUE_ITEM_CHANGED: QUEUE_ITEM_CHANGED_UI,
   QUEUE_ITEM_NOT_FOUND: "대기열에서 해당 곡을 찾을 수 없습니다.",
   QUEUE_ITEM_NOT_OWNED: "본인이 추가한 곡만 삭제할 수 있습니다.",
   PLAYER_NOT_CONNECTED: "봇이 노래채널에 연결되어 있지 않습니다.",
@@ -146,8 +152,7 @@ const QUEUE_REMOVE_UI_MESSAGES: Record<string, string> = {
 const QUEUE_SWAP_UI_MESSAGES: Record<string, string> = {
   INVALID_QUEUE_INDEX: "이동할 대기열 항목이 올바르지 않습니다.",
   INVALID_QUEUE_SWAP_INDEXES: "서로 다른 두 대기열 항목을 선택해 주세요.",
-  QUEUE_ITEM_CHANGED:
-    "대기열이 변경되었습니다. 새로고침 후 다시 시도해 주세요.",
+  QUEUE_ITEM_CHANGED: QUEUE_ITEM_CHANGED_UI,
   QUEUE_ITEM_NOT_FOUND: "대기열에서 해당 곡을 찾을 수 없습니다.",
   PLAYER_NOT_CONNECTED: "봇이 노래채널에 연결되어 있지 않습니다.",
   USER_NOT_IN_VOICE_CHANNEL: "먼저 Discord 노래채널에 들어가 주세요.",
@@ -155,24 +160,28 @@ const QUEUE_SWAP_UI_MESSAGES: Record<string, string> = {
   SOUNDROOM_NOT_CONFIGURED: "이 서버에는 노래채널이 설정되어 있지 않습니다.",
 };
 
-export function mapQueueRemoveError(err: unknown): string {
+function mapQueueError(
+  err: unknown,
+  messages: Record<string, string>,
+): string {
   if (err instanceof ApiClientError) {
-    if (err.code && err.code in QUEUE_REMOVE_UI_MESSAGES) {
-      return apiErrorMessage(err, QUEUE_REMOVE_UI_MESSAGES);
+    if (err.code === "QUEUE_ITEM_CHANGED") {
+      return QUEUE_ITEM_CHANGED_UI;
+    }
+    if (err.code && err.code in messages) {
+      return apiErrorMessage(err, messages);
     }
     return err.message;
   }
   return "API 서버에 연결할 수 없습니다.";
 }
 
+export function mapQueueRemoveError(err: unknown): string {
+  return mapQueueError(err, QUEUE_REMOVE_UI_MESSAGES);
+}
+
 export function mapQueueSwapError(err: unknown): string {
-  if (err instanceof ApiClientError) {
-    if (err.code && err.code in QUEUE_SWAP_UI_MESSAGES) {
-      return apiErrorMessage(err, QUEUE_SWAP_UI_MESSAGES);
-    }
-    return err.message;
-  }
-  return "API 서버에 연결할 수 없습니다.";
+  return mapQueueError(err, QUEUE_SWAP_UI_MESSAGES);
 }
 
 /** 대기열 삭제: 음성·같은 채널·플레이어 연결 필요 (search/add보다 보수적). */

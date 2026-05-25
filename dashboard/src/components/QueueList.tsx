@@ -2,16 +2,18 @@ import { useEffect, useRef, useState } from "react";
 import { removeSoundroomQueueItem, swapSoundroomQueueItems } from "../api";
 import {
   isControlUnauthorized,
+  isQueueItemChangedError,
   mapQueueRemoveError,
   mapQueueSwapError,
+  QUEUE_ITEM_CHANGED_UI,
 } from "../controlErrors";
+import { useTransientNotice } from "../hooks/useTransientNotice";
 import { formatDurationMs } from "../format";
+import { isStaleGuild } from "../utils/requestGuards";
 import type {
   SoundroomGuildStateDto,
   SoundroomQueueItemDto,
 } from "../types";
-
-const NOTICE_MS = 4000;
 
 type QueueListProps = {
   queue: SoundroomQueueItemDto[];
@@ -21,11 +23,20 @@ type QueueListProps = {
   disabledReason?: string | null;
   onStateChange: (state: SoundroomGuildStateDto) => void;
   onQueueChanged?: () => void;
+  onRefreshPanel?: () => void;
   onUnauthorized?: () => void;
+  onUserActionStart?: () => void;
+  onUserActionEnd?: () => void;
 };
+
+type SwapPair = { from: number; to: number };
 
 function itemKey(item: SoundroomQueueItemDto): string {
   return `${item.index}-${item.uri ?? item.title}`;
+}
+
+function isInSwapPair(index: number, pair: SwapPair | null): boolean {
+  return pair != null && (index === pair.from || index === pair.to);
 }
 
 export function QueueList({
@@ -36,47 +47,43 @@ export function QueueList({
   disabledReason = null,
   onStateChange,
   onQueueChanged,
+  onRefreshPanel,
   onUnauthorized,
+  onUserActionStart,
+  onUserActionEnd,
 }: QueueListProps) {
   const [removingIndex, setRemovingIndex] = useState<number | null>(null);
-  const [swapping, setSwapping] = useState(false);
+  const [swapPair, setSwapPair] = useState<SwapPair | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [queueConflict, setQueueConflict] = useState(false);
+  const [refreshingConflict, setRefreshingConflict] = useState(false);
+  const { message: success, show: showSuccess, clear: clearSuccess } =
+    useTransientNotice();
   const guildIdRef = useRef(guildId);
-  const noticeTimer = useRef<number | null>(null);
 
   useEffect(() => {
     guildIdRef.current = guildId;
     setRemovingIndex(null);
-    setSwapping(false);
+    setSwapPair(null);
     setError(null);
-    setSuccess(null);
-  }, [guildId]);
+    setQueueConflict(false);
+    clearSuccess();
+  }, [guildId, clearSuccess]);
 
-  useEffect(() => {
-    return () => {
-      if (noticeTimer.current != null) {
-        window.clearTimeout(noticeTimer.current);
-      }
-    };
-  }, []);
-
-  const showNotice = (message: string) => {
-    setSuccess(message);
-    if (noticeTimer.current != null) {
-      window.clearTimeout(noticeTimer.current);
-    }
-    noticeTimer.current = window.setTimeout(() => {
-      setSuccess(null);
-      noticeTimer.current = null;
-    }, NOTICE_MS);
-  };
-
-  const busy = removingIndex != null || swapping;
+  const queueBusy = removingIndex != null || swapPair != null;
   const showMoveControls = canModifyQueue && queue.length >= 2;
 
+  const withUserAction = async (fn: () => Promise<void>) => {
+    onUserActionStart?.();
+    try {
+      await fn();
+    } finally {
+      onUserActionEnd?.();
+    }
+  };
+
   const handleRemove = async (item: SoundroomQueueItemDto) => {
-    if (!canModifyQueue || busy) {
+    if (!canModifyQueue || queueBusy) {
       return;
     }
     if (!item.requesterId || item.requesterId !== currentUserId) {
@@ -86,72 +93,102 @@ export function QueueList({
     const gid = guildIdRef.current;
     setRemovingIndex(item.index);
     setError(null);
-    try {
-      const res = await removeSoundroomQueueItem(gid, {
-        queueIndex: item.index,
-        expectedUri: item.uri,
-        expectedTitle: item.title,
-      });
-      if (guildIdRef.current !== gid) {
-        return;
+    setQueueConflict(false);
+
+    await withUserAction(async () => {
+      try {
+        const res = await removeSoundroomQueueItem(gid, {
+          queueIndex: item.index,
+          expectedUri: item.uri,
+          expectedTitle: item.title,
+        });
+        if (isStaleGuild(gid, guildIdRef.current)) {
+          return;
+        }
+        onStateChange(res.state);
+        showSuccess(`「${item.title}」을(를) 대기열에서 삭제했습니다.`);
+        onQueueChanged?.();
+      } catch (err) {
+        if (isStaleGuild(gid, guildIdRef.current)) {
+          return;
+        }
+        if (isControlUnauthorized(err)) {
+          onUnauthorized?.();
+          return;
+        }
+        const conflict = isQueueItemChangedError(err);
+        setQueueConflict(conflict);
+        setError(
+          conflict ? QUEUE_ITEM_CHANGED_UI : mapQueueRemoveError(err),
+        );
+      } finally {
+        setRemovingIndex(null);
       }
-      onStateChange(res.state);
-      showNotice(`「${item.title}」을(를) 대기열에서 삭제했습니다.`);
-      onQueueChanged?.();
-    } catch (err) {
-      if (guildIdRef.current !== gid) {
-        return;
-      }
-      if (isControlUnauthorized(err)) {
-        onUnauthorized?.();
-        return;
-      }
-      setError(mapQueueRemoveError(err));
-    } finally {
-      setRemovingIndex(null);
-    }
+    });
   };
 
   const handleSwap = async (
     fromItem: SoundroomQueueItemDto,
     toItem: SoundroomQueueItemDto,
   ) => {
-    if (!canModifyQueue || busy) {
+    if (!canModifyQueue || queueBusy) {
       return;
     }
 
     const gid = guildIdRef.current;
-    setSwapping(true);
+    const pair: SwapPair = { from: fromItem.index, to: toItem.index };
+    setSwapPair(pair);
     setError(null);
-    try {
-      const res = await swapSoundroomQueueItems(gid, {
-        fromQueueIndex: fromItem.index,
-        toQueueIndex: toItem.index,
-        expectedFromUri: fromItem.uri,
-        expectedFromTitle: fromItem.title,
-        expectedToUri: toItem.uri,
-        expectedToTitle: toItem.title,
-      });
-      if (guildIdRef.current !== gid) {
-        return;
+    setQueueConflict(false);
+
+    await withUserAction(async () => {
+      try {
+        const res = await swapSoundroomQueueItems(gid, {
+          fromQueueIndex: fromItem.index,
+          toQueueIndex: toItem.index,
+          expectedFromUri: fromItem.uri,
+          expectedFromTitle: fromItem.title,
+          expectedToUri: toItem.uri,
+          expectedToTitle: toItem.title,
+        });
+        if (isStaleGuild(gid, guildIdRef.current)) {
+          return;
+        }
+        onStateChange(res.state);
+        showSuccess(
+          "대기열 순서를 변경했습니다. 노래채널에 변경 안내가 잠시 표시됩니다.",
+        );
+        onQueueChanged?.();
+      } catch (err) {
+        if (isStaleGuild(gid, guildIdRef.current)) {
+          return;
+        }
+        if (isControlUnauthorized(err)) {
+          onUnauthorized?.();
+          return;
+        }
+        const conflict = isQueueItemChangedError(err);
+        setQueueConflict(conflict);
+        setError(
+          conflict ? QUEUE_ITEM_CHANGED_UI : mapQueueSwapError(err),
+        );
+      } finally {
+        setSwapPair(null);
       }
-      onStateChange(res.state);
-      showNotice(
-        "대기열 순서를 변경했습니다. 노래채널에 변경 안내가 잠시 표시됩니다.",
-      );
-      onQueueChanged?.();
-    } catch (err) {
-      if (guildIdRef.current !== gid) {
-        return;
-      }
-      if (isControlUnauthorized(err)) {
-        onUnauthorized?.();
-        return;
-      }
-      setError(mapQueueSwapError(err));
-    } finally {
-      setSwapping(false);
+    });
+  };
+
+  const handleConflictRefresh = () => {
+    if (!onRefreshPanel || refreshingConflict) {
+      return;
     }
+    setRefreshingConflict(true);
+    onRefreshPanel();
+    window.setTimeout(() => {
+      setRefreshingConflict(false);
+      setError(null);
+      setQueueConflict(false);
+    }, 600);
   };
 
   if (queue.length === 0) {
@@ -176,13 +213,26 @@ export function QueueList({
       ) : null}
 
       {error ? (
-        <p className="queue-action-error" role="alert">
-          {error}
-        </p>
+        <div
+          className={`queue-notice${queueConflict ? " queue-notice--conflict" : " queue-notice--error"}`}
+          role="alert"
+        >
+          <p className="queue-notice-text">{error}</p>
+          {queueConflict && onRefreshPanel ? (
+            <button
+              type="button"
+              className="btn btn-secondary btn-queue-refresh"
+              disabled={refreshingConflict || queueBusy}
+              onClick={handleConflictRefresh}
+            >
+              {refreshingConflict ? "새로고침 중…" : "새로고침"}
+            </button>
+          ) : null}
+        </div>
       ) : null}
 
       {success ? (
-        <p className="queue-action-success" role="status">
+        <p className="queue-notice queue-notice--success" role="status">
           {success}
         </p>
       ) : null}
@@ -196,31 +246,51 @@ export function QueueList({
           const nextItem =
             arrayPos < queue.length - 1 ? queue[arrayPos + 1] : null;
 
+          const itemPending =
+            removingIndex === item.index || isInSwapPair(item.index, swapPair);
+          const otherBusy = queueBusy && !itemPending;
+
           const removeDisabled =
-            !canModifyQueue || busy || !owned || removingIndex === item.index;
+            !canModifyQueue ||
+            itemPending ||
+            otherBusy ||
+            !owned ||
+            removingIndex === item.index;
 
           const canMoveUp = showMoveControls && prevItem != null;
           const canMoveDown = showMoveControls && nextItem != null;
-          const moveDisabled = !canModifyQueue || busy || swapping;
+          const moveDisabled =
+            !canModifyQueue || itemPending || otherBusy || queueBusy;
 
           let removeTitle = "대기열에서 삭제";
           if (!canModifyQueue && disabledReason) {
             removeTitle = disabledReason;
           } else if (!owned) {
             removeTitle = "본인이 추가한 곡만 삭제할 수 있습니다";
-          } else if (busy && removingIndex !== item.index) {
+          } else if (removingIndex === item.index) {
+            removeTitle = "삭제 중";
+          } else if (isInSwapPair(item.index, swapPair)) {
+            removeTitle = "순서 변경 중";
+          } else if (otherBusy) {
             removeTitle = "다른 항목 처리 중";
           }
 
           const moveHint =
             !canModifyQueue && disabledReason
               ? disabledReason
-              : swapping
+              : isInSwapPair(item.index, swapPair)
                 ? "순서 변경 중"
-                : "위·아래로 순서 변경";
+                : removingIndex === item.index
+                  ? "삭제 중"
+                  : otherBusy
+                    ? "다른 항목 처리 중"
+                    : "위·아래로 순서 변경";
 
           return (
-            <li key={itemKey(item)} className="queue-item">
+            <li
+              key={itemKey(item)}
+              className={`queue-item${itemPending ? " queue-item--pending" : ""}`}
+            >
               <span className="queue-index">{item.index + 1}</span>
               <span className="queue-body">
                 <span className="queue-title">{item.title}</span>

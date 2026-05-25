@@ -13,19 +13,26 @@ import type {
   SoundroomGuildStateDto,
   WebDashboardGuildDto,
 } from "../types";
+import { isStaleGuild } from "../utils/requestGuards";
 import { ErrorState } from "./ErrorState";
 import { GuildList } from "./GuildList";
 import { LoadingState } from "./LoadingState";
+import { RefreshStatus } from "./RefreshStatus";
 import { SoundroomStateCard } from "./SoundroomStateCard";
 
 const STORAGE_KEY = "mine_soundroom_selected_guild";
 const POLL_MS = 8000;
-const SKIP_REFRESH_MS = 1500;
-const ADD_REFRESH_MS = 1500;
+const DELAYED_REFRESH_MS = 1500;
 
 type DashboardViewProps = {
   user: DiscordOAuthUserDto;
   onLogout: () => void;
+};
+
+type RefreshOpts = {
+  silent?: boolean;
+  /** 조작 중에도 강제 갱신(수동 새로고침·충돌 복구) */
+  force?: boolean;
 };
 
 function pickInitialGuild(
@@ -84,13 +91,40 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
   const [controlStatusError, setControlStatusError] = useState<string | null>(
     null,
   );
+  const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
+  const [panelRefreshing, setPanelRefreshing] = useState(false);
+  const [pollPaused, setPollPaused] = useState(false);
+
   const stateRequestId = useRef(0);
   const controlStatusRequestId = useRef(0);
   const selectedIdRef = useRef<string | null>(null);
+  const userActionDepthRef = useRef(0);
+  const delayedRefreshTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     selectedIdRef.current = selectedId;
   }, [selectedId]);
+
+  const syncPollPaused = useCallback(() => {
+    setPollPaused(userActionDepthRef.current > 0);
+  }, []);
+
+  const beginUserAction = useCallback(() => {
+    userActionDepthRef.current += 1;
+    syncPollPaused();
+  }, [syncPollPaused]);
+
+  const endUserAction = useCallback(() => {
+    userActionDepthRef.current = Math.max(0, userActionDepthRef.current - 1);
+    syncPollPaused();
+  }, [syncPollPaused]);
+
+  const clearDelayedRefresh = useCallback(() => {
+    if (delayedRefreshTimerRef.current != null) {
+      window.clearTimeout(delayedRefreshTimerRef.current);
+      delayedRefreshTimerRef.current = null;
+    }
+  }, []);
 
   const displayName =
     user.globalName?.trim() || user.username?.trim() || "사용자";
@@ -125,7 +159,7 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
   }, [onLogout]);
 
   const loadState = useCallback(
-    async (guildId: string, opts?: { silent?: boolean }) => {
+    async (guildId: string, opts?: RefreshOpts) => {
       const id = ++stateRequestId.current;
       if (!opts?.silent) {
         setStateLoading(true);
@@ -133,12 +167,18 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
       setStateError(null);
       try {
         const res = await getSoundroomState(guildId);
-        if (id !== stateRequestId.current) {
+        if (
+          id !== stateRequestId.current ||
+          isStaleGuild(guildId, selectedIdRef.current)
+        ) {
           return;
         }
         setState(res.state);
       } catch (err) {
-        if (id !== stateRequestId.current) {
+        if (
+          id !== stateRequestId.current ||
+          isStaleGuild(guildId, selectedIdRef.current)
+        ) {
           return;
         }
         if (err instanceof ApiClientError && err.status === 401) {
@@ -156,7 +196,7 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
   );
 
   const loadControlStatus = useCallback(
-    async (guildId: string, opts?: { silent?: boolean }) => {
+    async (guildId: string, opts?: RefreshOpts) => {
       const id = ++controlStatusRequestId.current;
       if (!opts?.silent) {
         setControlStatusLoading(true);
@@ -164,12 +204,18 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
       setControlStatusError(null);
       try {
         const res = await getSoundroomControlStatus(guildId);
-        if (id !== controlStatusRequestId.current) {
+        if (
+          id !== controlStatusRequestId.current ||
+          isStaleGuild(guildId, selectedIdRef.current)
+        ) {
           return;
         }
         setControlStatus(res);
       } catch (err) {
-        if (id !== controlStatusRequestId.current) {
+        if (
+          id !== controlStatusRequestId.current ||
+          isStaleGuild(guildId, selectedIdRef.current)
+        ) {
           return;
         }
         if (err instanceof ApiClientError && err.status === 401) {
@@ -187,22 +233,50 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
     [onLogout],
   );
 
-  const loadGuildPanel = useCallback(
-    async (guildId: string, opts?: { silent?: boolean }) => {
-      if (!opts?.silent) {
-        setStateLoading(true);
-        setControlStatusLoading(true);
+  const refreshGuildPanel = useCallback(
+    async (guildId: string, opts?: RefreshOpts) => {
+      if (
+        !opts?.force &&
+        opts?.silent &&
+        userActionDepthRef.current > 0
+      ) {
+        return;
       }
+
+      const showSpinner = !opts?.silent;
+      if (showSpinner) {
+        setPanelRefreshing(true);
+      }
+
       await Promise.all([
         loadState(guildId, { silent: true }),
         loadControlStatus(guildId, { silent: true }),
       ]);
-      if (!opts?.silent) {
+
+      if (!isStaleGuild(guildId, selectedIdRef.current)) {
+        setLastFetchedAt(new Date());
+      }
+
+      if (showSpinner) {
         setStateLoading(false);
         setControlStatusLoading(false);
+        setPanelRefreshing(false);
       }
     },
     [loadState, loadControlStatus],
+  );
+
+  const scheduleDelayedRefresh = useCallback(
+    (guildId: string) => {
+      clearDelayedRefresh();
+      delayedRefreshTimerRef.current = window.setTimeout(() => {
+        delayedRefreshTimerRef.current = null;
+        if (selectedIdRef.current === guildId) {
+          void refreshGuildPanel(guildId, { silent: true });
+        }
+      }, DELAYED_REFRESH_MS);
+    },
+    [clearDelayedRefresh, refreshGuildPanel],
   );
 
   useEffect(() => {
@@ -212,15 +286,17 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
   }, [loadGuilds]);
 
   useEffect(() => {
+    clearDelayedRefresh();
     if (!selectedId) {
       setState(null);
       setControlStatus(null);
       setControlStatusError(null);
+      setLastFetchedAt(null);
       return;
     }
     localStorage.setItem(STORAGE_KEY, selectedId);
-    void loadGuildPanel(selectedId);
-  }, [selectedId, loadGuildPanel]);
+    void refreshGuildPanel(selectedId, { force: true });
+  }, [selectedId, refreshGuildPanel, clearDelayedRefresh]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -231,12 +307,19 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
       if (document.visibilityState !== "visible") {
         return;
       }
-      void loadGuildPanel(selectedId, { silent: true });
+      if (userActionDepthRef.current > 0) {
+        return;
+      }
+      void refreshGuildPanel(selectedId, { silent: true });
     };
 
     const interval = window.setInterval(tick, POLL_MS);
     return () => window.clearInterval(interval);
-  }, [selectedId, loadGuildPanel]);
+  }, [selectedId, refreshGuildPanel]);
+
+  useEffect(() => {
+    return () => clearDelayedRefresh();
+  }, [clearDelayedRefresh]);
 
   const handleSelectGuild = (guildId: string) => {
     setSelectedId(guildId);
@@ -244,7 +327,7 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
 
   const handleRefresh = () => {
     if (selectedId) {
-      void loadGuildPanel(selectedId);
+      void refreshGuildPanel(selectedId, { force: true });
     }
   };
 
@@ -262,35 +345,25 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
     ) {
       void loadControlStatus(selectedId, { silent: true });
     }
+    if (selectedId && (action === "skip" || action === "stop")) {
+      scheduleDelayedRefresh(selectedId);
+    }
   };
 
   const handleSkipDone = () => {
     const gid = selectedIdRef.current;
-    if (!gid) {
-      return;
+    if (gid) {
+      scheduleDelayedRefresh(gid);
     }
-    window.setTimeout(() => {
-      if (selectedIdRef.current === gid) {
-        void loadGuildPanel(gid, { silent: true });
-      }
-    }, SKIP_REFRESH_MS);
   };
 
-  const handleSearchAdded = () => {
+  const handleMutationFollowUp = () => {
     const gid = selectedIdRef.current;
     if (!gid) {
       return;
     }
     void loadControlStatus(gid, { silent: true });
-    window.setTimeout(() => {
-      if (selectedIdRef.current === gid) {
-        void loadState(gid, { silent: true });
-      }
-    }, ADD_REFRESH_MS);
-  };
-
-  const handleQueueChanged = () => {
-    handleSearchAdded();
+    scheduleDelayedRefresh(gid);
   };
 
   const handleLogout = async () => {
@@ -301,6 +374,9 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
     }
     onLogout();
   };
+
+  const panelBusy =
+    panelRefreshing || stateLoading || controlStatusLoading;
 
   if (guildsLoading) {
     return <LoadingState label="서버 목록 불러오는 중…" />;
@@ -357,14 +433,22 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
 
         <main className="state-panel">
           <div className="state-toolbar">
-            <h2>노래채널 상태</h2>
+            <div className="state-toolbar-main">
+              <h2>노래채널 상태</h2>
+              <RefreshStatus
+                loading={panelBusy}
+                lastFetchedAt={lastFetchedAt}
+                pollPaused={pollPaused}
+                stateUpdatedAt={state?.updatedAt ?? null}
+              />
+            </div>
             <button
               type="button"
               className="btn btn-secondary"
               onClick={handleRefresh}
-              disabled={!selectedId || stateLoading || controlStatusLoading}
+              disabled={!selectedId || panelBusy}
             >
-              새로고침
+              {panelBusy ? "갱신 중…" : "새로고침"}
             </button>
           </div>
           <SoundroomStateCard
@@ -379,8 +463,11 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
             onControlSuccess={handleControlSuccess}
             onUnauthorized={onLogout}
             onSkipDone={handleSkipDone}
-            onSearchAdded={handleSearchAdded}
-            onQueueChanged={handleQueueChanged}
+            onSearchAdded={handleMutationFollowUp}
+            onQueueChanged={handleMutationFollowUp}
+            onRefreshPanel={handleRefresh}
+            onUserActionStart={beginUserAction}
+            onUserActionEnd={endUserAction}
             currentUserId={user.id}
           />
         </main>

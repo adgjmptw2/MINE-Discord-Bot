@@ -23,6 +23,9 @@ type SoundroomStateCardProps = {
   onSkipDone?: () => void;
   onSearchAdded?: () => void;
   onQueueChanged?: () => void;
+  onRefreshPanel?: () => void;
+  onUserActionStart?: () => void;
+  onUserActionEnd?: () => void;
   currentUserId?: string;
 };
 
@@ -65,6 +68,9 @@ export function SoundroomStateCard({
   onSkipDone,
   onSearchAdded,
   onQueueChanged,
+  onRefreshPanel,
+  onUserActionStart,
+  onUserActionEnd,
   currentUserId,
 }: SoundroomStateCardProps) {
   if (loading && !state) {
@@ -123,7 +129,9 @@ export function SoundroomStateCard({
         <span>볼륨 {Math.round(state.volume)}%</span>
         <span>자동재생 {state.autoplay ? "켜짐" : "꺼짐"}</span>
         <span>{playbackStatus(state)}</span>
-        <span className="muted">갱신 {new Date(state.updatedAt).toLocaleString("ko-KR")}</span>
+        <span className="muted">
+          서버 기준 {new Date(state.updatedAt).toLocaleTimeString("ko-KR")}
+        </span>
       </div>
 
       {current ? (
@@ -187,6 +195,8 @@ export function SoundroomStateCard({
           onControlSuccess={onControlSuccess}
           onUnauthorized={onUnauthorized}
           onSkipDone={onSkipDone}
+          onUserActionStart={onUserActionStart}
+          onUserActionEnd={onUserActionEnd}
         />
       ) : null}
 
@@ -198,6 +208,8 @@ export function SoundroomStateCard({
           onStateChange={onStateChange}
           onAdded={onSearchAdded}
           onUnauthorized={onUnauthorized}
+          onUserActionStart={onUserActionStart}
+          onUserActionEnd={onUserActionEnd}
         />
       ) : null}
 
@@ -217,7 +229,10 @@ export function SoundroomStateCard({
           disabledReason={queueModify.reason}
           onStateChange={onStateChange ?? (() => undefined)}
           onQueueChanged={onQueueChanged}
+          onRefreshPanel={onRefreshPanel}
           onUnauthorized={onUnauthorized}
+          onUserActionStart={onUserActionStart}
+          onUserActionEnd={onUserActionEnd}
         />
       </section>
     </div>

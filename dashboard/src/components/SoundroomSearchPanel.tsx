@@ -4,14 +4,14 @@ import {
   isControlUnauthorized,
   mapSearchAddError,
 } from "../controlErrors";
+import { useTransientNotice } from "../hooks/useTransientNotice";
 import { formatTrackDurationLabel } from "../format";
+import { isStaleGuild } from "../utils/requestGuards";
 import type {
   SoundroomAddRequestDto,
   SoundroomGuildStateDto,
   SoundroomSearchResultDto,
 } from "../types";
-
-const NOTICE_MS = 4000;
 
 type SoundroomSearchPanelProps = {
   guildId: string;
@@ -20,6 +20,8 @@ type SoundroomSearchPanelProps = {
   onStateChange: (state: SoundroomGuildStateDto) => void;
   onAdded?: () => void;
   onUnauthorized?: () => void;
+  onUserActionStart?: () => void;
+  onUserActionEnd?: () => void;
 };
 
 function trimInput(value: string): string {
@@ -55,6 +57,8 @@ export function SoundroomSearchPanel({
   onStateChange,
   onAdded,
   onUnauthorized,
+  onUserActionStart,
+  onUserActionEnd,
 }: SoundroomSearchPanelProps) {
   const [input, setInput] = useState("");
   const [results, setResults] = useState<SoundroomSearchResultDto[]>([]);
@@ -62,9 +66,9 @@ export function SoundroomSearchPanel({
   const [searchLoading, setSearchLoading] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const { message: success, show: showSuccess } = useTransientNotice();
   const guildIdRef = useRef(guildId);
-  const noticeTimer = useRef<number | null>(null);
+  const wasBusyRef = useRef(false);
 
   const busy = searchLoading || addLoading;
   const controlsDisabled = disabled || busy;
@@ -75,29 +79,22 @@ export function SoundroomSearchPanel({
     setResults([]);
     setLastQuery(null);
     setError(null);
-    setSuccess(null);
   }, [guildId]);
 
   useEffect(() => {
-    return () => {
-      if (noticeTimer.current != null) {
-        window.clearTimeout(noticeTimer.current);
-      }
-    };
-  }, []);
-
-  const showSuccess = (message: string) => {
-    setSuccess(message);
-    if (noticeTimer.current != null) {
-      window.clearTimeout(noticeTimer.current);
+    if (busy && !wasBusyRef.current) {
+      onUserActionStart?.();
     }
-    noticeTimer.current = window.setTimeout(() => {
-      setSuccess(null);
-      noticeTimer.current = null;
-    }, NOTICE_MS);
-  };
+    if (!busy && wasBusyRef.current) {
+      onUserActionEnd?.();
+    }
+    wasBusyRef.current = busy;
+  }, [busy, onUserActionStart, onUserActionEnd]);
 
-  const runAdd = async (request: SoundroomAddRequestDto, label: string) => {
+  const runAdd = async (
+    request: SoundroomAddRequestDto,
+    successMessage: string,
+  ) => {
     if (controlsDisabled) {
       return;
     }
@@ -106,14 +103,14 @@ export function SoundroomSearchPanel({
     setError(null);
     try {
       const res = await addSoundroomTrack(gid, request);
-      if (guildIdRef.current !== gid) {
+      if (isStaleGuild(gid, guildIdRef.current)) {
         return;
       }
       onStateChange(res.state);
-      showSuccess(`「${label}」을(를) 대기열에 추가했습니다.`);
+      showSuccess(successMessage);
       onAdded?.();
     } catch (err) {
-      if (guildIdRef.current !== gid) {
+      if (isStaleGuild(gid, guildIdRef.current)) {
         return;
       }
       if (isControlUnauthorized(err)) {
@@ -140,10 +137,9 @@ export function SoundroomSearchPanel({
     const gid = guildIdRef.current;
     setSearchLoading(true);
     setError(null);
-    setSuccess(null);
     try {
       const res = await searchSoundroomTracks(gid, query);
-      if (guildIdRef.current !== gid) {
+      if (isStaleGuild(gid, guildIdRef.current)) {
         return;
       }
       setLastQuery(res.query);
@@ -152,7 +148,7 @@ export function SoundroomSearchPanel({
         setError("검색 결과가 없습니다.");
       }
     } catch (err) {
-      if (guildIdRef.current !== gid) {
+      if (isStaleGuild(gid, guildIdRef.current)) {
         return;
       }
       setResults([]);
@@ -172,14 +168,16 @@ export function SoundroomSearchPanel({
       setError("검색어를 입력해 주세요.");
       return;
     }
-    void runAdd(buildAddRequestFromInput(value), value);
+    void runAdd(
+      buildAddRequestFromInput(value),
+      "대기열에 추가했습니다.",
+    );
   };
 
   const handleAddResult = (result: SoundroomSearchResultDto) => {
-    const label = result.title || lastQuery || "곡";
     void runAdd(
       buildAddRequestFromResult(result, lastQuery ?? trimInput(input)),
-      label,
+      "검색 결과를 대기열에 추가했습니다.",
     );
   };
 

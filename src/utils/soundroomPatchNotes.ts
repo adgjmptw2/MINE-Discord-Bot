@@ -13,6 +13,13 @@ export interface SoundroomPatchNote {
 /** 최신 항목이 위에 오도록 관리합니다. */
 export const SOUNDROOM_PATCH_NOTES: SoundroomPatchNote[] = [
   {
+    icon: "🔄",
+    timestamp: "5월 26일 05:00",
+    title: "대시보드 대기열 조작 UX 개선",
+    detail:
+      "대기열 변경 충돌 안내, 갱신 상태 표시, 조작 중 중복 클릭 방지를 개선",
+  },
+  {
     icon: "↕️",
     timestamp: "5월 26일 04:30",
     title: "대시보드 대기열 순서 변경 UI",
