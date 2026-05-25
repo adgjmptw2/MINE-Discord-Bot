@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { controlSoundroom } from "../api";
 import { isControlUnauthorized, mapControlError } from "../controlErrors";
+import { ControlStatusNotice } from "./ControlStatusNotice";
 import type {
   SoundroomControlAction,
+  SoundroomControlStatusResponseDto,
   SoundroomGuildStateDto,
 } from "../types";
 
@@ -13,8 +15,12 @@ const NOTICE_MS = 3500;
 type SoundroomControlsProps = {
   guildId: string;
   state: SoundroomGuildStateDto;
+  controlStatus: SoundroomControlStatusResponseDto | null;
+  controlStatusLoading?: boolean;
+  controlStatusError?: string | null;
   disabled?: boolean;
   onStateChange: (state: SoundroomGuildStateDto) => void;
+  onControlSuccess?: () => void;
   onUnauthorized?: () => void;
   onSkipDone?: () => void;
 };
@@ -40,8 +46,12 @@ function parseVolumeDraft(raw: string): number | null {
 export function SoundroomControls({
   guildId,
   state,
+  controlStatus,
+  controlStatusLoading = false,
+  controlStatusError = null,
   disabled: disabledExternal = false,
   onStateChange,
+  onControlSuccess,
   onUnauthorized,
   onSkipDone,
 }: SoundroomControlsProps) {
@@ -52,7 +62,12 @@ export function SoundroomControls({
   const volumeFocused = useRef(false);
   const noticeTimer = useRef<number | null>(null);
 
-  const disabled = disabledExternal || busy;
+  const canControlByStatus =
+    !controlStatusLoading &&
+    controlStatus != null &&
+    controlStatus.canControl;
+  const disabled =
+    disabledExternal || busy || controlStatusLoading || !canControlByStatus;
   const canPauseSkip = hasPlayableCurrent(state);
   const canStop = state.playerConnected || Boolean(state.current);
   const canVolume = state.playerConnected;
@@ -95,6 +110,7 @@ export function SoundroomControls({
     try {
       const res = await controlSoundroom(guildId, body);
       onStateChange(res.state);
+      onControlSuccess?.();
       showNotice(successNotice);
       if (action === "skip") {
         onSkipDone?.();
@@ -142,10 +158,12 @@ export function SoundroomControls({
   return (
     <section className="controls-section" aria-labelledby="controls-heading">
       <h3 id="controls-heading">조작</h3>
-      <p className="controls-hint muted">
-        같은 음성 채널에 있을 때만 사용할 수 있습니다. 읽기 전용 상태에서
-        조작 가능 상태로 확장되었습니다.
-      </p>
+
+      <ControlStatusNotice
+        status={controlStatus}
+        loading={controlStatusLoading}
+        error={controlStatusError}
+      />
 
       {notice ? (
         <p className="controls-notice" role="status">

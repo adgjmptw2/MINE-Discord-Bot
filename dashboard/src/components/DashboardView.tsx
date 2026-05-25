@@ -2,11 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ApiClientError,
   getGuilds,
+  getSoundroomControlStatus,
   getSoundroomState,
   logout,
 } from "../api";
 import type {
   DiscordOAuthUserDto,
+  SoundroomControlStatusResponseDto,
   SoundroomGuildStateDto,
   WebDashboardGuildDto,
 } from "../types";
@@ -17,6 +19,7 @@ import { SoundroomStateCard } from "./SoundroomStateCard";
 
 const STORAGE_KEY = "mine_soundroom_selected_guild";
 const POLL_MS = 8000;
+const SKIP_REFRESH_MS = 1500;
 
 type DashboardViewProps = {
   user: DiscordOAuthUserDto;
@@ -55,6 +58,16 @@ function mapStateError(err: unknown): string {
   return "API 서버에 연결할 수 없습니다.";
 }
 
+function mapControlStatusError(err: unknown): string {
+  if (err instanceof ApiClientError) {
+    if (err.status === 401) {
+      return "로그인이 필요합니다.";
+    }
+    return err.message || "조작 가능 여부를 확인할 수 없습니다.";
+  }
+  return "조작 가능 여부를 확인할 수 없습니다.";
+}
+
 export function DashboardView({ user, onLogout }: DashboardViewProps) {
   const [guilds, setGuilds] = useState<WebDashboardGuildDto[]>([]);
   const [guildsLoading, setGuildsLoading] = useState(true);
@@ -63,7 +76,14 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
   const [state, setState] = useState<SoundroomGuildStateDto | null>(null);
   const [stateLoading, setStateLoading] = useState(false);
   const [stateError, setStateError] = useState<string | null>(null);
+  const [controlStatus, setControlStatus] =
+    useState<SoundroomControlStatusResponseDto | null>(null);
+  const [controlStatusLoading, setControlStatusLoading] = useState(false);
+  const [controlStatusError, setControlStatusError] = useState<string | null>(
+    null,
+  );
   const stateRequestId = useRef(0);
+  const controlStatusRequestId = useRef(0);
   const selectedIdRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -133,6 +153,56 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
     [onLogout],
   );
 
+  const loadControlStatus = useCallback(
+    async (guildId: string, opts?: { silent?: boolean }) => {
+      const id = ++controlStatusRequestId.current;
+      if (!opts?.silent) {
+        setControlStatusLoading(true);
+      }
+      setControlStatusError(null);
+      try {
+        const res = await getSoundroomControlStatus(guildId);
+        if (id !== controlStatusRequestId.current) {
+          return;
+        }
+        setControlStatus(res);
+      } catch (err) {
+        if (id !== controlStatusRequestId.current) {
+          return;
+        }
+        if (err instanceof ApiClientError && err.status === 401) {
+          onLogout();
+          return;
+        }
+        setControlStatus(null);
+        setControlStatusError(mapControlStatusError(err));
+      } finally {
+        if (id === controlStatusRequestId.current && !opts?.silent) {
+          setControlStatusLoading(false);
+        }
+      }
+    },
+    [onLogout],
+  );
+
+  const loadGuildPanel = useCallback(
+    async (guildId: string, opts?: { silent?: boolean }) => {
+      if (!opts?.silent) {
+        setStateLoading(true);
+        setControlStatusLoading(true);
+      }
+      await Promise.all([
+        loadState(guildId, { silent: true }),
+        loadControlStatus(guildId, { silent: true }),
+      ]);
+      if (!opts?.silent) {
+        setStateLoading(false);
+        setControlStatusLoading(false);
+      }
+    },
+    [loadState, loadControlStatus],
+  );
+
   useEffect(() => {
     const ac = new AbortController();
     void loadGuilds(ac.signal);
@@ -142,11 +212,13 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
   useEffect(() => {
     if (!selectedId) {
       setState(null);
+      setControlStatus(null);
+      setControlStatusError(null);
       return;
     }
     localStorage.setItem(STORAGE_KEY, selectedId);
-    void loadState(selectedId);
-  }, [selectedId, loadState]);
+    void loadGuildPanel(selectedId);
+  }, [selectedId, loadGuildPanel]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -157,12 +229,12 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
       if (document.visibilityState !== "visible") {
         return;
       }
-      void loadState(selectedId, { silent: true });
+      void loadGuildPanel(selectedId, { silent: true });
     };
 
     const interval = window.setInterval(tick, POLL_MS);
     return () => window.clearInterval(interval);
-  }, [selectedId, loadState]);
+  }, [selectedId, loadGuildPanel]);
 
   const handleSelectGuild = (guildId: string) => {
     setSelectedId(guildId);
@@ -170,13 +242,19 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
 
   const handleRefresh = () => {
     if (selectedId) {
-      void loadState(selectedId);
+      void loadGuildPanel(selectedId);
     }
   };
 
   const handleStateChange = (newState: SoundroomGuildStateDto) => {
     setState(newState);
     setStateError(null);
+  };
+
+  const handleControlSuccess = () => {
+    if (selectedId) {
+      void loadControlStatus(selectedId, { silent: true });
+    }
   };
 
   const handleSkipDone = () => {
@@ -186,9 +264,9 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
     }
     window.setTimeout(() => {
       if (selectedIdRef.current === gid) {
-        void loadState(gid, { silent: true });
+        void loadGuildPanel(gid, { silent: true });
       }
-    }, 1500);
+    }, SKIP_REFRESH_MS);
   };
 
   const handleLogout = async () => {
@@ -218,7 +296,7 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
       <header className="dashboard-header">
         <div>
           <p className="eyebrow">
-            같은 음성 채널에서 Soundroom 조작 · 8초마다 상태 자동 갱신
+            조작 가능 여부 안내 · 8초마다 상태 자동 갱신
           </p>
           <h1>MINE Soundroom</h1>
         </div>
@@ -260,7 +338,7 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
               type="button"
               className="btn btn-secondary"
               onClick={handleRefresh}
-              disabled={!selectedId || stateLoading}
+              disabled={!selectedId || stateLoading || controlStatusLoading}
             >
               새로고침
             </button>
@@ -270,7 +348,11 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
             state={state}
             loading={stateLoading}
             error={stateError}
+            controlStatus={controlStatus}
+            controlStatusLoading={controlStatusLoading}
+            controlStatusError={controlStatusError}
             onStateChange={handleStateChange}
+            onControlSuccess={handleControlSuccess}
             onUnauthorized={onLogout}
             onSkipDone={handleSkipDone}
           />

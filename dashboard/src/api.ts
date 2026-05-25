@@ -5,6 +5,7 @@ import type {
   AuthSoundroomStateResponse,
   SoundroomControlRequestDto,
   SoundroomControlResponseDto,
+  SoundroomControlStatusResponseDto,
 } from "./types";
 
 const DEFAULT_API_BASE = "http://127.0.0.1:3077";
@@ -121,5 +122,15 @@ export async function controlSoundroom(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
     },
+  );
+}
+
+export async function getSoundroomControlStatus(
+  guildId: string,
+  signal?: AbortSignal,
+): Promise<SoundroomControlStatusResponseDto> {
+  return apiFetch<SoundroomControlStatusResponseDto>(
+    `/api/auth/guilds/${encodeURIComponent(guildId)}/soundroom/control-status`,
+    { signal },
   );
 }

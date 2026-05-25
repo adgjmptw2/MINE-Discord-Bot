@@ -95,3 +95,23 @@ export interface SoundroomControlResponseDto {
   action: SoundroomControlAction;
   state: SoundroomGuildStateDto;
 }
+
+export type SoundroomControlStatusCode =
+  | "READY"
+  | "SOUNDROOM_NOT_CONFIGURED"
+  | "USER_NOT_IN_VOICE_CHANNEL"
+  | "PLAYER_NOT_CONNECTED"
+  | "NOT_SAME_VOICE_CHANNEL";
+
+export interface SoundroomControlStatusResponseDto {
+  ok: true;
+  canControl: boolean;
+  code: SoundroomControlStatusCode;
+  message: string;
+  soundroomConfigured: boolean;
+  playerConnected: boolean;
+  userVoiceChannelId: string | null;
+  userVoiceChannelName: string | null;
+  botVoiceChannelId: string | null;
+  botVoiceChannelName: string | null;
+}

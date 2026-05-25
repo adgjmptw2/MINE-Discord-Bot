@@ -1,5 +1,8 @@
 import { formatDurationMs } from "../format";
-import type { SoundroomGuildStateDto } from "../types";
+import type {
+  SoundroomControlStatusResponseDto,
+  SoundroomGuildStateDto,
+} from "../types";
 import { QueueList } from "./QueueList";
 import { SoundroomControls } from "./SoundroomControls";
 
@@ -8,7 +11,11 @@ type SoundroomStateCardProps = {
   state: SoundroomGuildStateDto | null;
   loading: boolean;
   error: string | null;
+  controlStatus?: SoundroomControlStatusResponseDto | null;
+  controlStatusLoading?: boolean;
+  controlStatusError?: string | null;
   onStateChange?: (state: SoundroomGuildStateDto) => void;
+  onControlSuccess?: () => void;
   onUnauthorized?: () => void;
   onSkipDone?: () => void;
 };
@@ -43,7 +50,11 @@ export function SoundroomStateCard({
   state,
   loading,
   error,
+  controlStatus = null,
+  controlStatusLoading = false,
+  controlStatusError = null,
   onStateChange,
+  onControlSuccess,
   onUnauthorized,
   onSkipDone,
 }: SoundroomStateCardProps) {
@@ -143,12 +154,16 @@ export function SoundroomStateCard({
         <p className="state-notice">현재 재생 중인 곡이 없습니다.</p>
       )}
 
-      {guildId && onStateChange ? (
+      {guildId && onStateChange && state.soundroomConfigured ? (
         <SoundroomControls
           guildId={guildId}
           state={state}
+          controlStatus={controlStatus}
+          controlStatusLoading={controlStatusLoading}
+          controlStatusError={controlStatusError}
           disabled={loading}
           onStateChange={onStateChange}
+          onControlSuccess={onControlSuccess}
           onUnauthorized={onUnauthorized}
           onSkipDone={onSkipDone}
         />

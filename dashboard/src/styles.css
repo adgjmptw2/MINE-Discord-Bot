@@ -591,3 +591,44 @@ img {
 .volume-slider:disabled {
   opacity: 0.5;
 }
+
+.control-status {
+  margin-bottom: 0.85rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  border: 1px solid var(--border);
+}
+
+.control-status-headline {
+  margin: 0;
+  font-weight: 600;
+}
+
+.control-status-voice {
+  margin: 0.35rem 0 0;
+  font-size: 0.8125rem;
+}
+
+.control-status--ready {
+  background: rgba(59, 165, 93, 0.12);
+  border-color: rgba(59, 165, 93, 0.35);
+  color: #9fd4a8;
+}
+
+.control-status--blocked {
+  background: rgba(250, 168, 26, 0.1);
+  border-color: rgba(250, 168, 26, 0.35);
+  color: #f0d090;
+}
+
+.control-status--loading {
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+}
+
+.control-status--error {
+  background: rgba(237, 66, 69, 0.12);
+  border-color: rgba(237, 66, 69, 0.35);
+  color: #f5a6a8;
+}

@@ -23,6 +23,7 @@ import {
 import { handleAuthSoundroomGuildState } from "@/web/routes/authSoundroomState";
 import { handleAuthGuilds } from "@/web/routes/guilds";
 import { handleSoundroomControl } from "@/web/routes/soundroomControls";
+import { handleSoundroomControlStatus } from "@/web/routes/soundroomControlStatus";
 import { handleHealth, markWebDashboardServerStarted } from "@/web/routes/health";
 import { handleSoundroomGuildState } from "@/web/routes/soundroomState";
 import { log } from "@/utils/logger";
@@ -32,6 +33,9 @@ const SOUNDROOM_STATE_PATH =
 
 const AUTH_SOUNDROOM_STATE_PATH =
   /^\/api\/auth\/guilds\/(\d{17,20})\/soundroom-state\/?$/;
+
+const AUTH_SOUNDROOM_CONTROL_STATUS_PATH =
+  /^\/api\/auth\/guilds\/(\d{17,20})\/soundroom\/control-status\/?$/;
 
 const AUTH_SOUNDROOM_CONTROL_PATH =
   /^\/api\/auth\/guilds\/(\d{17,20})\/soundroom\/control\/?$/;
@@ -100,6 +104,23 @@ async function handleRequest(
       return;
     }
 
+    const authSoundroomControlStatusMatch = pathname.match(
+      AUTH_SOUNDROOM_CONTROL_STATUS_PATH,
+    );
+    if (authSoundroomControlStatusMatch) {
+      if (method !== "GET") {
+        sendMethodNotAllowed(res);
+        return;
+      }
+      handleSoundroomControlStatus(
+        req,
+        res,
+        client,
+        authSoundroomControlStatusMatch[1],
+      );
+      return;
+    }
+
     const authSoundroomControlMatch = pathname.match(AUTH_SOUNDROOM_CONTROL_PATH);
     if (authSoundroomControlMatch) {
       if (method !== "POST") {
@@ -142,6 +163,7 @@ async function handleRequest(
     if (
       pathname === "/health" ||
       stateMatch ||
+      authSoundroomControlStatusMatch ||
       authSoundroomControlMatch ||
       authSoundroomStateMatch ||
       pathname.startsWith("/api/auth/") ||

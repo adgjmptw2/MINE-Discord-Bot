@@ -2,7 +2,11 @@ import type { IncomingMessage } from "node:http";
 import type { Guild } from "discord.js";
 import { getSoundroom } from "@/storage/soundroom";
 import type { ExtendedPlayer, MineClient } from "@/types";
-import { getActivePlayer, getPlayer } from "@/utils/commands";
+import {
+  getActivePlayer,
+  getPlayer,
+  hasActivePlayerSession,
+} from "@/utils/commands";
 import {
   canSessionAccessGuild,
   getAuthenticatedSession,
@@ -11,6 +15,7 @@ import {
 } from "@/web/authz";
 import { isWebDashboardAuthEnabled } from "@/web/config";
 import type { WebSession } from "@/web/session";
+import type { SoundroomControlStatusCode } from "@/web/types";
 
 export interface WebAuthzError {
   status: number;
@@ -26,12 +31,39 @@ export interface WebSoundroomControlContext {
   userVoiceChannelId: string;
 }
 
+export interface SoundroomControlStatusResult {
+  canControl: boolean;
+  code: SoundroomControlStatusCode;
+  message: string;
+  soundroomConfigured: boolean;
+  playerConnected: boolean;
+  userVoiceChannelId: string | null;
+  userVoiceChannelName: string | null;
+  botVoiceChannelId: string | null;
+  botVoiceChannelName: string | null;
+}
+
 function authError(
   status: number,
   code: string,
   message: string,
 ): WebAuthzError {
   return { status, code, message };
+}
+
+function getVoiceChannelName(
+  guild: Guild,
+  channelId: string | null,
+): string | null {
+  if (!channelId) {
+    return null;
+  }
+  const ch = guild.channels.cache.get(channelId);
+  if (ch?.isVoiceBased()) {
+    const name = ch.name?.trim();
+    return name && name.length > 0 ? name : null;
+  }
+  return null;
 }
 
 export function getBotVoiceChannelId(
@@ -66,11 +98,96 @@ export async function getGuildMemberVoiceChannelId(
   return member?.voice.channelId ?? null;
 }
 
-export async function requireWebSoundroomControlAccess(
+export async function buildSoundroomControlStatus(
+  client: MineClient,
+  session: WebSession,
+  guildId: string,
+  guild: Guild,
+): Promise<SoundroomControlStatusResult> {
+  const soundroomConfigured = Boolean(getSoundroom(guildId));
+  const playerConnected = hasActivePlayerSession(client, guildId);
+  const botVoiceChannelId = getBotVoiceChannelId(client, guildId);
+  const botVoiceChannelName = getVoiceChannelName(guild, botVoiceChannelId);
+  const userVoiceChannelId = await getGuildMemberVoiceChannelId(
+    guild,
+    session.user.id,
+  );
+  const userVoiceChannelName = getVoiceChannelName(guild, userVoiceChannelId);
+
+  const base = {
+    soundroomConfigured,
+    playerConnected,
+    userVoiceChannelId,
+    userVoiceChannelName,
+    botVoiceChannelId,
+    botVoiceChannelName,
+  };
+
+  if (!soundroomConfigured) {
+    return {
+      ...base,
+      canControl: false,
+      code: "SOUNDROOM_NOT_CONFIGURED",
+      message: "이 서버에는 Soundroom이 설정되어 있지 않습니다.",
+    };
+  }
+
+  if (!userVoiceChannelId) {
+    return {
+      ...base,
+      canControl: false,
+      code: "USER_NOT_IN_VOICE_CHANNEL",
+      message: "먼저 음성 채널에 들어가 주세요.",
+    };
+  }
+
+  if (!playerConnected) {
+    return {
+      ...base,
+      canControl: false,
+      code: "PLAYER_NOT_CONNECTED",
+      message: "봇이 음성 채널에 연결되어 있지 않습니다.",
+    };
+  }
+
+  if (!botVoiceChannelId || userVoiceChannelId !== botVoiceChannelId) {
+    return {
+      ...base,
+      canControl: false,
+      code: "NOT_SAME_VOICE_CHANNEL",
+      message: "봇과 같은 음성 채널에서만 조작할 수 있습니다.",
+    };
+  }
+
+  return {
+    ...base,
+    canControl: true,
+    code: "READY",
+    message: "조작할 수 있습니다.",
+  };
+}
+
+function statusToAuthError(
+  status: SoundroomControlStatusResult,
+): WebAuthzError {
+  switch (status.code) {
+    case "SOUNDROOM_NOT_CONFIGURED":
+      return authError(404, status.code, status.message);
+    case "USER_NOT_IN_VOICE_CHANNEL":
+    case "NOT_SAME_VOICE_CHANNEL":
+      return authError(403, status.code, status.message);
+    case "PLAYER_NOT_CONNECTED":
+      return authError(409, status.code, status.message);
+    default:
+      return authError(500, "INTERNAL_ERROR", "Soundroom 조작 권한을 확인할 수 없습니다.");
+  }
+}
+
+export async function getSoundroomControlStatus(
   client: MineClient,
   req: IncomingMessage,
   guildId: string,
-): Promise<WebSoundroomControlContext | WebAuthzError> {
+): Promise<SoundroomControlStatusResult | WebAuthzError> {
   if (!isWebDashboardAuthEnabled()) {
     return authError(
       503,
@@ -104,14 +221,6 @@ export async function requireWebSoundroomControlAccess(
     );
   }
 
-  if (!getSoundroom(guildId)) {
-    return authError(
-      404,
-      "SOUNDROOM_NOT_CONFIGURED",
-      "이 서버에는 Soundroom이 설정되어 있지 않습니다.",
-    );
-  }
-
   const guild = client.guilds.cache.get(guildId);
   if (!guild) {
     return authError(
@@ -121,34 +230,33 @@ export async function requireWebSoundroomControlAccess(
     );
   }
 
-  const userVoiceChannelId = await getGuildMemberVoiceChannelId(
-    guild,
-    session.user.id,
-  );
-  if (!userVoiceChannelId) {
-    return authError(
-      403,
-      "USER_NOT_IN_VOICE_CHANNEL",
-      "먼저 음성 채널에 들어가 주세요.",
-    );
+  return buildSoundroomControlStatus(client, session, guildId, guild);
+}
+
+export async function requireWebSoundroomControlAccess(
+  client: MineClient,
+  req: IncomingMessage,
+  guildId: string,
+): Promise<WebSoundroomControlContext | WebAuthzError> {
+  const statusOrError = await getSoundroomControlStatus(client, req, guildId);
+  if ("status" in statusOrError) {
+    return statusOrError;
   }
 
+  if (!statusOrError.canControl) {
+    return statusToAuthError(statusOrError);
+  }
+
+  const session = getAuthenticatedSession(req)!;
+  const guild = client.guilds.cache.get(guildId)!;
   const player = getActivePlayer(client, guildId);
-  if (!player) {
-    return authError(
-      409,
-      "PLAYER_NOT_CONNECTED",
-      "봇이 음성 채널에 연결되어 있지 않습니다.",
-    );
-  }
-
-  const botVoiceChannelId = getBotVoiceChannelId(client, guildId);
-  if (!botVoiceChannelId || userVoiceChannelId !== botVoiceChannelId) {
-    return authError(
-      403,
-      "NOT_SAME_VOICE_CHANNEL",
-      "봇과 같은 음성 채널에서만 조작할 수 있습니다.",
-    );
+  if (!player || !statusOrError.userVoiceChannelId) {
+    return statusToAuthError({
+      ...statusOrError,
+      canControl: false,
+      code: "PLAYER_NOT_CONNECTED",
+      message: "봇이 음성 채널에 연결되어 있지 않습니다.",
+    });
   }
 
   return {
@@ -156,6 +264,6 @@ export async function requireWebSoundroomControlAccess(
     guildId,
     guild,
     player,
-    userVoiceChannelId,
+    userVoiceChannelId: statusOrError.userVoiceChannelId,
   };
 }
