@@ -158,3 +158,15 @@ export interface SoundroomAddResponseDto {
   added: SoundroomAddedTrackDto;
   state: SoundroomGuildStateDto;
 }
+
+export interface SoundroomQueueRemoveRequestDto {
+  queueIndex: number;
+  expectedUri?: string | null;
+  expectedTitle?: string | null;
+}
+
+export interface SoundroomQueueRemoveResponseDto {
+  ok: true;
+  removed: SoundroomQueueItemDto;
+  state: SoundroomGuildStateDto;
+}

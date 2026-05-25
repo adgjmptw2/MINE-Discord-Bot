@@ -24,6 +24,7 @@ import { handleAuthSoundroomGuildState } from "@/web/routes/authSoundroomState";
 import { handleAuthGuilds } from "@/web/routes/guilds";
 import { handleSoundroomControl } from "@/web/routes/soundroomControls";
 import { handleSoundroomControlStatus } from "@/web/routes/soundroomControlStatus";
+import { handleSoundroomQueueRemove } from "@/web/routes/soundroomQueue";
 import {
   handleSoundroomAdd,
   handleSoundroomSearch,
@@ -49,6 +50,9 @@ const AUTH_SOUNDROOM_SEARCH_PATH =
 
 const AUTH_SOUNDROOM_ADD_PATH =
   /^\/api\/auth\/guilds\/(\d{17,20})\/soundroom\/add\/?$/;
+
+const AUTH_SOUNDROOM_QUEUE_REMOVE_PATH =
+  /^\/api\/auth\/guilds\/(\d{17,20})\/soundroom\/queue\/remove\/?$/;
 
 async function handleRequest(
   client: MineClient,
@@ -171,6 +175,23 @@ async function handleRequest(
       return;
     }
 
+    const authSoundroomQueueRemoveMatch = pathname.match(
+      AUTH_SOUNDROOM_QUEUE_REMOVE_PATH,
+    );
+    if (authSoundroomQueueRemoveMatch) {
+      if (method !== "POST") {
+        sendMethodNotAllowed(res);
+        return;
+      }
+      await handleSoundroomQueueRemove(
+        req,
+        res,
+        client,
+        authSoundroomQueueRemoveMatch[1],
+      );
+      return;
+    }
+
     const authSoundroomStateMatch = pathname.match(AUTH_SOUNDROOM_STATE_PATH);
     if (authSoundroomStateMatch) {
       if (method !== "GET") {
@@ -202,6 +223,7 @@ async function handleRequest(
       authSoundroomControlMatch ||
       authSoundroomSearchMatch ||
       authSoundroomAddMatch ||
+      authSoundroomQueueRemoveMatch ||
       authSoundroomStateMatch ||
       pathname.startsWith("/api/auth/") ||
       pathname.startsWith("/api/soundroom/")
