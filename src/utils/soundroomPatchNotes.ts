@@ -13,6 +13,13 @@ export interface SoundroomPatchNote {
 /** 최신 항목이 위에 오도록 관리합니다. */
 export const SOUNDROOM_PATCH_NOTES: SoundroomPatchNote[] = [
   {
+    icon: "↔️",
+    timestamp: "5월 26일 04:00",
+    title: "웹 대기열 순서 변경 API",
+    detail:
+      "같은 노래채널에서 대기열 두 곡 순서를 바꾸고, 변경 내역을 노래채널에 잠시 안내",
+  },
+  {
     icon: "🗑️",
     timestamp: "5월 26일 03:30",
     title: "대시보드 대기열 삭제 UI",

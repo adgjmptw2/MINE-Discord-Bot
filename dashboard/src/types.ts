@@ -170,3 +170,23 @@ export interface SoundroomQueueRemoveResponseDto {
   removed: SoundroomQueueItemDto;
   state: SoundroomGuildStateDto;
 }
+
+export interface SoundroomQueueSwapRequestDto {
+  fromQueueIndex: number;
+  toQueueIndex: number;
+  expectedFromUri?: string | null;
+  expectedFromTitle?: string | null;
+  expectedToUri?: string | null;
+  expectedToTitle?: string | null;
+}
+
+export interface SoundroomQueueSwapSummaryDto {
+  from: SoundroomQueueItemDto;
+  to: SoundroomQueueItemDto;
+}
+
+export interface SoundroomQueueSwapResponseDto {
+  ok: true;
+  swapped: SoundroomQueueSwapSummaryDto;
+  state: SoundroomGuildStateDto;
+}

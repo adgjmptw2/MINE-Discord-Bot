@@ -2,6 +2,8 @@ import type { GuildMember } from "discord.js";
 import { getPlayer } from "@/utils/commands";
 import {
   isSoundroomAutoplayTrack,
+  setSoundroomQueueUserThenAutoplay,
+  splitSoundroomQueue,
   syncAutoplayHintFromQueue,
   userSoundroomQueueEntries,
 } from "@/utils/soundroomAutoplay";
@@ -15,6 +17,8 @@ import type { ExtendedPlayer, ExtendedTrack, MineClient } from "@/types";
 import type {
   SoundroomQueueItemDto,
   SoundroomQueueRemoveRequestDto,
+  SoundroomQueueSwapRequestDto,
+  SoundroomQueueSwapSummaryDto,
 } from "@/web/types";
 export class SoundroomQueueActionError extends Error {
   readonly status: number;
@@ -232,4 +236,195 @@ export function removeSoundroomQueueItemFromWeb(
   refreshSoundroomPanelBestEffort(client, guildId, player);
 
   return removedDto;
+}
+
+function parseQueueIndexField(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+    return null;
+  }
+  return value;
+}
+
+function parseOptionalStringField(
+  value: unknown,
+): string | null | undefined | "invalid" {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (value === null) {
+    return null;
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  return "invalid";
+}
+
+export function validateQueueSwapRequest(
+  value: unknown,
+): SoundroomQueueSwapRequestDto | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const raw = value as SoundroomQueueSwapRequestDto;
+  const fromQueueIndex = parseQueueIndexField(raw.fromQueueIndex);
+  const toQueueIndex = parseQueueIndexField(raw.toQueueIndex);
+  if (fromQueueIndex === null || toQueueIndex === null) {
+    return null;
+  }
+
+  const expectedFromUri = parseOptionalStringField(raw.expectedFromUri);
+  const expectedFromTitle = parseOptionalStringField(raw.expectedFromTitle);
+  const expectedToUri = parseOptionalStringField(raw.expectedToUri);
+  const expectedToTitle = parseOptionalStringField(raw.expectedToTitle);
+  if (
+    expectedFromUri === "invalid" ||
+    expectedFromTitle === "invalid" ||
+    expectedToUri === "invalid" ||
+    expectedToTitle === "invalid"
+  ) {
+    return null;
+  }
+
+  return {
+    fromQueueIndex,
+    toQueueIndex,
+    expectedFromUri,
+    expectedFromTitle,
+    expectedToUri,
+    expectedToTitle,
+  };
+}
+
+function assertExpectedItemMatches(
+  dto: SoundroomQueueItemDto,
+  expectedUri: string | null | undefined,
+  expectedTitle: string | null | undefined,
+): void {
+  if (expectedUri !== undefined) {
+    const expected = normalizeCompareUri(expectedUri);
+    const actual = normalizeCompareUri(dto.uri);
+    if (expected !== actual) {
+      throw new SoundroomQueueActionError(
+        409,
+        "QUEUE_ITEM_CHANGED",
+        "대기열이 변경되었습니다. 새로고침 후 다시 시도해 주세요.",
+      );
+    }
+  }
+  if (expectedTitle !== undefined) {
+    const expected = normalizeCompareTitle(expectedTitle);
+    const actual = normalizeCompareTitle(dto.title);
+    if (expected !== actual) {
+      throw new SoundroomQueueActionError(
+        409,
+        "QUEUE_ITEM_CHANGED",
+        "대기열이 변경되었습니다. 새로고침 후 다시 시도해 주세요.",
+      );
+    }
+  }
+}
+
+function swapUserQueueByDtoIndexes(
+  player: ExtendedPlayer,
+  fromDtoIndex: number,
+  toDtoIndex: number,
+): void {
+  const { user, autoplay } = splitSoundroomQueue(player);
+  if (
+    fromDtoIndex < 0 ||
+    toDtoIndex < 0 ||
+    fromDtoIndex >= user.length ||
+    toDtoIndex >= user.length
+  ) {
+    throw new SoundroomQueueActionError(
+      404,
+      "QUEUE_ITEM_NOT_FOUND",
+      "대기열에서 해당 곡을 찾을 수 없습니다.",
+    );
+  }
+  const nextUser = [...user];
+  const fromTrack = nextUser[fromDtoIndex]!;
+  nextUser[fromDtoIndex] = nextUser[toDtoIndex]!;
+  nextUser[toDtoIndex] = fromTrack;
+  setSoundroomQueueUserThenAutoplay(player, nextUser, autoplay);
+}
+
+export function swapSoundroomQueueItemsFromWeb(
+  client: MineClient,
+  guildId: string,
+  request: SoundroomQueueSwapRequestDto,
+): SoundroomQueueSwapSummaryDto {
+  if (request.fromQueueIndex === request.toQueueIndex) {
+    throw new SoundroomQueueActionError(
+      400,
+      "INVALID_QUEUE_SWAP_INDEXES",
+      "서로 다른 두 대기열 항목을 선택해 주세요.",
+    );
+  }
+
+  const player = getPlayer(client, guildId);
+  if (!player) {
+    throw new SoundroomQueueActionError(
+      409,
+      "PLAYER_NOT_CONNECTED",
+      "봇이 음성 채널에 연결되어 있지 않습니다.",
+    );
+  }
+
+  const userEntries = userSoundroomQueueEntries(player);
+  const fromEntry = userEntries[request.fromQueueIndex];
+  const toEntry = userEntries[request.toQueueIndex];
+  if (!fromEntry || !toEntry) {
+    throw new SoundroomQueueActionError(
+      404,
+      "QUEUE_ITEM_NOT_FOUND",
+      "대기열에서 해당 곡을 찾을 수 없습니다.",
+    );
+  }
+
+  if (
+    isSoundroomAutoplayTrack(fromEntry.track) ||
+    isSoundroomAutoplayTrack(toEntry.track)
+  ) {
+    throw new SoundroomQueueActionError(
+      404,
+      "QUEUE_ITEM_NOT_FOUND",
+      "대기열에서 해당 곡을 찾을 수 없습니다.",
+    );
+  }
+
+  const currentUri = normalizeCompareUri(player.current?.info.uri);
+  for (const entry of [fromEntry, toEntry]) {
+    const entryUri = normalizeCompareUri(entry.track.info.uri);
+    if (currentUri && entryUri && currentUri === entryUri) {
+      throw new SoundroomQueueActionError(
+        404,
+        "QUEUE_ITEM_NOT_FOUND",
+        "현재 재생 중인 곡은 순서를 변경할 수 없습니다.",
+      );
+    }
+  }
+
+  const fromDto = entryToQueueItemDto(fromEntry.track, request.fromQueueIndex);
+  const toDto = entryToQueueItemDto(toEntry.track, request.toQueueIndex);
+
+  assertExpectedItemMatches(
+    fromDto,
+    request.expectedFromUri,
+    request.expectedFromTitle,
+  );
+  assertExpectedItemMatches(toDto, request.expectedToUri, request.expectedToTitle);
+
+  swapUserQueueByDtoIndexes(
+    player,
+    request.fromQueueIndex,
+    request.toQueueIndex,
+  );
+
+  syncAutoplayHintFromQueue(guildId, player);
+  bumpSoundroomPanelRevision(guildId);
+  refreshSoundroomPanelBestEffort(client, guildId, player);
+
+  return { from: fromDto, to: toDto };
 }
