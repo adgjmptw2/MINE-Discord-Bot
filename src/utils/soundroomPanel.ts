@@ -29,6 +29,7 @@ import {
   getSoundroomPanelRevision,
   isSoundroomPanelRevisionCurrent,
 } from "@/utils/soundroomPanelRevision";
+import { SR_PATCH_NOTES_CUSTOM_ID } from "@/utils/soundroomPatchNotes";
 import type { ExtendedPlayer, ExtendedTrack, MineClient } from "@/types";
 
 const MENTION_NONE = { parse: [] as const };
@@ -145,6 +146,11 @@ export function buildSoundroomIdlePayload(
       .setCustomId("sr_melon")
       .setLabel("인기차트")
       .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(SR_PATCH_NOTES_CUSTOM_ID)
+      .setLabel("패치노트")
+      .setEmoji("📝")
+      .setStyle(ButtonStyle.Secondary),
   );
 
   return {
@@ -251,6 +257,11 @@ export function buildSoundroomPlayingPayload(
       .setCustomId("sr_autoplay_toggle")
       .setLabel(ap.enabled ? "자동 재생 ON" : "자동 재생 OFF")
       .setStyle(ap.enabled ? ButtonStyle.Success : ButtonStyle.Danger),
+    new ButtonBuilder()
+      .setCustomId(SR_PATCH_NOTES_CUSTOM_ID)
+      .setLabel("패치노트")
+      .setEmoji("📝")
+      .setStyle(ButtonStyle.Secondary),
   );
 
   return {

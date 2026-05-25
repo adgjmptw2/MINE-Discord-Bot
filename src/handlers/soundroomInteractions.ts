@@ -32,6 +32,11 @@ import {
   type BuildSoundroomPanelOptions,
 } from "@/utils/soundroomPanel";
 import { bumpSoundroomPanelRevision } from "@/utils/soundroomPanelRevision";
+import {
+  formatSoundroomPatchNotes,
+  PATCH_NOTES_DELETE_MS,
+  SR_PATCH_NOTES_CUSTOM_ID,
+} from "@/utils/soundroomPatchNotes";
 import { prioritizeYoutubeTracks } from "@/utils/youtubePlaylist";
 import { buildSoundroomQueuePanelPayload } from "@/handlers/soundroomQueuePanel";
 import {
@@ -153,6 +158,15 @@ export async function handleSoundroomButton(
       flags: MessageFlags.Ephemeral,
     });
     scheduleEphemeralReplyDelete(interaction);
+    return true;
+  }
+
+  if (interaction.customId === SR_PATCH_NOTES_CUSTOM_ID) {
+    await interaction.reply({
+      content: formatSoundroomPatchNotes(10),
+      flags: MessageFlags.Ephemeral,
+    });
+    scheduleEphemeralReplyDelete(interaction, PATCH_NOTES_DELETE_MS);
     return true;
   }
 
