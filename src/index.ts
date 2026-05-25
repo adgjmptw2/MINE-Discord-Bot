@@ -6,6 +6,7 @@ import loadRiffyEvents from "@/handlers/riffy";
 import loadSlashCommands from "@/handlers/slashcommand";
 import config from "@/settings/config";
 import { log, printBanner } from "@/utils/logger";
+import { patchRiffyResolve } from "@/utils/riffyResolve";
 import { MineClient } from "@/types";
 
 const token = process.env.TOKEN?.trim();
@@ -54,6 +55,8 @@ client.riffy = new Riffy(client, client.config.nodes, {
   defaultSearchPlatform: client.config.engine,
   restVersion: "v4",
 });
+
+patchRiffyResolve(client);
 
 printBanner();
 

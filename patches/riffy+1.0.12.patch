@@ -32,3 +32,40 @@ index a11ed51..2b2c18e 100644
              }
  
              this.riffy.emit("trackEnd", player, track, payload);
+diff --git a/node_modules/riffy/build/structures/Riffy.js b/node_modules/riffy/build/structures/Riffy.js
+index 5c2ef7c..0b5892e 100644
+--- a/node_modules/riffy/build/structures/Riffy.js
++++ b/node_modules/riffy/build/structures/Riffy.js
+@@ -325,25 +325,18 @@ class Riffy extends EventEmitter {
+     try {
+       // ^^(jsdoc) A source to search the query on example:ytmsearch for youtube music
+       const querySource = source || this.defaultSearchPlatform;
+-      const regex = /^https?:\/\//;
+-      const identifier = regex.test(query) ? query : `${querySource}:${query}`;
++      const urlRegex = /^https?:\/\//;
++      const enginePrefixRegex = /^[a-z][a-z0-9]*:/i;
++      const identifier = urlRegex.test(query)
++        ? query
++        : enginePrefixRegex.test(query)
++          ? query
++          : `${querySource}:${query}`;
+ 
+       this.emit("debug", `Searching for ${query} on node "${requestNode.name}"`);
+ 
+       let response = await requestNode.rest.makeRequest(`GET`, `/${requestNode.rest.version}/loadtracks?identifier=${encodeURIComponent(identifier)}`);
+ 
+-      // Fallback strategies for empty/no_matches if Query is NOT a url
+-      if (!regex.test(query) && (response.loadType === "empty" || response.loadType === "NO_MATCHES")) {
+-        // This fallback logic looks a bit aggressive (forcing Spotify then YouTube if original query failed), 
+-        // but I'll keep it as it seems to be desired internal logic, just cleaning up readability.
+-        const spotifyRes = await requestNode.rest.makeRequest(`GET`, `/${requestNode.rest.version}/loadtracks?identifier=https://open.spotify.com/track/${query}`);
+-        if (spotifyRes.loadType !== "empty" && spotifyRes.loadType !== "NO_MATCHES") response = spotifyRes;
+-        else {
+-          const youtubeRes = await requestNode.rest.makeRequest(`GET`, `/${requestNode.rest.version}/loadtracks?identifier=https://www.youtube.com/watch?v=${query}`);
+-          if (youtubeRes.loadType !== "empty" && youtubeRes.loadType !== "NO_MATCHES") response = youtubeRes;
+-        }
+-      }
+-
+       // Process response based on version
+       this.tracks = [];
+       let tracks = [];

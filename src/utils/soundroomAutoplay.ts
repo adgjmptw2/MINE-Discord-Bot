@@ -324,9 +324,7 @@ async function resolveAutoplayTracks(
   }
   const title = searchFallbackTitle?.trim();
   if (title) {
-    const engine = client.config.engine?.trim() || "ytsearch";
-    const prefix = engine.endsWith(":") ? engine : `${engine}:`;
-    attempts.push(`${prefix}${title}`);
+    attempts.push(title);
   }
 
   for (const query of attempts) {
