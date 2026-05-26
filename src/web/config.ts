@@ -1,10 +1,20 @@
+import path from "node:path";
 import { log } from "@/utils/logger";
+
+function resolveStaticDashboardRoot(staticDir: string): string {
+  if (path.isAbsolute(staticDir)) {
+    return path.resolve(staticDir);
+  }
+  return path.resolve(process.cwd(), staticDir);
+}
 
 export interface WebDashboardConfig {
   enabled: boolean;
   host: string;
   port: number;
   allowedOrigin: string;
+  staticEnabled: boolean;
+  staticRoot: string;
   authEnabled: boolean;
   discordOAuthClientId: string | null;
   discordOAuthClientSecret: string | null;
@@ -37,6 +47,17 @@ export function isWebDashboardAuthEnabled(): boolean {
   return process.env.WEB_DASHBOARD_AUTH_ENABLED?.trim().toLowerCase() === "true";
 }
 
+export function isWebDashboardStaticEnabled(): boolean {
+  return (
+    process.env.WEB_DASHBOARD_STATIC_ENABLED?.trim().toLowerCase() === "true"
+  );
+}
+
+export function getWebDashboardStaticDir(): string {
+  const dir = process.env.WEB_DASHBOARD_STATIC_DIR?.trim();
+  return dir && dir.length > 0 ? dir : "dashboard/dist";
+}
+
 export function getWebDashboardHost(): string {
   const host = process.env.WEB_DASHBOARD_HOST?.trim();
   return host && host.length > 0 ? host : "127.0.0.1";
@@ -59,11 +80,15 @@ export function getWebDashboardConfig(): WebDashboardConfig {
     process.env.WEB_DASHBOARD_SESSION_COOKIE_NAME?.trim() ||
     "mine_soundroom_session";
 
+  const staticDir = getWebDashboardStaticDir();
+
   return {
     enabled: isWebDashboardEnabled(),
     host: getWebDashboardHost(),
     port: getWebDashboardPort(),
     allowedOrigin: getWebDashboardAllowedOrigin(),
+    staticEnabled: isWebDashboardStaticEnabled(),
+    staticRoot: resolveStaticDashboardRoot(staticDir),
     authEnabled: isWebDashboardAuthEnabled(),
     discordOAuthClientId:
       process.env.DISCORD_OAUTH_CLIENT_ID?.trim() || null,

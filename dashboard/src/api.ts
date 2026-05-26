@@ -34,7 +34,13 @@ export class ApiClientError extends Error {
 
 export function getApiBaseUrl(): string {
   const raw = import.meta.env.VITE_WEB_API_BASE_URL?.trim();
-  return raw && raw.length > 0 ? raw.replace(/\/$/, "") : DEFAULT_API_BASE;
+  if (raw && raw.length > 0) {
+    return raw.replace(/\/$/, "");
+  }
+  if (typeof window !== "undefined" && window.location?.origin) {
+    return window.location.origin;
+  }
+  return DEFAULT_API_BASE;
 }
 
 export function getDiscordLoginUrl(): string {

@@ -13,6 +13,13 @@ export interface SoundroomPatchNote {
 /** 최신 항목이 위에 오도록 관리합니다. */
 export const SOUNDROOM_PATCH_NOTES: SoundroomPatchNote[] = [
   {
+    icon: "🌐",
+    timestamp: "5월 26일 06:30",
+    title: "대시보드 정적 서빙 추가",
+    detail:
+      "빌드된 대시보드를 봇 웹 API 서버의 /dashboard 경로에서 열 수 있도록 개선",
+  },
+  {
     icon: "💾",
     timestamp: "5월 26일 06:00",
     title: "대시보드 섹션 접기 상태 저장",

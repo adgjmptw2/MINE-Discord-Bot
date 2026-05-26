@@ -34,6 +34,10 @@ import {
 } from "@/web/routes/soundroomSearch";
 import { handleHealth, markWebDashboardServerStarted } from "@/web/routes/health";
 import { handleSoundroomGuildState } from "@/web/routes/soundroomState";
+import {
+  handleStaticDashboardRequest,
+  warnIfStaticDashboardRootMissing,
+} from "@/web/staticDashboard";
 import { log } from "@/utils/logger";
 
 const SOUNDROOM_STATE_PATH =
@@ -64,6 +68,7 @@ async function handleRequest(
   client: MineClient,
   req: IncomingMessage,
   res: ServerResponse,
+  webConfig: ReturnType<typeof getWebDashboardConfig>,
 ): Promise<void> {
   setCorsHeaders(req, res);
 
@@ -239,6 +244,10 @@ async function handleRequest(
       return;
     }
 
+    if (await handleStaticDashboardRequest(req, res, pathname, webConfig)) {
+      return;
+    }
+
     if (
       pathname === "/health" ||
       stateMatch ||
@@ -272,13 +281,16 @@ export async function startWebDashboardServer(
 
   const webConfig = getWebDashboardConfig();
   warnIfWebDashboardSessionSecretWeak(webConfig);
+  if (webConfig.staticEnabled) {
+    await warnIfStaticDashboardRootMissing(webConfig.staticRoot);
+  }
 
   const host = getWebDashboardHost();
   const port = getWebDashboardPort();
 
   await new Promise<void>((resolve) => {
     const server = createServer((req, res) => {
-      void handleRequest(client, req, res);
+      void handleRequest(client, req, res, webConfig);
     });
 
     server.on("error", (error) => {
@@ -290,6 +302,9 @@ export async function startWebDashboardServer(
     server.listen(port, host, () => {
       markWebDashboardServerStarted();
       log("success", "web", `Web dashboard API listening on ${host}:${port}`);
+      if (webConfig.staticEnabled) {
+        log("success", "web", "Dashboard UI available at /dashboard");
+      }
       resolve();
     });
   });
