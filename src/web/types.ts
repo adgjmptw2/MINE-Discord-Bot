@@ -103,6 +103,11 @@ export interface AuthOkResponseDto {
   ok: true;
 }
 
+export interface AuthCsrfResponseDto {
+  ok: true;
+  csrfToken: string;
+}
+
 export interface AuthSoundroomStateResponseDto {
   ok: true;
   state: SoundroomGuildStateDto;

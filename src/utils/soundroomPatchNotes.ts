@@ -13,6 +13,13 @@ export interface SoundroomPatchNote {
 /** 최신 항목이 위에 오도록 관리합니다. */
 export const SOUNDROOM_PATCH_NOTES: SoundroomPatchNote[] = [
   {
+    icon: "🛡️",
+    timestamp: "5월 26일 12:00",
+    title: "웹 대시보드 CSRF 보호 추가",
+    detail:
+      "로그인 세션 기반 POST 요청에 X-CSRF-Token 검증을 추가해 조작 API 보호를 강화",
+  },
+  {
     icon: "✅",
     timestamp: "5월 26일 11:00",
     title: "운영 전 대시보드 설정 점검 추가",

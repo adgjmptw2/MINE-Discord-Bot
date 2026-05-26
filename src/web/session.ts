@@ -11,6 +11,7 @@ export interface WebSession {
   id: string;
   user: DiscordOAuthUserDto;
   guilds: DiscordOAuthGuildDto[];
+  csrfToken: string;
   createdAt: number;
   expiresAt: number;
 }
@@ -62,6 +63,7 @@ export function createSession(input: {
     id: randomBytes(32).toString("hex"),
     user: input.user,
     guilds: input.guilds,
+    csrfToken: randomBytes(32).toString("base64url"),
     createdAt: now,
     expiresAt: now + config.sessionTtlSeconds * 1000,
   };

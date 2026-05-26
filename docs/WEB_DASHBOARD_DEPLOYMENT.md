@@ -236,6 +236,15 @@ npm run dashboard:preflight
 
 권장 순서: `npm run check` → `npm run build` → `npm run dashboard:build` → `npm run dashboard:preflight`
 
+### CSRF (POST 조작 API)
+
+로그인 세션마다 CSRF 토큰이 발급되며, 대시보드는 `GET /api/auth/csrf`로 토큰을 받아 **POST** 요청에 `X-CSRF-Token` 헤더를 붙입니다. 운영자가 별도 설정할 필요는 없습니다.
+
+- **SameSite=Lax** 세션 쿠키 + **CORS exact origin** + **CSRF 토큰**을 함께 사용합니다.
+- reverse proxy가 `X-CSRF-Token` 헤더를 제거하지 않아야 합니다.
+- `CSRF_TOKEN_REQUIRED` / `CSRF_TOKEN_INVALID` 오류 시 페이지를 새로고침한 뒤 다시 시도합니다.
+- CSRF 토큰은 OAuth access token이 아니며, 브라우저 저장소에 저장하지 않습니다.
+
 ---
 
 ## 6. npm scripts 참고

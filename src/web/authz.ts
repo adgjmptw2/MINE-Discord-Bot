@@ -1,6 +1,8 @@
-import type { IncomingMessage } from "node:http";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Guild } from "discord.js";
 import type { MineClient } from "@/types";
+import { requireCsrfToken } from "@/web/csrf";
+import { sendError } from "@/web/http";
 import { readSessionFromRequest, type WebSession } from "@/web/session";
 import type { DiscordOAuthGuildDto } from "@/web/types";
 
@@ -10,6 +12,22 @@ export function getAuthenticatedSession(
   req: IncomingMessage,
 ): WebSession | null {
   return readSessionFromRequest(req);
+}
+
+/** POST 변경: 세션 확인 후 CSRF 검증(본문 파싱 전). */
+export function requireAuthenticatedSessionWithCsrf(
+  req: IncomingMessage,
+  res: ServerResponse,
+): WebSession | null {
+  const session = readSessionFromRequest(req);
+  if (!session) {
+    sendError(res, 401, "UNAUTHORIZED", "로그인이 필요합니다.");
+    return null;
+  }
+  if (!requireCsrfToken(req, res, session)) {
+    return null;
+  }
+  return session;
 }
 
 export function findSessionGuild(

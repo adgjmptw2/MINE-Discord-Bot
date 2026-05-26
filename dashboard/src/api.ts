@@ -1,5 +1,6 @@
 import type {
   ApiErrorResponse,
+  AuthCsrfResponse,
   AuthGuildsResponse,
   AuthMeResponse,
   AuthSoundroomStateResponse,
@@ -20,6 +21,11 @@ const DEFAULT_API_BASE = "http://127.0.0.1:3077";
 const NETWORK_ERROR_MESSAGE =
   "API 서버에 연결할 수 없습니다. 봇이 켜져 있는지, 대시보드 주소가 .env의 WEB_DASHBOARD_ALLOWED_ORIGIN과 같은 호스트(127.0.0.1 vs localhost)인지 확인하세요.";
 
+const CSRF_RETRY_CODES = new Set([
+  "CSRF_TOKEN_REQUIRED",
+  "CSRF_TOKEN_INVALID",
+]);
+
 export class ApiClientError extends Error {
   readonly status: number;
   readonly code: string | undefined;
@@ -31,6 +37,9 @@ export class ApiClientError extends Error {
     this.code = code;
   }
 }
+
+/** 메모리만 사용. localStorage/sessionStorage에 저장하지 않는다. */
+let csrfTokenCache: string | null = null;
 
 export function getApiBaseUrl(): string {
   const raw = import.meta.env.VITE_WEB_API_BASE_URL?.trim();
@@ -45,6 +54,26 @@ export function getApiBaseUrl(): string {
 
 export function getDiscordLoginUrl(): string {
   return `${getApiBaseUrl()}/api/auth/discord/login`;
+}
+
+export function clearCsrfTokenCache(): void {
+  csrfTokenCache = null;
+}
+
+export async function getCsrfToken(signal?: AbortSignal): Promise<string> {
+  const data = await apiFetch<AuthCsrfResponse>("/api/auth/csrf", { signal });
+  return data.csrfToken;
+}
+
+export async function getCachedCsrfTokenOrFetch(
+  signal?: AbortSignal,
+): Promise<string> {
+  if (csrfTokenCache) {
+    return csrfTokenCache;
+  }
+  const token = await getCsrfToken(signal);
+  csrfTokenCache = token;
+  return token;
 }
 
 async function parseJsonBody(text: string): Promise<unknown> {
@@ -80,6 +109,9 @@ async function apiFetch<T>(
   const data = await parseJsonBody(text);
 
   if (!res.ok) {
+    if (res.status === 401) {
+      clearCsrfTokenCache();
+    }
     const err = data as ApiErrorResponse | null;
     const message =
       err && typeof err === "object" && "message" in err && err.message
@@ -93,6 +125,42 @@ async function apiFetch<T>(
   }
 
   return data as T;
+}
+
+/** CSRF 실패 시 캐시 비우고 1회만 재시도한다. */
+async function apiPost<T>(
+  path: string,
+  body: unknown | undefined,
+  init?: RequestInit,
+): Promise<T> {
+  const run = async (allowCsrfRetry: boolean): Promise<T> => {
+    try {
+      const csrfToken = await getCachedCsrfTokenOrFetch(init?.signal);
+      return await apiFetch<T>(path, {
+        ...init,
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+          ...init?.headers,
+        },
+        body:
+          body === undefined ? undefined : JSON.stringify(body),
+      });
+    } catch (err) {
+      if (
+        allowCsrfRetry &&
+        err instanceof ApiClientError &&
+        err.code &&
+        CSRF_RETRY_CODES.has(err.code)
+      ) {
+        clearCsrfTokenCache();
+        return run(false);
+      }
+      throw err;
+    }
+  };
+  return run(true);
 }
 
 export async function getMe(signal?: AbortSignal): Promise<AuthMeResponse> {
@@ -116,10 +184,11 @@ export async function getSoundroomState(
 }
 
 export async function logout(): Promise<void> {
-  await apiFetch<{ ok: true }>("/api/auth/logout", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-  });
+  try {
+    await apiPost<{ ok: true }>("/api/auth/logout", undefined);
+  } finally {
+    clearCsrfTokenCache();
+  }
 }
 
 export async function controlSoundroom(
@@ -127,14 +196,10 @@ export async function controlSoundroom(
   request: SoundroomControlRequestDto,
   signal?: AbortSignal,
 ): Promise<SoundroomControlResponseDto> {
-  return apiFetch<SoundroomControlResponseDto>(
+  return apiPost<SoundroomControlResponseDto>(
     `/api/auth/guilds/${encodeURIComponent(guildId)}/soundroom/control`,
-    {
-      method: "POST",
-      signal,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(request),
-    },
+    request,
+    { signal },
   );
 }
 
@@ -153,14 +218,10 @@ export async function searchSoundroomTracks(
   query: string,
   signal?: AbortSignal,
 ): Promise<SoundroomSearchResponseDto> {
-  return apiFetch<SoundroomSearchResponseDto>(
+  return apiPost<SoundroomSearchResponseDto>(
     `/api/auth/guilds/${encodeURIComponent(guildId)}/soundroom/search`,
-    {
-      method: "POST",
-      signal,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query }),
-    },
+    { query },
+    { signal },
   );
 }
 
@@ -169,14 +230,10 @@ export async function addSoundroomTrack(
   request: SoundroomAddRequestDto,
   signal?: AbortSignal,
 ): Promise<SoundroomAddResponseDto> {
-  return apiFetch<SoundroomAddResponseDto>(
+  return apiPost<SoundroomAddResponseDto>(
     `/api/auth/guilds/${encodeURIComponent(guildId)}/soundroom/add`,
-    {
-      method: "POST",
-      signal,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(request),
-    },
+    request,
+    { signal },
   );
 }
 
@@ -185,14 +242,10 @@ export async function removeSoundroomQueueItem(
   request: SoundroomQueueRemoveRequestDto,
   signal?: AbortSignal,
 ): Promise<SoundroomQueueRemoveResponseDto> {
-  return apiFetch<SoundroomQueueRemoveResponseDto>(
+  return apiPost<SoundroomQueueRemoveResponseDto>(
     `/api/auth/guilds/${encodeURIComponent(guildId)}/soundroom/queue/remove`,
-    {
-      method: "POST",
-      signal,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(request),
-    },
+    request,
+    { signal },
   );
 }
 
@@ -201,13 +254,9 @@ export async function swapSoundroomQueueItems(
   request: SoundroomQueueSwapRequestDto,
   signal?: AbortSignal,
 ): Promise<SoundroomQueueSwapResponseDto> {
-  return apiFetch<SoundroomQueueSwapResponseDto>(
+  return apiPost<SoundroomQueueSwapResponseDto>(
     `/api/auth/guilds/${encodeURIComponent(guildId)}/soundroom/queue/swap`,
-    {
-      method: "POST",
-      signal,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(request),
-    },
+    request,
+    { signal },
   );
 }

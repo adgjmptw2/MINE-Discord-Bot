@@ -4,6 +4,13 @@ import type {
   SoundroomControlStatusResponseDto,
 } from "./types";
 
+const CSRF_UI_MESSAGES: Record<string, string> = {
+  CSRF_TOKEN_REQUIRED:
+    "요청 보안 토큰이 필요합니다. 페이지를 새로고침한 뒤 다시 시도해 주세요.",
+  CSRF_TOKEN_INVALID:
+    "요청 보안 토큰이 올바르지 않습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요.",
+};
+
 const STATUS_UI_MESSAGES: Record<SoundroomControlStatusCode, string> = {
   READY: "조작 가능 · 같은 노래채널에 있습니다.",
   SOUNDROOM_NOT_CONFIGURED:
@@ -35,6 +42,9 @@ function apiErrorMessage(
 
 export function mapControlError(err: unknown): string {
   if (err instanceof ApiClientError) {
+    if (err.code && err.code in CSRF_UI_MESSAGES) {
+      return apiErrorMessage(err, CSRF_UI_MESSAGES);
+    }
     if (err.code && err.code in STATUS_UI_MESSAGES) {
       return apiErrorMessage(err, STATUS_UI_MESSAGES);
     }
@@ -62,6 +72,7 @@ export function controlStatusHeadline(
 }
 
 const SEARCH_ADD_UI_MESSAGES: Record<string, string> = {
+  ...CSRF_UI_MESSAGES,
   INVALID_QUERY: "검색어를 확인해 주세요.",
   INVALID_ADD_REQUEST: "추가 요청이 올바르지 않습니다.",
   INVALID_URL: "지원하지 않거나 올바르지 않은 URL입니다.",
@@ -139,6 +150,7 @@ export function getSearchAddDisabledState(
 }
 
 const QUEUE_REMOVE_UI_MESSAGES: Record<string, string> = {
+  ...CSRF_UI_MESSAGES,
   INVALID_QUEUE_INDEX: "삭제할 대기열 항목이 올바르지 않습니다.",
   QUEUE_ITEM_CHANGED: QUEUE_ITEM_CHANGED_UI,
   QUEUE_ITEM_NOT_FOUND: "대기열에서 해당 곡을 찾을 수 없습니다.",
@@ -150,6 +162,7 @@ const QUEUE_REMOVE_UI_MESSAGES: Record<string, string> = {
 };
 
 const QUEUE_SWAP_UI_MESSAGES: Record<string, string> = {
+  ...CSRF_UI_MESSAGES,
   INVALID_QUEUE_INDEX: "이동할 대기열 항목이 올바르지 않습니다.",
   INVALID_QUEUE_SWAP_INDEXES: "서로 다른 두 대기열 항목을 선택해 주세요.",
   QUEUE_ITEM_CHANGED: QUEUE_ITEM_CHANGED_UI,

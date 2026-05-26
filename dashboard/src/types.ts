@@ -68,6 +68,11 @@ export interface AuthGuildsResponse {
   guilds: WebDashboardGuildDto[];
 }
 
+export interface AuthCsrfResponse {
+  ok: true;
+  csrfToken: string;
+}
+
 export interface AuthSoundroomStateResponse {
   ok: true;
   state: SoundroomGuildStateDto;

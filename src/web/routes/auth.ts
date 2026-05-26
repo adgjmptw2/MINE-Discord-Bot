@@ -14,6 +14,7 @@ import {
   isWebDashboardAuthEnabled,
   isWebDashboardOAuthConfigured,
 } from "@/web/config";
+import { requireCsrfToken } from "@/web/csrf";
 import { readRequestUrl, sendError, sendJson, sendRedirect } from "@/web/http";
 import { requireStrongSessionSecretIfEnabled } from "@/web/security";
 import {
@@ -23,7 +24,11 @@ import {
   readSessionFromRequest,
   setSessionCookie,
 } from "@/web/session";
-import type { AuthMeResponseDto, AuthOkResponseDto } from "@/web/types";
+import type {
+  AuthCsrfResponseDto,
+  AuthMeResponseDto,
+  AuthOkResponseDto,
+} from "@/web/types";
 import { log } from "@/utils/logger";
 
 function sendAuthDisabled(res: ServerResponse): void {
@@ -150,15 +155,39 @@ export function handleAuthMe(req: IncomingMessage, res: ServerResponse): void {
   sendJson(res, 200, body);
 }
 
+export function handleAuthCsrf(req: IncomingMessage, res: ServerResponse): void {
+  if (!requireAuthEnabled(res)) {
+    return;
+  }
+
+  const session = readSessionFromRequest(req);
+  if (!session) {
+    sendError(res, 401, "UNAUTHORIZED", "로그인이 필요합니다.");
+    return;
+  }
+
+  const body: AuthCsrfResponseDto = {
+    ok: true,
+    csrfToken: session.csrfToken,
+  };
+  sendJson(res, 200, body);
+}
+
 export function handleAuthLogout(req: IncomingMessage, res: ServerResponse): void {
   if (!requireAuthEnabled(res)) {
     return;
   }
 
   const session = readSessionFromRequest(req);
-  if (session) {
-    deleteSession(session.id);
+  if (!session) {
+    sendError(res, 401, "UNAUTHORIZED", "로그인이 필요합니다.");
+    return;
   }
+  if (!requireCsrfToken(req, res, session)) {
+    return;
+  }
+
+  deleteSession(session.id);
   clearSessionCookie(res);
 
   const body: AuthOkResponseDto = { ok: true };

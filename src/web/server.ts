@@ -15,6 +15,7 @@ import {
   setCorsHeaders,
 } from "@/web/http";
 import {
+  handleAuthCsrf,
   handleAuthLogout,
   handleAuthMe,
   handleDiscordCallback,
@@ -156,6 +157,15 @@ async function handleRequest(
         return;
       }
       handleAuthMe(req, res);
+      return;
+    }
+
+    if (pathname === "/api/auth/csrf") {
+      if (method !== "GET") {
+        sendMethodNotAllowed(res);
+        return;
+      }
+      handleAuthCsrf(req, res);
       return;
     }
 

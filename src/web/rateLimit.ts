@@ -86,6 +86,9 @@ export function resolveRateLimitBucket(
   if (pathname === "/api/auth/me" && method === "GET") {
     return "auth-read";
   }
+  if (pathname === "/api/auth/csrf" && method === "GET") {
+    return "auth-read";
+  }
   if (pathname === "/api/auth/guilds" && method === "GET") {
     return "auth-read";
   }

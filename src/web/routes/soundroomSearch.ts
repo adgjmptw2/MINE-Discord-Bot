@@ -1,6 +1,9 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { MineClient } from "@/types";
-import { GUILD_ID_PATTERN } from "@/web/authz";
+import {
+  GUILD_ID_PATTERN,
+  requireAuthenticatedSessionWithCsrf,
+} from "@/web/authz";
 import { isWebDashboardAuthEnabled } from "@/web/config";
 import { readJsonBody, sendError, sendJson } from "@/web/http";
 import {
@@ -74,6 +77,10 @@ export async function handleSoundroomSearch(
 
   if (!GUILD_ID_PATTERN.test(guildId)) {
     sendError(res, 400, "INVALID_GUILD_ID", "잘못된 서버 ID입니다.");
+    return;
+  }
+
+  if (!requireAuthenticatedSessionWithCsrf(req, res)) {
     return;
   }
 
@@ -152,6 +159,10 @@ export async function handleSoundroomAdd(
 
   if (!GUILD_ID_PATTERN.test(guildId)) {
     sendError(res, 400, "INVALID_GUILD_ID", "잘못된 서버 ID입니다.");
+    return;
+  }
+
+  if (!requireAuthenticatedSessionWithCsrf(req, res)) {
     return;
   }
 
