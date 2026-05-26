@@ -57,7 +57,7 @@
 
 MINE의 코인, 주식, 게임 기능은 모두 **서버 내 가상 기능**이며 실제 돈, 환전, 현물 보상과는 관련이 없습니다.
 
-문서: [배포 가이드](docs/deployment.md) · [베타 운영 체크리스트](docs/beta-ops-checklist.md) · [개인정보 안내](docs/PRIVACY.md)
+문서: [배포 가이드](docs/deployment.md) · [웹 대시보드 배포](docs/WEB_DASHBOARD_DEPLOYMENT.md) · [베타 운영 체크리스트](docs/beta-ops-checklist.md) · [개인정보 안내](docs/PRIVACY.md)
 
 ## 주식 모의투자 게임
 
@@ -199,6 +199,23 @@ mock / yahoo / twelvedata 등으로 교체할 수 있습니다.
 수동 테스트는 [docs/stock-manual-test.md](docs/stock-manual-test.md)를 참고합니다.
 
 배포·VM 구성은 [docs/deployment.md](docs/deployment.md)를, 베타 운영 점검은 [docs/beta-ops-checklist.md](docs/beta-ops-checklist.md)를 참고합니다.
+
+### Soundroom 웹 대시보드
+
+브라우저에서 노래채널 상태·재생 조작·검색/추가·대기열 관리를 할 수 있습니다.
+
+| 모드 | 접속 예 | 요약 |
+| --- | --- | --- |
+| 개발 | `http://localhost:3000/dashboard` | `npm run dashboard:dev` + API `127.0.0.1:3077` |
+| 정적 서빙 | `http://127.0.0.1:3077/dashboard` | `npm run build:all` 후 `WEB_DASHBOARD_STATIC_ENABLED=true` |
+
+운영(HTTPS·reverse proxy)·OAuth Redirect·환경 변수는 **[웹 대시보드 배포 가이드](docs/WEB_DASHBOARD_DEPLOYMENT.md)** 를 참고하세요.
+
+```bash
+npm run check:all      # typecheck + 대시보드 빌드 검증
+npm run build:all      # 봇 dist + dashboard/dist
+npm run dashboard:dev  # 개발 UI만
+```
 
 ## 준비
 

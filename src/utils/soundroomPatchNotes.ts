@@ -13,6 +13,13 @@ export interface SoundroomPatchNote {
 /** 최신 항목이 위에 오도록 관리합니다. */
 export const SOUNDROOM_PATCH_NOTES: SoundroomPatchNote[] = [
   {
+    icon: "📋",
+    timestamp: "5월 26일 07:00",
+    title: "웹 대시보드 운영 배포 가이드",
+    detail:
+      "개발·정적 서빙·HTTPS reverse proxy 설정 방법과 운영 빌드 스크립트 문서 추가",
+  },
+  {
     icon: "🌐",
     timestamp: "5월 26일 06:30",
     title: "대시보드 정적 서빙 추가",
