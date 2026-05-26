@@ -1,10 +1,12 @@
 # MINE Soundroom 개인정보처리방침
 
-**시행일:** 2026년 5월 25일
+**시행일:** 2026년 5월 26일
 
 본 문서는 MINE Soundroom Discord 봇 및 웹 대시보드(이하 “서비스”) 운영에 관한 개인정보 처리 안내입니다. 법률 자문이 아닌 운영 정책 문서입니다.
 
-웹 공개 페이지: `/privacy` (API 서버에서 HTML 제공)
+> 실제 공개 운영 전에 운영자가 내용을 확인·수정해야 합니다.
+
+웹 공개 페이지: `/privacy` (API 서버에서 HTML 제공, 로그인·rate limit·SESSION_SECRET_WEAK와 무관)
 
 ---
 
@@ -53,10 +55,11 @@
 - OAuth Client Secret, Bot Token 등은 서버 환경 변수로만 관리
 - 세션 쿠키 서명 및 HttpOnly 적용
 - 필요 최소한의 정보만 처리
+- 웹 대시보드 공개 운영 시 HTTPS 사용 권장
 
 ## 9. 문의
 
-환경 변수 `WEB_DASHBOARD_CONTACT_EMAIL`이 설정되어 있으면 해당 이메일로 안내합니다. 없으면 Discord 서버 관리자 또는 서비스 운영자에게 문의해 주세요.
+환경 변수 `WEB_DASHBOARD_CONTACT_EMAIL`이 설정되어 있으면 해당 이메일로 안내합니다. 없으면 운영자 또는 봇이 설치된 Discord 서버 관리자에게 문의해 주세요.
 
 ## 10. 정책 변경
 

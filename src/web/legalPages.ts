@@ -1,7 +1,10 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { WebDashboardConfig } from "@/web/config";
 
-const EFFECTIVE_DATE = "2026년 5월 25일";
+const EFFECTIVE_DATE = "2026년 5월 26일";
+
+const CONTACT_FALLBACK =
+  "운영자 또는 봇이 설치된 Discord 서버 관리자에게 문의해 주세요.";
 
 export function escapeHtml(value: string): string {
   return value
@@ -17,7 +20,11 @@ function contactBlock(contactEmail: string | null): string {
     const mail = escapeHtml(contactEmail.trim());
     return `<p>문의: <a href="mailto:${mail}">${mail}</a></p>`;
   }
-  return `<p>문의: Discord 서버 관리자 또는 서비스 운영자에게 문의해 주세요.</p>`;
+  return `<p>문의: ${escapeHtml(CONTACT_FALLBACK)}</p>`;
+}
+
+function operatorNotice(): string {
+  return `<p class="notice">본 문서는 운영 정책 안내이며, 실제 공개 운영 전에 운영자가 내용을 확인·수정해야 합니다.</p>`;
 }
 
 function renderLegalLayout(title: string, bodyHtml: string): string {
@@ -41,6 +48,13 @@ function renderLegalLayout(title: string, bodyHtml: string): string {
     header a.brand { color: #c5caff; text-decoration: none; font-weight: 700; font-size: 1.1rem; }
     h1 { font-size: 1.5rem; margin: 0.75rem 0 0.35rem; }
     .meta { color: #9aa6bc; font-size: 0.875rem; }
+    .notice {
+      font-size: 0.8125rem;
+      color: #8a94a8;
+      margin: 0.5rem 0 1rem;
+      padding: 0.5rem 0.75rem;
+      border-left: 3px solid #3d4a63;
+    }
     h2 { font-size: 1.05rem; margin: 1.35rem 0 0.5rem; color: #d0d6e4; }
     p, li { font-size: 0.9375rem; color: #c8d0e0; }
     ul { padding-left: 1.25rem; }
@@ -86,6 +100,7 @@ export function renderPrivacyPolicyHtml(contactEmail: string | null): string {
       <h1>MINE Soundroom 개인정보처리방침</h1>
       <p class="meta">시행일: ${EFFECTIVE_DATE}</p>
       <p>본 문서는 MINE Soundroom Discord 봇 및 웹 대시보드(이하 “서비스”) 운영에 관한 개인정보 처리 안내입니다. 법률 자문이 아닌 운영 정책 문서입니다.</p>
+      ${operatorNotice()}
 
       <h2>1. 수집하는 정보</h2>
       <ul>
@@ -131,6 +146,7 @@ export function renderPrivacyPolicyHtml(contactEmail: string | null): string {
         <li>OAuth Client Secret, Bot Token 등은 서버 환경 변수로만 관리</li>
         <li>세션 쿠키 서명 및 HttpOnly 적용</li>
         <li>필요 최소한의 정보만 처리</li>
+        <li>웹 대시보드 공개 운영 시 HTTPS 사용 권장</li>
       </ul>
 
       <h2>9. 문의</h2>
@@ -147,6 +163,7 @@ export function renderTermsOfServiceHtml(contactEmail: string | null): string {
       <h1>MINE Soundroom 이용약관</h1>
       <p class="meta">시행일: ${EFFECTIVE_DATE}</p>
       <p>본 약관은 MINE Soundroom Discord 봇 및 웹 대시보드 이용에 관한 운영 정책입니다.</p>
+      ${operatorNotice()}
 
       <h2>1. 서비스 설명</h2>
       <p>Discord 서버용 음악·노래채널(Soundroom) 봇과, 브라우저에서 상태를 확인·조작할 수 있는 웹 대시보드를 제공합니다.</p>
@@ -206,6 +223,8 @@ function sendLegalHtml(res: ServerResponse, html: string, headOnly: boolean): vo
   res.statusCode = 200;
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "no-referrer");
   if (headOnly) {
     res.end();
     return;
@@ -213,7 +232,7 @@ function sendLegalHtml(res: ServerResponse, html: string, headOnly: boolean): vo
   res.end(html);
 }
 
-/** 로그인 없이 공개. API·/dashboard static보다 먼저 라우팅한다. */
+/** 로그인·SESSION_SECRET_WEAK·rate limit 없이 공개. API 처리 후, /dashboard 정적 전에 연결한다. */
 export function handleLegalPageRequest(
   req: IncomingMessage,
   res: ServerResponse,

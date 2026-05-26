@@ -1,10 +1,12 @@
 # MINE Soundroom 이용약관
 
-**시행일:** 2026년 5월 25일
+**시행일:** 2026년 5월 26일
 
 본 약관은 MINE Soundroom Discord 봇 및 웹 대시보드 이용에 관한 운영 정책입니다.
 
-웹 공개 페이지: `/terms` (API 서버에서 HTML 제공)
+> 실제 공개 운영 전에 운영자가 내용을 확인·수정해야 합니다.
+
+웹 공개 페이지: `/terms` (API 서버에서 HTML 제공, 로그인·rate limit·SESSION_SECRET_WEAK와 무관)
 
 ---
 
@@ -53,7 +55,7 @@ Discord, Lavalink, YouTube·Spotify 등 외부 서비스 장애·정책 변경�
 
 ## 10. 문의
 
-환경 변수 `WEB_DASHBOARD_CONTACT_EMAIL`이 설정되어 있으면 해당 이메일로 안내합니다. 없으면 Discord 서버 관리자 또는 서비스 운영자에게 문의해 주세요.
+환경 변수 `WEB_DASHBOARD_CONTACT_EMAIL`이 설정되어 있으면 해당 이메일로 안내합니다. 없으면 운영자 또는 봇이 설치된 Discord 서버 관리자에게 문의해 주세요.
 
 ## 11. 약관 변경
 

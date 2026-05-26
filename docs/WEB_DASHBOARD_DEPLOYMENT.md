@@ -113,7 +113,7 @@ npm run start:bot
 - `GET /dashboard/assets/*` → 빌드된 JS/CSS (장기 캐시)
 - 그 외 `/dashboard/*` 경로 → SPA fallback (`index.html`)
 - `/api/*`, `/health` → 기존 JSON API (정적 라우트보다 우선)
-- `GET /privacy`, `/terms` (및 trailing slash) → 공개 HTML 정책 페이지 (로그인 불필요, API·정적보다 앞서 처리)
+- `GET /privacy`, `/terms` (및 trailing slash) → 공개 HTML 정책 페이지 (로그인 불필요, **API 처리 후**·`/dashboard` 정적 **전**). `SESSION_SECRET_WEAK`·rate limit **미적용**
 - `dashboard/dist`가 없으면 서버는 종료하지 않고 `/dashboard`는 404, warn 로그만 출력
 
 코드·설정 변경 후에는 **봇 프로세스 재시작**이 필요합니다. `dashboard:build`만 다시 했다면 재시작 후 브라우저 새로고침(강력 새로고침)으로 asset을 받으면 됩니다.
@@ -147,7 +147,7 @@ OAuth **Redirect URI**와 **Privacy Policy / Terms of Service URL**은 서로 �
 | Privacy Policy URL | 개인정보처리방침 | `http://127.0.0.1:3077/privacy` | `https://soundroom.example.com/privacy` |
 | Terms of Service URL | 이용약관 | `http://127.0.0.1:3077/terms` | `https://soundroom.example.com/terms` |
 
-- 정책 페이지는 **로그인 없이** 공개됩니다. reverse proxy 뒤에서는 위와 같이 **같은 공개 Origin**으로 접근 가능해야 합니다.
+- 정책 페이지는 **로그인 없이** 공개됩니다. `WEB_DASHBOARD_REQUIRE_STRONG_SESSION_SECRET=true`이어도 `/privacy`, `/terms`는 차단되지 않습니다. reverse proxy 뒤에서는 위와 같이 **같은 공개 Origin**으로 접근 가능해야 합니다.
 - (선택) `.env`의 `WEB_DASHBOARD_CONTACT_EMAIL`을 설정하면 `/privacy`, `/terms`에 문의 이메일이 표시됩니다. 비우면 일반 문의 안내만 표시됩니다.
 - 원문 편집용 Markdown: [docs/PRIVACY_POLICY.md](./PRIVACY_POLICY.md), [docs/TERMS_OF_SERVICE.md](./TERMS_OF_SERVICE.md) (실제 HTML은 API 서버 `src/web/legalPages.ts`에서 제공)
 

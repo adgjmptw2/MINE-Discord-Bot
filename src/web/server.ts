@@ -283,6 +283,7 @@ async function handleRequest(
       return;
     }
 
+    // /privacy, /terms: /api 가드(rate limit·SESSION_SECRET_WEAK) 밖 — 공개 HTML
     if (handleLegalPageRequest(req, res, pathname, webConfig)) {
       return;
     }
