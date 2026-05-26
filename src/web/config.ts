@@ -23,6 +23,10 @@ export interface WebDashboardConfig {
   sessionCookieName: string;
   sessionTtlSeconds: number;
   contactEmail: string | null;
+  publicStateEnabled: boolean;
+  cookieSecure: boolean;
+  requireStrongSessionSecret: boolean;
+  rateLimitEnabled: boolean;
 }
 
 let warnedWeakSessionSecret = false;
@@ -62,6 +66,51 @@ export function getWebDashboardStaticDir(): string {
 export function getWebDashboardHost(): string {
   const host = process.env.WEB_DASHBOARD_HOST?.trim();
   return host && host.length > 0 ? host : "127.0.0.1";
+}
+
+function parseEnvBool(raw: string | undefined, fallback: boolean): boolean {
+  if (raw === undefined || raw.trim() === "") {
+    return fallback;
+  }
+  return raw.trim().toLowerCase() === "true";
+}
+
+export function isWebDashboardPublicStateEnabled(): boolean {
+  return parseEnvBool(process.env.WEB_DASHBOARD_PUBLIC_STATE_ENABLED, false);
+}
+
+export function isWebDashboardCookieSecure(): boolean {
+  return parseEnvBool(process.env.WEB_DASHBOARD_COOKIE_SECURE, false);
+}
+
+export function isWebDashboardStrongSessionSecretRequired(): boolean {
+  return parseEnvBool(
+    process.env.WEB_DASHBOARD_REQUIRE_STRONG_SESSION_SECRET,
+    false,
+  );
+}
+
+export function isWebDashboardRateLimitEnabled(): boolean {
+  return parseEnvBool(process.env.WEB_DASHBOARD_RATE_LIMIT_ENABLED, true);
+}
+
+export function isWebDashboardSessionSecretStrong(
+  config: WebDashboardConfig,
+): boolean {
+  const secret = config.sessionSecret.trim();
+  if (secret.length === 0) {
+    return false;
+  }
+  if (secret === "change-me-long-random-string") {
+    return false;
+  }
+  if (secret.startsWith("change-me")) {
+    return false;
+  }
+  if (secret.length < 32) {
+    return false;
+  }
+  return true;
 }
 
 export function getWebDashboardPort(): number {
@@ -104,6 +153,10 @@ export function getWebDashboardConfig(): WebDashboardConfig {
       21600,
     ),
     contactEmail: process.env.WEB_DASHBOARD_CONTACT_EMAIL?.trim() || null,
+    publicStateEnabled: isWebDashboardPublicStateEnabled(),
+    cookieSecure: isWebDashboardCookieSecure(),
+    requireStrongSessionSecret: isWebDashboardStrongSessionSecretRequired(),
+    rateLimitEnabled: isWebDashboardRateLimitEnabled(),
   };
 }
 
@@ -123,10 +176,7 @@ export function warnIfWebDashboardSessionSecretWeak(
   if (warnedWeakSessionSecret) {
     return;
   }
-  const weak =
-    config.sessionSecret === "change-me-long-random-string" ||
-    config.sessionSecret.startsWith("change-me");
-  if (weak) {
+  if (!isWebDashboardSessionSecretStrong(config)) {
     warnedWeakSessionSecret = true;
     log(
       "warn",

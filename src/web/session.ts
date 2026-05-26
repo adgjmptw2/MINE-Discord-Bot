@@ -120,11 +120,16 @@ export function setSessionCookie(res: ServerResponse, session: WebSession): void
     httpOnly: true,
     sameSite: "Lax",
     path: "/",
-    secure: false,
+    secure: config.cookieSecure,
   });
 }
 
 export function clearSessionCookie(res: ServerResponse): void {
   const config = getConfig();
-  clearCookie(res, config.sessionCookieName);
+  clearCookie(res, config.sessionCookieName, {
+    httpOnly: true,
+    sameSite: "Lax",
+    path: "/",
+    secure: config.cookieSecure,
+  });
 }

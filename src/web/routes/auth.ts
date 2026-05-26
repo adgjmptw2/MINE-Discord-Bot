@@ -15,6 +15,7 @@ import {
   isWebDashboardOAuthConfigured,
 } from "@/web/config";
 import { readRequestUrl, sendError, sendJson, sendRedirect } from "@/web/http";
+import { requireStrongSessionSecretIfEnabled } from "@/web/security";
 import {
   clearSessionCookie,
   createSession,
@@ -46,6 +47,9 @@ function sendAuthConfigMissing(res: ServerResponse): void {
 function requireAuthEnabled(res: ServerResponse): boolean {
   if (!isWebDashboardAuthEnabled()) {
     sendAuthDisabled(res);
+    return false;
+  }
+  if (!requireStrongSessionSecretIfEnabled(res)) {
     return false;
   }
   return true;

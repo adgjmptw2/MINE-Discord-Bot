@@ -13,6 +13,13 @@ export interface SoundroomPatchNote {
 /** 최신 항목이 위에 오도록 관리합니다. */
 export const SOUNDROOM_PATCH_NOTES: SoundroomPatchNote[] = [
   {
+    icon: "🔒",
+    timestamp: "5월 25일 09:00",
+    title: "웹 대시보드 보안 하드닝",
+    detail:
+      "비인증 상태 조회 제한, Secure 쿠키 옵션, 세션 시크릿 검사, 요청 제한을 추가",
+  },
+  {
     icon: "📜",
     timestamp: "5월 25일 08:00",
     title: "개인정보처리방침·이용약관 페이지 추가",

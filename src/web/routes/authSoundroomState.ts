@@ -5,18 +5,19 @@ import {
   getAuthenticatedSession,
   GUILD_ID_PATTERN,
   isBotInGuild,
+  isSessionUserCurrentGuildMember,
 } from "@/web/authz";
 import { isWebDashboardAuthEnabled } from "@/web/config";
 import { sendError, sendJson } from "@/web/http";
 import { buildSoundroomGuildStateDto } from "@/web/soundroomDto";
 import type { AuthSoundroomStateResponseDto } from "@/web/types";
 
-export function handleAuthSoundroomGuildState(
+export async function handleAuthSoundroomGuildState(
   req: IncomingMessage,
   res: ServerResponse,
   client: MineClient,
   guildId: string,
-): void {
+): Promise<void> {
   if (!isWebDashboardAuthEnabled()) {
     sendError(
       res,
@@ -54,6 +55,27 @@ export function handleAuthSoundroomGuildState(
       404,
       "GUILD_NOT_FOUND",
       "봇이 해당 서버를 찾을 수 없습니다.",
+    );
+    return;
+  }
+
+  const guild = client.guilds.cache.get(guildId);
+  if (!guild) {
+    sendError(
+      res,
+      404,
+      "GUILD_NOT_FOUND",
+      "봇이 해당 서버를 찾을 수 없습니다.",
+    );
+    return;
+  }
+
+  if (!(await isSessionUserCurrentGuildMember(guild, session.user.id))) {
+    sendError(
+      res,
+      403,
+      "GUILD_ACCESS_DENIED",
+      "이 서버에 접근할 권한이 없습니다.",
     );
     return;
   }

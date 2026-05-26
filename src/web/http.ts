@@ -186,12 +186,16 @@ export function setCookie(
   }
 }
 
-export function clearCookie(res: ServerResponse, name: string): void {
+export function clearCookie(
+  res: ServerResponse,
+  name: string,
+  options: CookieOptions = {},
+): void {
   setCookie(res, name, "", {
     maxAgeSeconds: 0,
-    httpOnly: true,
-    sameSite: "Lax",
-    path: "/",
-    secure: false,
+    httpOnly: options.httpOnly ?? true,
+    sameSite: options.sameSite ?? "Lax",
+    path: options.path ?? "/",
+    secure: options.secure ?? false,
   });
 }

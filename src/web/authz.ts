@@ -1,4 +1,5 @@
 import type { IncomingMessage } from "node:http";
+import type { Guild } from "discord.js";
 import type { MineClient } from "@/types";
 import { readSessionFromRequest, type WebSession } from "@/web/session";
 import type { DiscordOAuthGuildDto } from "@/web/types";
@@ -27,4 +28,16 @@ export function canSessionAccessGuild(
 
 export function isBotInGuild(client: MineClient, guildId: string): boolean {
   return client.guilds.cache.has(guildId);
+}
+
+/** 로그인 시점 session.guilds 외에 현재 서버 멤버 여부를 확인한다. */
+export async function isSessionUserCurrentGuildMember(
+  guild: Guild,
+  userId: string,
+): Promise<boolean> {
+  if (guild.members.cache.has(userId)) {
+    return true;
+  }
+  const member = await guild.members.fetch(userId).catch(() => null);
+  return member !== null;
 }

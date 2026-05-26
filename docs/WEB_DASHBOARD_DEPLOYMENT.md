@@ -151,10 +151,20 @@ OAuth **Redirect URI**와 **Privacy Policy / Terms of Service URL**은 서로 �
 - (선택) `.env`의 `WEB_DASHBOARD_CONTACT_EMAIL`을 설정하면 `/privacy`, `/terms`에 문의 이메일이 표시됩니다. 비우면 일반 문의 안내만 표시됩니다.
 - 원문 편집용 Markdown: [docs/PRIVACY_POLICY.md](./PRIVACY_POLICY.md), [docs/TERMS_OF_SERVICE.md](./TERMS_OF_SERVICE.md) (실제 HTML은 API 서버 `src/web/legalPages.ts`에서 제공)
 
-### 세션 쿠키 (HTTPS)
+### 4.2 웹 보안 env (운영 권장)
 
-- 운영 HTTPS에서는 브라우저가 `Secure` 쿠키를 기대할 수 있습니다. 현재 구현은 배포 환경에 따라 `Secure` 플래그가 꺼져 있을 수 있으므로, **프록시 뒤 HTTPS**에서 로그인이 유지되지 않으면 세션 쿠키 정책을 다음 단계에서 조정할 수 있습니다.
-- `WEB_DASHBOARD_SESSION_SECRET`은 **긴 랜덤 값**으로 반드시 교체하세요.
+| 변수 | 운영 권장 | 로컬 개발 |
+| --- | --- | --- |
+| `WEB_DASHBOARD_PUBLIC_STATE_ENABLED` | `false` | `false` (수동 API 테스트 시만 `true`) |
+| `WEB_DASHBOARD_COOKIE_SECURE` | `true` | `false` |
+| `WEB_DASHBOARD_REQUIRE_STRONG_SESSION_SECRET` | `true` | `false` 가능 |
+| `WEB_DASHBOARD_RATE_LIMIT_ENABLED` | `true` | `true` (문제 시 `false`) |
+
+- **비인증 상태 API**: `GET /api/soundroom/guilds/:guildId/state`는 `WEB_DASHBOARD_PUBLIC_STATE_ENABLED=false`(기본)이면 **404**로 응답합니다. 대시보드는 인증 API `GET /api/auth/guilds/:guildId/soundroom-state`를 사용합니다.
+- **세션 시크릿**: `change-me` 계열·32자 미만은 약한 값입니다. `WEB_DASHBOARD_REQUIRE_STRONG_SESSION_SECRET=true`이면 `/api/auth/*`가 `SESSION_SECRET_WEAK`(503)로 차단됩니다. `/health`, `/dashboard`, `/privacy`, `/terms`는 계속 동작합니다.
+- **Secure 쿠키**: `WEB_DASHBOARD_COOKIE_SECURE=true`이면 `Set-Cookie`에 `Secure`가 붙습니다. **로컬 http**에서는 브라우저가 쿠키를 저장하지 않을 수 있으므로 개발 시 `false`를 유지하세요.
+- **rate limit**: 과도한 요청 시 **429** `RATE_LIMITED`와 `Retry-After` 헤더가 반환됩니다. 키는 **세션 userId**(로그인 후) 또는 **소켓 IP**(로그인 전)이며, `X-Forwarded-For`는 신뢰하지 않습니다.
+- `WEB_DASHBOARD_SESSION_SECRET`은 **32자 이상 랜덤 문자열**로 교체하세요 (예: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`).
 
 ### Nginx 예시 (문서용, 레포 미포함)
 
@@ -196,7 +206,11 @@ soundroom.example.com {
 - [ ] `DISCORD_OAUTH_REDIRECT_URI` = `https://<domain>/api/auth/discord/callback`
 - [ ] Discord Redirects에 위 URI 등록
 - [ ] Discord Portal Privacy Policy URL · Terms of Service URL 등록 (§4.1)
-- [ ] `WEB_DASHBOARD_SESSION_SECRET` 기본값 미사용
+- [ ] `WEB_DASHBOARD_SESSION_SECRET` 기본값·32자 미만 미사용
+- [ ] `WEB_DASHBOARD_PUBLIC_STATE_ENABLED=false`
+- [ ] `WEB_DASHBOARD_COOKIE_SECURE=true`
+- [ ] `WEB_DASHBOARD_REQUIRE_STRONG_SESSION_SECRET=true`
+- [ ] `WEB_DASHBOARD_RATE_LIMIT_ENABLED=true`
 - [ ] `DISCORD_OAUTH_CLIENT_SECRET` 커밋·로그·문서 미포함
 - [ ] 방화벽에서 3077 포트 외부 직접 노출 차단 (프록시만 공개)
 
@@ -219,8 +233,8 @@ soundroom.example.com {
 - **path traversal**: `/dashboard/../.env` 등은 차단됩니다. 그래도 `.env`·DB 파일은 웹 루트 밖에 두세요.
 - **정적 서빙 범위**: `WEB_DASHBOARD_STATIC_DIR` 안의 빌드 결과만 노출됩니다.
 - **CORS**: 개발 모드(Origin `:3000`)에서만 cross-origin API가 필요합니다. 정적 서빙·프록시 운영은 same-origin이면 CORS 없이 동작합니다.
-- **8초 polling**: 대시보드는 Soundroom 상태를 주기적으로 갱신합니다. WebSocket/SSE는 사용하지 않습니다.
-- **외부 공개 전**: HTTPS, 방화벽, 세션 시크릿, OAuth Redirect 정합성을 먼저 확인하세요.
+- **8초 polling**: 대시보드는 Soundroom 상태를 주기적으로 갱신합니다. `state-read` bucket(10초 30회)으로 일반 폴링은 막히지 않도록 여유를 둡니다.
+- **외부 공개 전**: HTTPS, Secure 쿠키, 강한 세션 시크릿, 비인증 state API 비활성, OAuth Redirect 정합성을 먼저 확인하세요.
 
 ---
 

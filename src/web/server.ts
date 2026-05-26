@@ -35,6 +35,12 @@ import {
 import { handleHealth, markWebDashboardServerStarted } from "@/web/routes/health";
 import { handleSoundroomGuildState } from "@/web/routes/soundroomState";
 import { handleLegalPageRequest } from "@/web/legalPages";
+import { applyWebApiRateLimit } from "@/web/rateLimit";
+import {
+  isAuthApiPathRequiringStrongSecret,
+  requireStrongSessionSecretIfEnabled,
+} from "@/web/security";
+import { readSessionFromRequest } from "@/web/session";
 import {
   handleStaticDashboardRequest,
   warnIfStaticDashboardRootMissing,
@@ -65,6 +71,32 @@ const AUTH_SOUNDROOM_QUEUE_REMOVE_PATH =
 const AUTH_SOUNDROOM_QUEUE_SWAP_PATH =
   /^\/api\/auth\/guilds\/(\d{17,20})\/soundroom\/queue\/swap\/?$/;
 
+function applyWebApiGuards(
+  req: IncomingMessage,
+  res: ServerResponse,
+  pathname: string,
+  method: string,
+  webConfig: ReturnType<typeof getWebDashboardConfig>,
+): boolean {
+  if (isAuthApiPathRequiringStrongSecret(pathname)) {
+    if (!requireStrongSessionSecretIfEnabled(res)) {
+      return false;
+    }
+  }
+
+  const session = pathname.startsWith("/api/auth/")
+    ? readSessionFromRequest(req)
+    : null;
+  return applyWebApiRateLimit(
+    req,
+    res,
+    pathname,
+    method,
+    session,
+    webConfig.rateLimitEnabled,
+  );
+}
+
 async function handleRequest(
   client: MineClient,
   req: IncomingMessage,
@@ -82,6 +114,12 @@ async function handleRequest(
 
   try {
     const { pathname } = readRequestUrl(req);
+
+    if (pathname.startsWith("/api/")) {
+      if (!applyWebApiGuards(req, res, pathname, method, webConfig)) {
+        return;
+      }
+    }
 
     if (pathname === "/health" && method === "GET") {
       handleHealth(req, res, client);
@@ -227,7 +265,7 @@ async function handleRequest(
         sendMethodNotAllowed(res);
         return;
       }
-      handleAuthSoundroomGuildState(
+      await handleAuthSoundroomGuildState(
         req,
         res,
         client,

@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { MineClient } from "@/types";
 import { GUILD_ID_PATTERN } from "@/web/authz";
+import { isWebDashboardPublicStateEnabled } from "@/web/config";
 import { sendError, sendJson } from "@/web/http";
 import { buildSoundroomGuildStateDto } from "@/web/soundroomDto";
 
@@ -10,6 +11,12 @@ export function handleSoundroomGuildState(
   client: MineClient,
   guildId: string,
 ): void {
+  // 운영 기본: 비인증 상태 조회 비활성(404로 경로를 숨김)
+  if (!isWebDashboardPublicStateEnabled()) {
+    sendError(res, 404, "NOT_FOUND", "요청한 경로를 찾을 수 없습니다.");
+    return;
+  }
+
   if (!GUILD_ID_PATTERN.test(guildId)) {
     sendError(res, 400, "INVALID_GUILD_ID", "유효하지 않은 서버 ID입니다.");
     return;
