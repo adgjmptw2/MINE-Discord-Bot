@@ -4,6 +4,8 @@
 
 이 문서는 **개발**, **로컬 정적 서빙**, **HTTPS + reverse proxy 운영** 준비를 정리합니다. 실제 Nginx/Caddy 설정 파일은 레포에 포함하지 않으며, 아래는 **예시**입니다.
 
+**운영 공개 직전**에는 [웹 대시보드 운영 체크리스트](./WEB_DASHBOARD_OPERATIONS_CHECKLIST.md)를 따라 preflight·CSRF·Portal·롤백까지 한 번에 점검하세요.
+
 민감 정보(`TOKEN`, OAuth Client Secret, Lavalink 비밀번호, 실제 서버 IP/도메인, `.env` 전체)는 **문서·커밋에 넣지 마세요.**
 
 ---
@@ -273,6 +275,7 @@ npm run dashboard:preflight
 
 ## 8. 관련 문서
 
+- [WEB_DASHBOARD_OPERATIONS_CHECKLIST.md](./WEB_DASHBOARD_OPERATIONS_CHECKLIST.md) — **운영 전 최종 체크리스트·CSRF 수동 테스트·롤백**
 - [.env.example](../.env.example) — 변수 목록·주석
 - [deployment.md](./deployment.md) — 봇·VM 전체 배포
 - [beta-ops-checklist.md](./beta-ops-checklist.md) — 베타 운영 점검

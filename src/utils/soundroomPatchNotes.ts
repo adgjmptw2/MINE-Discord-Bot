@@ -13,6 +13,13 @@ export interface SoundroomPatchNote {
 /** 최신 항목이 위에 오도록 관리합니다. */
 export const SOUNDROOM_PATCH_NOTES: SoundroomPatchNote[] = [
   {
+    icon: "📋",
+    timestamp: "5월 26일 13:00",
+    title: "웹 대시보드 운영 체크리스트 문서 추가",
+    detail:
+      "운영 전 preflight·CSRF·HTTPS·Discord Portal·롤백 절차를 한 문서로 정리",
+  },
+  {
     icon: "🛡️",
     timestamp: "5월 26일 12:00",
     title: "웹 대시보드 CSRF 보호 추가",

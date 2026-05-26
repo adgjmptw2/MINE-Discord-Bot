@@ -220,7 +220,9 @@ npm run dashboard:preflight # 운영 전 .env·빌드·보안 설정 점검
 npm run dashboard:dev       # 개발 UI만
 ```
 
-운영 공개 전 권장 순서: `npm run check` → `npm run build` → `npm run dashboard:build` → `npm run dashboard:preflight` (자세한 항목은 [웹 대시보드 배포 가이드](docs/WEB_DASHBOARD_DEPLOYMENT.md)).
+운영 공개 전 권장 순서: `npm run check` → `npm run build` → `npm run dashboard:build` → `npm run dashboard:preflight`
+
+최종 점검·CSRF 수동 테스트·롤백: **[웹 대시보드 운영 체크리스트](docs/WEB_DASHBOARD_OPERATIONS_CHECKLIST.md)** · 상세 설정: [웹 대시보드 배포 가이드](docs/WEB_DASHBOARD_DEPLOYMENT.md)
 
 ## 준비
 
