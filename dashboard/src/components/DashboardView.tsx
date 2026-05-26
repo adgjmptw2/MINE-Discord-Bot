@@ -432,24 +432,26 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
         </aside>
 
         <main className="state-panel">
+          <div className="state-panel-inner">
           <div className="state-toolbar">
-            <div className="state-toolbar-main">
-              <h2>노래채널 상태</h2>
+            <h2 className="state-panel-heading">노래채널</h2>
+            <div className="state-toolbar-actions">
               <RefreshStatus
                 loading={panelBusy}
                 lastFetchedAt={lastFetchedAt}
                 pollPaused={pollPaused}
                 stateUpdatedAt={state?.updatedAt ?? null}
+                compact
               />
+              <button
+                type="button"
+                className="btn btn-secondary btn-refresh"
+                onClick={handleRefresh}
+                disabled={!selectedId || panelBusy}
+              >
+                {panelBusy ? "갱신 중…" : "새로고침"}
+              </button>
             </div>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={handleRefresh}
-              disabled={!selectedId || panelBusy}
-            >
-              {panelBusy ? "갱신 중…" : "새로고침"}
-            </button>
           </div>
           <SoundroomStateCard
             guildId={selectedId}
@@ -470,6 +472,7 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
             onUserActionEnd={endUserAction}
             currentUserId={user.id}
           />
+          </div>
         </main>
       </div>
     </div>

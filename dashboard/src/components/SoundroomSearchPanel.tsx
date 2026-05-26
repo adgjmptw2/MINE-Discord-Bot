@@ -15,6 +15,8 @@ import type {
 
 type SoundroomSearchPanelProps = {
   guildId: string;
+  /** CollapsibleSection 안에 넣을 때 중복 제목·구분선 제거 */
+  embedded?: boolean;
   disabled?: boolean;
   disabledReason?: string | null;
   onStateChange: (state: SoundroomGuildStateDto) => void;
@@ -52,6 +54,7 @@ function buildAddRequestFromResult(
 
 export function SoundroomSearchPanel({
   guildId,
+  embedded = false,
   disabled = false,
   disabledReason = null,
   onStateChange,
@@ -186,11 +189,18 @@ export function SoundroomSearchPanel({
     void handleSearch();
   };
 
+  const rootClass = embedded
+    ? "search-section search-section--embedded"
+    : "search-section";
+
   return (
-    <section className="search-section" aria-labelledby="search-heading">
-      <h3 id="search-heading">노래 추가</h3>
+    <section
+      className={rootClass}
+      aria-labelledby={embedded ? undefined : "search-heading"}
+    >
+      {embedded ? null : <h3 id="search-heading">노래 추가</h3>}
       <p className="search-hint muted">
-        검색어, YouTube URL, Spotify 단일 곡 URL을 입력할 수 있습니다.
+        제목 검색, YouTube·Spotify 단일 곡 URL. 재생목록 URL은 아직 미지원.
       </p>
 
       {disabledReason && disabled ? (

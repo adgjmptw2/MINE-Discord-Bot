@@ -3,6 +3,7 @@ type RefreshStatusProps = {
   lastFetchedAt: Date | null;
   pollPaused?: boolean;
   stateUpdatedAt?: string | null;
+  compact?: boolean;
 };
 
 function formatLastFetched(at: Date | null): string {
@@ -21,6 +22,7 @@ export function RefreshStatus({
   lastFetchedAt,
   pollPaused = false,
   stateUpdatedAt = null,
+  compact = false,
 }: RefreshStatusProps) {
   let label = formatLastFetched(lastFetchedAt);
   if (loading) {
@@ -30,11 +32,14 @@ export function RefreshStatus({
   }
 
   return (
-    <div className="refresh-status" role="status">
+    <div
+      className={`refresh-status${compact ? " refresh-status--compact" : ""}`}
+      role="status"
+    >
       <span className="refresh-status-label">{label}</span>
-      {stateUpdatedAt && !loading ? (
+      {!compact && stateUpdatedAt && !loading ? (
         <span className="refresh-status-meta muted">
-          서버 상태 {new Date(stateUpdatedAt).toLocaleTimeString("ko-KR")}
+          서버 {new Date(stateUpdatedAt).toLocaleTimeString("ko-KR")}
         </span>
       ) : null}
     </div>

@@ -199,7 +199,7 @@ export function QueueList({
             {disabledReason}
           </p>
         ) : null}
-        <p className="queue-empty">대기열이 비어 있습니다.</p>
+        <p className="queue-empty">대기열에 곡이 없습니다. 노래 추가에서 신청해 보세요.</p>
       </div>
     );
   }
@@ -291,16 +291,18 @@ export function QueueList({
               key={itemKey(item)}
               className={`queue-item${itemPending ? " queue-item--pending" : ""}`}
             >
-              <span className="queue-index">{item.index + 1}</span>
-              <span className="queue-body">
-                <span className="queue-title">{item.title}</span>
-                <span className="queue-sub">
-                  {item.requesterName ? item.requesterName : "신청자 없음"}
-                  {" · "}
-                  {formatDurationMs(item.durationMs)}
+              <div className="queue-item-main">
+                <span className="queue-index">{item.index + 1}</span>
+                <span className="queue-body">
+                  <span className="queue-title">{item.title}</span>
+                  <span className="queue-sub">
+                    {item.requesterName ? item.requesterName : "신청자 없음"}
+                    {" · "}
+                    {formatDurationMs(item.durationMs)}
+                  </span>
                 </span>
-              </span>
-              <span className="queue-actions">
+              </div>
+              <div className="queue-item-actions">
                 {showMoveControls ? (
                   <span className="queue-move-group">
                     <button
@@ -345,7 +347,7 @@ export function QueueList({
                     {removingIndex === item.index ? "삭제 중…" : "삭제"}
                   </button>
                 ) : null}
-              </span>
+              </div>
             </li>
           );
         })}

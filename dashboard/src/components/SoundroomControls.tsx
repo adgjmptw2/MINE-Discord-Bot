@@ -172,75 +172,82 @@ export function SoundroomControls({
     <section className="controls-section" aria-labelledby="controls-heading">
       <h3 id="controls-heading">조작</h3>
 
-      <ControlStatusNotice
-        status={controlStatus}
-        loading={controlStatusLoading}
-        error={controlStatusError}
-      />
+      <div className="controls-status-block">
+        <ControlStatusNotice
+          status={controlStatus}
+          loading={controlStatusLoading}
+          error={controlStatusError}
+        />
+        <p
+          className={`autoplay-badge${state.autoplay ? " autoplay-badge--on" : " autoplay-badge--off"}`}
+        >
+          자동재생 {state.autoplay ? "ON" : "OFF"}
+        </p>
+      </div>
 
-      <p
-        className={`autoplay-badge${state.autoplay ? " autoplay-badge--on" : " autoplay-badge--off"}`}
-      >
-        자동재생 {state.autoplay ? "ON" : "OFF"}
-      </p>
-
-      {notice ? (
-        <p className="controls-notice" role="status">
-          {notice}
-        </p>
-      ) : null}
-      {controlError ? (
-        <p className="controls-error" role="alert">
-          {controlError}
-        </p>
-      ) : null}
-      {busy ? (
-        <p className="controls-busy muted" role="status">
-          조작 요청 중…
-        </p>
-      ) : null}
+      <div className="controls-feedback" aria-live="polite">
+        {notice ? (
+          <p className="controls-notice" role="status">
+            {notice}
+          </p>
+        ) : null}
+        {controlError ? (
+          <p className="controls-error" role="alert">
+            {controlError}
+          </p>
+        ) : null}
+        {busy ? (
+          <p className="controls-busy muted" role="status">
+            조작 요청 중…
+          </p>
+        ) : null}
+      </div>
 
       <div className="controls-buttons">
-        <button
-          type="button"
-          className={`btn btn-autoplay${state.autoplay ? " btn-autoplay--on" : ""}`}
-          disabled={disabled}
-          onClick={() => {
-            void runControl(
-              "toggleAutoplay",
-              { action: "toggleAutoplay" },
-              state.autoplay
-                ? "자동재생을 껐습니다."
-                : "자동재생을 켰습니다.",
-            );
-          }}
-        >
-          {state.autoplay ? "자동재생 끄기" : "자동재생 켜기"}
-        </button>
-        <button
-          type="button"
-          className="btn btn-secondary"
-          disabled={disabled || !canPauseSkip}
-          onClick={handleTogglePause}
-        >
-          {state.paused ? "재생" : "일시정지"}
-        </button>
-        <button
-          type="button"
-          className="btn btn-secondary"
-          disabled={disabled || !canPauseSkip}
-          onClick={handleSkip}
-        >
-          스킵
-        </button>
-        <button
-          type="button"
-          className="btn btn-danger"
-          disabled={disabled || !canStop}
-          onClick={handleStop}
-        >
-          정지·대기열 비우기
-        </button>
+        <div className="controls-button-row controls-button-row--primary">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled={disabled || !canPauseSkip}
+            onClick={handleTogglePause}
+          >
+            {state.paused ? "재생" : "일시정지"}
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled={disabled || !canPauseSkip}
+            onClick={handleSkip}
+          >
+            스킵
+          </button>
+          <button
+            type="button"
+            className={`btn btn-autoplay${state.autoplay ? " btn-autoplay--on" : ""}`}
+            disabled={disabled}
+            onClick={() => {
+              void runControl(
+                "toggleAutoplay",
+                { action: "toggleAutoplay" },
+                state.autoplay
+                  ? "자동재생을 껐습니다."
+                  : "자동재생을 켰습니다.",
+              );
+            }}
+          >
+            {state.autoplay ? "자동재생 끄기" : "자동재생 켜기"}
+          </button>
+        </div>
+        <div className="controls-button-row controls-button-row--danger">
+          <button
+            type="button"
+            className="btn btn-danger"
+            disabled={disabled || !canStop}
+            onClick={handleStop}
+          >
+            정지·대기열 비우기
+          </button>
+        </div>
       </div>
 
       <div className="volume-row">
