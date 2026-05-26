@@ -18,6 +18,7 @@ import { ErrorState } from "./ErrorState";
 import { GuildList } from "./GuildList";
 import { LoadingState } from "./LoadingState";
 import { RefreshStatus } from "./RefreshStatus";
+import { LegalLinks } from "./LegalLinks";
 import { SoundroomStateCard } from "./SoundroomStateCard";
 
 const STORAGE_KEY = "mine_soundroom_selected_guild";
@@ -475,6 +476,7 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
           </div>
         </main>
       </div>
+      <LegalLinks />
     </div>
   );
 }

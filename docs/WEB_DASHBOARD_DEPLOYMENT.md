@@ -113,6 +113,7 @@ npm run start:bot
 - `GET /dashboard/assets/*` → 빌드된 JS/CSS (장기 캐시)
 - 그 외 `/dashboard/*` 경로 → SPA fallback (`index.html`)
 - `/api/*`, `/health` → 기존 JSON API (정적 라우트보다 우선)
+- `GET /privacy`, `/terms` (및 trailing slash) → 공개 HTML 정책 페이지 (로그인 불필요, API·정적보다 앞서 처리)
 - `dashboard/dist`가 없으면 서버는 종료하지 않고 `/dashboard`는 404, warn 로그만 출력
 
 코드·설정 변경 후에는 **봇 프로세스 재시작**이 필요합니다. `dashboard:build`만 다시 했다면 재시작 후 브라우저 새로고침(강력 새로고침)으로 asset을 받으면 됩니다.
@@ -135,6 +136,20 @@ npm run start:bot
    Discord Redirects에 **동일 문자열**을 등록합니다.
 5. OAuth 성공 후 리다이렉트: `{WEB_DASHBOARD_ALLOWED_ORIGIN}/dashboard`  
    open redirect 방지를 위해 임의 `?next=` 파라미터를 받지 않습니다.
+
+### 4.1 Discord Developer Portal — 정책 URL
+
+OAuth **Redirect URI**와 **Privacy Policy / Terms of Service URL**은 서로 다른 항목입니다.
+
+| 항목 | 용도 | 로컬 예 | 운영 예 (placeholder) |
+| --- | --- | --- | --- |
+| Redirect URI | OAuth 콜백 | `http://127.0.0.1:3077/api/auth/discord/callback` | `https://soundroom.example.com/api/auth/discord/callback` |
+| Privacy Policy URL | 개인정보처리방침 | `http://127.0.0.1:3077/privacy` | `https://soundroom.example.com/privacy` |
+| Terms of Service URL | 이용약관 | `http://127.0.0.1:3077/terms` | `https://soundroom.example.com/terms` |
+
+- 정책 페이지는 **로그인 없이** 공개됩니다. reverse proxy 뒤에서는 위와 같이 **같은 공개 Origin**으로 접근 가능해야 합니다.
+- (선택) `.env`의 `WEB_DASHBOARD_CONTACT_EMAIL`을 설정하면 `/privacy`, `/terms`에 문의 이메일이 표시됩니다. 비우면 일반 문의 안내만 표시됩니다.
+- 원문 편집용 Markdown: [docs/PRIVACY_POLICY.md](./PRIVACY_POLICY.md), [docs/TERMS_OF_SERVICE.md](./TERMS_OF_SERVICE.md) (실제 HTML은 API 서버 `src/web/legalPages.ts`에서 제공)
 
 ### 세션 쿠키 (HTTPS)
 
@@ -161,7 +176,7 @@ server {
 }
 ```
 
-- 프록시는 **루트(`/`)** 를 API 서버로 넘기면 `/dashboard`, `/api`, `/health`가 함께 동작합니다.
+- 프록시는 **루트(`/`)** 를 API 서버로 넘기면 `/dashboard`, `/privacy`, `/terms`, `/api`, `/health`가 함께 동작합니다.
 - WebSocket은 이 대시보드에서 사용하지 않습니다.
 
 ### Caddy 예시 (문서용)
@@ -180,6 +195,7 @@ soundroom.example.com {
 - [ ] `WEB_DASHBOARD_ALLOWED_ORIGIN` = 공개 HTTPS Origin
 - [ ] `DISCORD_OAUTH_REDIRECT_URI` = `https://<domain>/api/auth/discord/callback`
 - [ ] Discord Redirects에 위 URI 등록
+- [ ] Discord Portal Privacy Policy URL · Terms of Service URL 등록 (§4.1)
 - [ ] `WEB_DASHBOARD_SESSION_SECRET` 기본값 미사용
 - [ ] `DISCORD_OAUTH_CLIENT_SECRET` 커밋·로그·문서 미포함
 - [ ] 방화벽에서 3077 포트 외부 직접 노출 차단 (프록시만 공개)

@@ -163,9 +163,11 @@ img {
 .login-view {
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
+  gap: 1rem;
 }
 
 .login-card {
@@ -197,6 +199,36 @@ img {
 
 .login-hints li + li {
   margin-top: 0.35rem;
+}
+
+.legal-footer {
+  margin-top: auto;
+  padding: 0.75rem 1.5rem 1.25rem;
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+}
+
+.login-view .legal-footer {
+  margin-top: 0;
+  border-top: none;
+  padding: 0;
+}
+
+.legal-footer a {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.legal-footer a:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+.legal-footer-sep {
+  margin: 0 0.5rem;
+  opacity: 0.6;
 }
 
 .dashboard {

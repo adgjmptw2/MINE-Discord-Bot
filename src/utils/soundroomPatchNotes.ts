@@ -13,6 +13,13 @@ export interface SoundroomPatchNote {
 /** 최신 항목이 위에 오도록 관리합니다. */
 export const SOUNDROOM_PATCH_NOTES: SoundroomPatchNote[] = [
   {
+    icon: "📜",
+    timestamp: "5월 25일 08:00",
+    title: "개인정보처리방침·이용약관 페이지 추가",
+    detail:
+      "웹 대시보드 공개 운영에 필요한 정책 페이지(/privacy, /terms)와 하단 링크를 추가",
+  },
+  {
     icon: "📋",
     timestamp: "5월 26일 07:00",
     title: "웹 대시보드 운영 배포 가이드",

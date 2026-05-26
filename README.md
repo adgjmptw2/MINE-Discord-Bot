@@ -209,6 +209,8 @@ mock / yahoo / twelvedata 등으로 교체할 수 있습니다.
 | 개발 | `http://localhost:3000/dashboard` | `npm run dashboard:dev` + API `127.0.0.1:3077` |
 | 정적 서빙 | `http://127.0.0.1:3077/dashboard` | `npm run build:all` 후 `WEB_DASHBOARD_STATIC_ENABLED=true` |
 
+로그인·대시보드 하단에서 **개인정보처리방침**(`/privacy`)·**이용약관**(`/terms`) 링크를 제공합니다. Discord Developer Portal 등록 URL은 배포 가이드를 참고하세요.
+
 운영(HTTPS·reverse proxy)·OAuth Redirect·환경 변수는 **[웹 대시보드 배포 가이드](docs/WEB_DASHBOARD_DEPLOYMENT.md)** 를 참고하세요.
 
 ```bash

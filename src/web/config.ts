@@ -22,6 +22,7 @@ export interface WebDashboardConfig {
   sessionSecret: string;
   sessionCookieName: string;
   sessionTtlSeconds: number;
+  contactEmail: string | null;
 }
 
 let warnedWeakSessionSecret = false;
@@ -102,6 +103,7 @@ export function getWebDashboardConfig(): WebDashboardConfig {
       process.env.WEB_DASHBOARD_SESSION_TTL_SECONDS,
       21600,
     ),
+    contactEmail: process.env.WEB_DASHBOARD_CONTACT_EMAIL?.trim() || null,
   };
 }
 

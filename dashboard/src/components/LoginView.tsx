@@ -1,4 +1,5 @@
 import { getDiscordLoginUrl } from "../api";
+import { LegalLinks } from "./LegalLinks";
 
 export function LoginView() {
   const goLogin = () => {
@@ -26,6 +27,7 @@ export function LoginView() {
           <li>조작은 봇과 같은 음성 채널에 있을 때만 가능합니다.</li>
         </ul>
       </div>
+      <LegalLinks />
     </div>
   );
 }

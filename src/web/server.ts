@@ -34,6 +34,7 @@ import {
 } from "@/web/routes/soundroomSearch";
 import { handleHealth, markWebDashboardServerStarted } from "@/web/routes/health";
 import { handleSoundroomGuildState } from "@/web/routes/soundroomState";
+import { handleLegalPageRequest } from "@/web/legalPages";
 import {
   handleStaticDashboardRequest,
   warnIfStaticDashboardRootMissing,
@@ -244,6 +245,10 @@ async function handleRequest(
       return;
     }
 
+    if (handleLegalPageRequest(req, res, pathname, webConfig)) {
+      return;
+    }
+
     if (await handleStaticDashboardRequest(req, res, pathname, webConfig)) {
       return;
     }
@@ -302,6 +307,7 @@ export async function startWebDashboardServer(
     server.listen(port, host, () => {
       markWebDashboardServerStarted();
       log("success", "web", `Web dashboard API listening on ${host}:${port}`);
+      log("success", "web", "Legal pages at /privacy and /terms");
       if (webConfig.staticEnabled) {
         log("success", "web", "Dashboard UI available at /dashboard");
       }
