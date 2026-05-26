@@ -214,10 +214,13 @@ mock / yahoo / twelvedata 등으로 교체할 수 있습니다.
 운영(HTTPS·reverse proxy)·OAuth Redirect·환경 변수는 **[웹 대시보드 배포 가이드](docs/WEB_DASHBOARD_DEPLOYMENT.md)** 를 참고하세요.
 
 ```bash
-npm run check:all      # typecheck + 대시보드 빌드 검증
-npm run build:all      # 봇 dist + dashboard/dist
-npm run dashboard:dev  # 개발 UI만
+npm run check:all           # typecheck + 대시보드 빌드 검증
+npm run build:all           # 봇 dist + dashboard/dist
+npm run dashboard:preflight # 운영 전 .env·빌드·보안 설정 점검
+npm run dashboard:dev       # 개발 UI만
 ```
+
+운영 공개 전 권장 순서: `npm run check` → `npm run build` → `npm run dashboard:build` → `npm run dashboard:preflight` (자세한 항목은 [웹 대시보드 배포 가이드](docs/WEB_DASHBOARD_DEPLOYMENT.md)).
 
 ## 준비
 

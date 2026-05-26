@@ -29,6 +29,8 @@
     "db:studio": "drizzle-kit studio",
     "dashboard:dev": "vite --config dashboard/vite.config.ts --host 127.0.0.1 --port 3000",
     "dashboard:build": "vite build --config dashboard/vite.config.ts",
+    "dashboard:preflight": "node scripts/web-dashboard-preflight.mjs",
+    "preflight:web": "npm run dashboard:preflight",
     "dashboard:preview": "vite preview --config dashboard/vite.config.ts --host 127.0.0.1 --port 3000"
   },
   "dependencies": {

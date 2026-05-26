@@ -13,6 +13,13 @@ export interface SoundroomPatchNote {
 /** 최신 항목이 위에 오도록 관리합니다. */
 export const SOUNDROOM_PATCH_NOTES: SoundroomPatchNote[] = [
   {
+    icon: "✅",
+    timestamp: "5월 26일 11:00",
+    title: "운영 전 대시보드 설정 점검 추가",
+    detail:
+      "웹 대시보드 운영 전 env, 정적 빌드, 보안 설정을 확인하는 preflight 스크립트 추가",
+  },
+  {
     icon: "📜",
     timestamp: "5월 26일 10:00",
     title: "개인정보처리방침·이용약관 페이지 추가",

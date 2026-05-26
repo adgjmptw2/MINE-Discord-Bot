@@ -216,19 +216,43 @@ soundroom.example.com {
 
 ---
 
-## 5. npm scripts 참고
+## 5. 운영 전 preflight 점검
+
+외부 공개 전에 로컬에서 설정 실수를 줄이기 위해 preflight 스크립트를 실행합니다. **`.env`를 자동 수정하지 않으며**, Discord API·HTTP 요청도 하지 않습니다. **secret 값은 출력하지 않습니다.**
+
+```bash
+npm run dashboard:preflight
+# 별칭: npm run preflight:web
+```
+
+| 결과 | 의미 |
+| --- | --- |
+| **FAIL** | 운영 전에 반드시 수정 (exit code 1) |
+| **WARN** | 배포 정책에 따라 확인 (exit code 0) |
+| **OK** | 통과 |
+| **INFO** | Privacy/Terms URL·Discord Portal 등록 안내 (판정 없음) |
+
+**주요 검사:** `WEB_DASHBOARD_*` 활성화·보안 env, `dashboard/dist`·`index.html`, OAuth Client ID/Secret·Redirect URI와 `ALLOWED_ORIGIN` 일치 여부, 세션 시크릿 강도(32자 이상·`change-me*` 금지), `WEB_DASHBOARD_CONTACT_EMAIL` 권장.
+
+권장 순서: `npm run check` → `npm run build` → `npm run dashboard:build` → `npm run dashboard:preflight`
+
+---
+
+## 6. npm scripts 참고
 
 | script | 설명 |
 | --- | --- |
 | `npm run dashboard:dev` | Vite 개발 서버 (`:3000/dashboard`) |
 | `npm run dashboard:build` | `dashboard/dist` 프로덕션 빌드 |
+| `npm run dashboard:preflight` | 운영 전 `.env`·정적 빌드·보안 설정 점검 |
+| `npm run preflight:web` | `dashboard:preflight` 별칭 |
 | `npm run build:dashboard` | `dashboard:build` 별칭 |
 | `npm run build:all` | 봇 `dist` + 대시보드 `dist` |
 | `npm run check:all` | typecheck + 대시보드 빌드 검증 |
 
 ---
 
-## 6. 보안·운영 주의
+## 7. 보안·운영 주의
 
 - **path traversal**: `/dashboard/../.env` 등은 차단됩니다. 그래도 `.env`·DB 파일은 웹 루트 밖에 두세요.
 - **정적 서빙 범위**: `WEB_DASHBOARD_STATIC_DIR` 안의 빌드 결과만 노출됩니다.
@@ -238,7 +262,7 @@ soundroom.example.com {
 
 ---
 
-## 7. 관련 문서
+## 8. 관련 문서
 
 - [.env.example](../.env.example) — 변수 목록·주석
 - [deployment.md](./deployment.md) — 봇·VM 전체 배포
