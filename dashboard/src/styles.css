@@ -507,6 +507,10 @@ img {
   background: rgba(255, 255, 255, 0.04);
 }
 
+.dash-section-toggle--open .dash-section-title {
+  color: var(--text);
+}
+
 .dash-section-toggle-text {
   flex: 1;
   min-width: 0;

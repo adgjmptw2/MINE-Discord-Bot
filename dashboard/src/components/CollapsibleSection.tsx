@@ -1,9 +1,11 @@
-import { useId, useState, type ReactNode } from "react";
+import { useId, type ReactNode } from "react";
+import { useLocalStorageBoolean } from "../hooks/useLocalStorageBoolean";
 
 type CollapsibleSectionProps = {
   title: string;
   subtitle?: string | null;
   defaultOpen?: boolean;
+  storageKey?: string;
   rightAddon?: ReactNode;
   children: ReactNode;
 };
@@ -12,17 +14,18 @@ export function CollapsibleSection({
   title,
   subtitle = null,
   defaultOpen = true,
+  storageKey,
   rightAddon = null,
   children,
 }: CollapsibleSectionProps) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [open, setOpen] = useLocalStorageBoolean(storageKey, defaultOpen);
   const panelId = useId();
 
   return (
     <section className="dash-section">
       <button
         type="button"
-        className="dash-section-toggle"
+        className={`dash-section-toggle${open ? " dash-section-toggle--open" : ""}`}
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((v) => !v)}

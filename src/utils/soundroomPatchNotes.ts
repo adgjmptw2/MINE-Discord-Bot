@@ -13,6 +13,13 @@ export interface SoundroomPatchNote {
 /** 최신 항목이 위에 오도록 관리합니다. */
 export const SOUNDROOM_PATCH_NOTES: SoundroomPatchNote[] = [
   {
+    icon: "💾",
+    timestamp: "5월 26일 06:00",
+    title: "대시보드 섹션 접기 상태 저장",
+    detail:
+      "노래 추가와 대기열 섹션의 접기·펼치기 상태가 새로고침 후에도 유지되도록 개선",
+  },
+  {
     icon: "📱",
     timestamp: "5월 26일 05:30",
     title: "대시보드 모바일 UX 정리",

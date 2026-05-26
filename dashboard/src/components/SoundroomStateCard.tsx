@@ -6,6 +6,9 @@ import type {
   SoundroomGuildStateDto,
 } from "../types";
 import { CollapsibleSection } from "./CollapsibleSection";
+
+const SECTION_ADD_OPEN_KEY = "mine-dashboard:soundroom:section:add-song-open";
+const SECTION_QUEUE_OPEN_KEY = "mine-dashboard:soundroom:section:queue-open";
 import { QueueList } from "./QueueList";
 import { SoundroomControls } from "./SoundroomControls";
 import { SoundroomSearchPanel } from "./SoundroomSearchPanel";
@@ -211,6 +214,7 @@ export function SoundroomStateCard({
           title="노래 추가"
           subtitle="검색 · URL · 바로 추가"
           defaultOpen
+          storageKey={SECTION_ADD_OPEN_KEY}
         >
           <SoundroomSearchPanel
             guildId={guildId}
@@ -227,10 +231,10 @@ export function SoundroomStateCard({
       ) : null}
 
       <CollapsibleSection
-        key={`queue-${guildId ?? "none"}-${queueCount}`}
         title="대기열"
         subtitle={queueSubtitle}
         defaultOpen={queueCount > 0}
+        storageKey={SECTION_QUEUE_OPEN_KEY}
       >
         <QueueList
           queue={state.queue}
