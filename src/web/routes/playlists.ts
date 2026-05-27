@@ -15,6 +15,7 @@ import {
   getWebPlaylistById,
   getWebPlaylistTrackById,
   getWebPlaylistTracks,
+  listAdminPublicWebPlaylists,
   listMyWebPlaylists,
   listPublicWebPlaylists,
   MAX_WEB_PLAYLIST_TRACKS,
@@ -25,10 +26,10 @@ import {
   updateWebPlaylist,
 } from "@/web/playlistDb";
 import {
-  canAdminWebPlaylist,
   canManageWebPlaylist,
   isPlaylistOwner,
   isWebDashboardBotOwner,
+  requirePlaylistAdminAccess,
 } from "@/web/playlistAuth";
 import {
   addWebPlaylistTracksToSoundroomQueue,
@@ -51,6 +52,8 @@ import {
 import { sendWebRemoteNotice } from "@/web/soundroomChannelNotice";
 import { buildWebRemoteSavedPlaylistAddNotice } from "@/web/soundroomWebRemoteNotices";
 import type {
+  WebPlaylistAdminListHiddenFilter,
+  WebPlaylistAdminSummaryDto,
   WebPlaylistDetailDto,
   WebPlaylistPublicSummaryDto,
   WebPlaylistSummaryDto,
@@ -100,6 +103,21 @@ function toSummaryDto(
     title: row.title,
     description: row.description,
     visibility: row.visibility,
+    trackCount: row.track_count,
+    isHiddenByAdmin: row.is_hidden_by_admin === 1,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function toAdminSummaryDto(
+  row: Awaited<ReturnType<typeof listAdminPublicWebPlaylists>>[number],
+): WebPlaylistAdminSummaryDto {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    ownerNameSnapshot: row.owner_name_snapshot,
     trackCount: row.track_count,
     isHiddenByAdmin: row.is_hidden_by_admin === 1,
     createdAt: row.created_at,
@@ -166,6 +184,7 @@ function handlePlaylistActionError(
 type PlaylistRoute =
   | { kind: "mine" }
   | { kind: "public" }
+  | { kind: "admin_public" }
   | { kind: "root" }
   | { kind: "detail"; playlistId: string }
   | { kind: "tracks"; playlistId: string }
@@ -188,6 +207,10 @@ function parsePlaylistRoute(pathname: string): PlaylistRoute | null {
   }
   if (parts.length === 1 && parts[0] === "public") {
     return { kind: "public" };
+  }
+  // "admin"이 playlist UUID로 해석되지 않도록 :id보다 먼저 매칭
+  if (parts.length === 2 && parts[0] === "admin" && parts[1] === "public") {
+    return { kind: "admin_public" };
   }
   if (parts.length === 1 && PLAYLIST_ID_PATTERN.test(parts[0]!)) {
     return { kind: "detail", playlistId: parts[0]! };
@@ -376,6 +399,52 @@ export async function handleWebPlaylistRoutes(
     sendJson(res, 200, {
       ok: true,
       playlists: rows.map(toPublicSummaryDto),
+      limit,
+      offset,
+    });
+    return true;
+  }
+
+  if (route.kind === "admin_public") {
+    if (method !== "GET") {
+      sendError(res, 405, "METHOD_NOT_ALLOWED", "허용되지 않은 메서드입니다.");
+      return true;
+    }
+    const session = requireSession(req, res);
+    if (!session) {
+      return true;
+    }
+    const admin = requirePlaylistAdminAccess(session, client);
+    if (!admin.ok) {
+      sendError(
+        res,
+        403,
+        "PLAYLIST_ADMIN_REQUIRED",
+        "플레이리스트 운영자 권한이 필요합니다.",
+      );
+      return true;
+    }
+    const { searchParams } = readRequestUrl(req);
+    const q = searchParams.get("q") ?? undefined;
+    const hiddenRaw = searchParams.get("hidden") ?? "all";
+    const hidden: WebPlaylistAdminListHiddenFilter =
+      hiddenRaw === "visible" || hiddenRaw === "hidden" ? hiddenRaw : "all";
+    let limit = Number.parseInt(searchParams.get("limit") ?? "20", 10);
+    let offset = Number.parseInt(searchParams.get("offset") ?? "0", 10);
+    if (!Number.isFinite(limit) || limit < 1) {
+      limit = 20;
+    }
+    if (limit > 50) {
+      limit = 50;
+    }
+    if (!Number.isFinite(offset) || offset < 0) {
+      offset = 0;
+    }
+    const rows = listAdminPublicWebPlaylists({ q, hidden, limit, offset });
+    sendJson(res, 200, {
+      ok: true,
+      playlists: rows.map(toAdminSummaryDto),
+      hidden,
       limit,
       offset,
     });
@@ -657,12 +726,13 @@ export async function handleWebPlaylistRoutes(
     if (!session) {
       return true;
     }
-    if (!canAdminWebPlaylist(session, client)) {
+    const admin = requirePlaylistAdminAccess(session, client);
+    if (!admin.ok) {
       sendError(
         res,
         403,
         "PLAYLIST_ADMIN_REQUIRED",
-        "봇 운영자만 사용할 수 있습니다.",
+        "플레이리스트 운영자 권한이 필요합니다.",
       );
       return true;
     }

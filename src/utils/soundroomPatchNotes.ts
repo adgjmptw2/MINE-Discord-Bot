@@ -13,6 +13,13 @@ export interface SoundroomPatchNote {
 /** 최신 항목이 위에 오도록 관리합니다. */
 export const SOUNDROOM_PATCH_NOTES: SoundroomPatchNote[] = [
   {
+    icon: "🛡️",
+    timestamp: "5월 26일 21:00",
+    title: "공개 플레이리스트 운영자 관리 추가",
+    detail:
+      "봇 운영자가 공개 플레이리스트를 숨김 처리하거나 다시 표시할 수 있는 관리 화면을 추가",
+  },
+  {
     icon: "📋",
     timestamp: "5월 26일 20:00",
     title: "웹 리모컨 플레이리스트 UI 추가",

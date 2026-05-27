@@ -238,6 +238,19 @@ export interface WebPlaylistPublicSummaryDto {
   updatedAt: string;
 }
 
+export type WebPlaylistAdminListHiddenFilter = "all" | "visible" | "hidden";
+
+export interface WebPlaylistAdminSummaryDto {
+  id: string;
+  title: string;
+  description: string;
+  ownerNameSnapshot: string;
+  trackCount: number;
+  isHiddenByAdmin: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface WebPlaylistTrackDto {
   id: string;
   position: number;
@@ -336,4 +349,21 @@ export interface WebPlaylistAddToQueueResponseDto {
     title: string;
   };
   state: SoundroomGuildStateDto;
+}
+
+export interface WebPlaylistAdminHideRequestDto {
+  hidden: boolean;
+}
+
+export interface WebPlaylistAdminHideResponseDto {
+  ok: true;
+  hidden: boolean;
+}
+
+export interface WebPlaylistAdminListResponseDto {
+  ok: true;
+  playlists: WebPlaylistAdminSummaryDto[];
+  hidden: WebPlaylistAdminListHiddenFilter;
+  limit: number;
+  offset: number;
 }

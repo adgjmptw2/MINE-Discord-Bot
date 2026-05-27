@@ -184,6 +184,54 @@ export function listMyWebPlaylists(ownerUserId: string): Array<
   }));
 }
 
+export type WebPlaylistAdminHiddenFilter = "all" | "visible" | "hidden";
+
+export function listAdminPublicWebPlaylists(params: {
+  q?: string;
+  hidden: WebPlaylistAdminHiddenFilter;
+  limit: number;
+  offset: number;
+}): Array<WebPlaylistRecord & { track_count: number }> {
+  ensureWebPlaylistTables();
+  const hiddenClause =
+    params.hidden === "visible"
+      ? " AND p.is_hidden_by_admin = 0"
+      : params.hidden === "hidden"
+        ? " AND p.is_hidden_by_admin = 1"
+        : "";
+  const q = params.q?.trim();
+  const baseSelect = `SELECT p.id, p.owner_user_id, p.owner_name_snapshot, p.title, p.description,
+            p.visibility, p.is_deleted, p.is_hidden_by_admin, p.created_at, p.updated_at, p.deleted_at,
+            COUNT(t.id) AS track_count
+     FROM web_playlists p
+     LEFT JOIN web_playlist_tracks t ON t.playlist_id = p.id
+     WHERE p.visibility = 'public' AND p.is_deleted = 0${hiddenClause}`;
+  const groupOrder = ` GROUP BY p.id ORDER BY p.updated_at DESC LIMIT ? OFFSET ?`;
+
+  if (q) {
+    const like = `%${q.replace(/%/g, "").replace(/_/g, "")}%`;
+    const rows = db.all<PlaylistRow>(
+      `${baseSelect}
+         AND (p.title LIKE ? OR p.description LIKE ? OR p.owner_name_snapshot LIKE ?)
+       ${groupOrder}`,
+      [like, like, like, params.limit, params.offset],
+    );
+    return rows.map((row) => ({
+      ...mapPlaylistRow(row),
+      track_count: Number(row.track_count ?? 0),
+    }));
+  }
+
+  const rows = db.all<PlaylistRow>(`${baseSelect}${groupOrder}`, [
+    params.limit,
+    params.offset,
+  ]);
+  return rows.map((row) => ({
+    ...mapPlaylistRow(row),
+    track_count: Number(row.track_count ?? 0),
+  }));
+}
+
 export function listPublicWebPlaylists(params: {
   q?: string;
   limit: number;

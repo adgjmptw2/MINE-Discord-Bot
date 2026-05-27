@@ -1652,3 +1652,115 @@ img {
     min-width: 0;
   }
 }
+
+.playlist-tab--subtle {
+  flex: 0 1 auto;
+  min-width: 4.5rem;
+  font-size: 0.8125rem;
+  opacity: 0.85;
+}
+
+.playlist-tab--compact {
+  flex: 0 1 auto;
+  min-width: 4rem;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+.playlist-layout--admin {
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .playlist-layout--admin {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.playlist-admin-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.playlist-admin-intro {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.playlist-admin-warning {
+  margin: 0.5rem 0;
+  font-size: 0.875rem;
+}
+
+.playlist-admin-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.playlist-admin-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.playlist-admin-list {
+  margin-top: 0.25rem;
+}
+
+.playlist-admin-card {
+  padding: 0.6rem 0.65rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+
+.playlist-admin-card--selected {
+  border-color: rgba(88, 101, 242, 0.55);
+  background: rgba(88, 101, 242, 0.08);
+}
+
+.playlist-admin-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  justify-content: space-between;
+}
+
+.playlist-admin-badge {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(250, 168, 26, 0.15);
+  color: #f0d090;
+  border: 1px solid rgba(250, 168, 26, 0.35);
+  flex-shrink: 0;
+}
+
+.playlist-admin-badge--visible {
+  background: rgba(120, 130, 140, 0.2);
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+
+.playlist-admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+}
+
+@media (min-width: 640px) {
+  .playlist-admin-toolbar {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .playlist-admin-toolbar .search-input {
+    flex: 1;
+    min-width: 0;
+  }
+}

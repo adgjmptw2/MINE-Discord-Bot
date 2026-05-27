@@ -209,7 +209,7 @@ const PLAYLIST_UI_MESSAGES: Record<string, string> = {
   PLAYLIST_NOT_FOUND: "플레이리스트를 찾을 수 없습니다.",
   PLAYLIST_ACCESS_DENIED: "이 플레이리스트를 볼 권한이 없습니다.",
   PLAYLIST_MANAGE_DENIED: "이 플레이리스트를 수정할 권한이 없습니다.",
-  PLAYLIST_ADMIN_REQUIRED: "봇 운영자만 사용할 수 있습니다.",
+  PLAYLIST_ADMIN_REQUIRED: "플레이리스트 운영자 권한이 필요합니다.",
   INVALID_PLAYLIST_TITLE: "제목은 1~40자로 입력해 주세요.",
   INVALID_PLAYLIST_DESCRIPTION: "설명은 200자 이내로 입력해 주세요.",
   INVALID_PLAYLIST_VISIBILITY: "공개 범위가 올바르지 않습니다.",
@@ -223,7 +223,7 @@ const PLAYLIST_UI_MESSAGES: Record<string, string> = {
     "곡 순서 정보가 올바르지 않습니다. 새로고침 후 다시 시도해 주세요.",
   INVALID_PLAYLIST_TRACK_INPUT: "곡 추가 요청이 올바르지 않습니다.",
   PLAYLIST_DELETED: "삭제된 플레이리스트입니다.",
-  PLAYLIST_HIDDEN: "숨김 처리된 플레이리스트입니다.",
+  PLAYLIST_HIDDEN: "운영자에 의해 숨김 처리된 플레이리스트입니다.",
   PLAYLIST_NOT_SUPPORTED:
     "재생목록 URL은 저장할 수 없습니다. 단일 곡만 추가해 주세요.",
   PLAYLIST_EMPTY: "플레이리스트에 곡이 없습니다.",
@@ -243,6 +243,10 @@ export function mapPlaylistError(err: unknown): string {
     return err.message;
   }
   return "API 서버에 연결할 수 없습니다.";
+}
+
+export function isPlaylistAdminRequired(err: unknown): boolean {
+  return err instanceof ApiClientError && err.code === "PLAYLIST_ADMIN_REQUIRED";
 }
 
 /** 대기열 삭제: 음성·같은 채널·플레이어 연결 필요 (search/add보다 보수적). */

@@ -139,11 +139,14 @@ export function resolveRateLimitBucket(
     return "playlist-add-to-queue";
   }
   if (AUTH_PLAYLISTS_PATH.test(pathname)) {
-    if (method === "GET") {
-      return "playlist-read";
+    if (pathname.includes("/admin/public") && method === "GET") {
+      return "playlist-admin";
     }
     if (pathname.includes("/admin/hide") && method === "POST") {
       return "playlist-admin";
+    }
+    if (method === "GET") {
+      return "playlist-read";
     }
     if (method === "POST" || method === "PATCH" || method === "DELETE") {
       return "playlist-write";

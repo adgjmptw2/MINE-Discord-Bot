@@ -13,11 +13,12 @@ import type {
   WebPlaylistSummaryDto,
 } from "../types";
 import { isStaleGuild } from "../utils/requestGuards";
+import { PlaylistAdminPanel } from "./PlaylistAdminPanel";
 import { PlaylistDetail } from "./PlaylistDetail";
 import { PlaylistEditor } from "./PlaylistEditor";
 import { PlaylistList } from "./PlaylistList";
 
-type Tab = "mine" | "public";
+type Tab = "mine" | "public" | "admin";
 
 type PlaylistPanelProps = {
   guildId: string | null;
@@ -164,7 +165,7 @@ export function PlaylistPanel({
   const handleRefresh = () => {
     if (tab === "mine") {
       void loadMine();
-    } else {
+    } else if (tab === "public") {
       void fetchPublicList({ q: publicQuery, offset: 0, append: false });
     }
     if (selectedId) {
@@ -233,6 +234,15 @@ export function PlaylistPanel({
         >
           공개 플레이리스트
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "admin"}
+          className={`playlist-tab playlist-tab--subtle${tab === "admin" ? " playlist-tab--active" : ""}`}
+          onClick={() => handleTabChange("admin")}
+        >
+          운영자
+        </button>
       </div>
 
       <div className="playlist-toolbar">
@@ -286,11 +296,13 @@ export function PlaylistPanel({
         </div>
       ) : null}
 
-      {listLoading && !detail ? (
+      {tab !== "admin" && listLoading && !detail ? (
         <p className="muted">목록을 불러오는 중…</p>
       ) : null}
 
-      <div className="playlist-layout">
+      <div
+        className={`playlist-layout${tab === "admin" ? " playlist-layout--admin" : ""}`}
+      >
         <div className="playlist-layout-list">
           {tab === "mine" ? (
             <PlaylistList
@@ -299,23 +311,38 @@ export function PlaylistPanel({
               selectedId={selectedId}
               onSelect={(id) => void loadDetail(id)}
             />
-          ) : (
-            <PlaylistList
-              variant="public"
-              items={publicPlaylists}
+          ) : null}
+          {tab === "public" ? (
+            <>
+              <PlaylistList
+                variant="public"
+                items={publicPlaylists}
+                selectedId={selectedId}
+                onSelect={(id) => void loadDetail(id)}
+              />
+              {publicHasMore ? (
+                <button
+                  type="button"
+                  className="btn btn-secondary playlist-load-more"
+                  disabled={listLoading}
+                  onClick={handleLoadMorePublic}
+                >
+                  더 보기
+                </button>
+              ) : null}
+            </>
+          ) : null}
+          {tab === "admin" ? (
+            <PlaylistAdminPanel
+              active={tab === "admin"}
               selectedId={selectedId}
+              busy={busy}
               onSelect={(id) => void loadDetail(id)}
+              onUnauthorized={onUnauthorized}
+              onUserActionStart={onUserActionStart}
+              onUserActionEnd={onUserActionEnd}
+              onBusyChange={setBusy}
             />
-          )}
-          {tab === "public" && publicHasMore ? (
-            <button
-              type="button"
-              className="btn btn-secondary playlist-load-more"
-              disabled={listLoading}
-              onClick={handleLoadMorePublic}
-            >
-              더 보기
-            </button>
           ) : null}
         </div>
 
@@ -357,8 +384,13 @@ export function PlaylistPanel({
               onUserActionEnd={onUserActionEnd}
             />
           ) : null}
-          {!detail && !creating && !detailLoading && !selectedId ? (
+          {!detail && !creating && !detailLoading && !selectedId && tab !== "admin" ? (
             <p className="playlist-empty muted">플레이리스트를 선택하세요.</p>
+          ) : null}
+          {!detail && !creating && !detailLoading && !selectedId && tab === "admin" ? (
+            <p className="playlist-empty muted">
+              관리 목록에서 상세 보기를 선택하세요.
+            </p>
           ) : null}
         </div>
       </div>

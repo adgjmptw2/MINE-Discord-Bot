@@ -18,6 +18,10 @@ import type {
   SoundroomSearchResponseDto,
   WebPlaylistAddToQueueRequestDto,
   WebPlaylistAddToQueueResponseDto,
+  WebPlaylistAdminHideRequestDto,
+  WebPlaylistAdminHideResponseDto,
+  WebPlaylistAdminListHiddenFilter,
+  WebPlaylistAdminListResponseDto,
   WebPlaylistCreateRequestDto,
   WebPlaylistCreateResponseDto,
   WebPlaylistDetailResponseDto,
@@ -444,6 +448,48 @@ export async function addPlaylistToQueue(
   return apiPost<WebPlaylistAddToQueueResponseDto>(
     `/api/auth/guilds/${encodeURIComponent(guildId)}/soundroom/playlists/${encodeURIComponent(playlistId)}/add-to-queue`,
     request,
+    { signal },
+  );
+}
+
+export async function getAdminPublicPlaylists(
+  params: {
+    q?: string;
+    hidden?: WebPlaylistAdminListHiddenFilter;
+    limit?: number;
+    offset?: number;
+  },
+  signal?: AbortSignal,
+): Promise<WebPlaylistAdminListResponseDto> {
+  const search = new URLSearchParams();
+  if (params.q?.trim()) {
+    search.set("q", params.q.trim());
+  }
+  if (params.hidden) {
+    search.set("hidden", params.hidden);
+  }
+  if (params.limit != null) {
+    search.set("limit", String(params.limit));
+  }
+  if (params.offset != null) {
+    search.set("offset", String(params.offset));
+  }
+  const qs = search.toString();
+  return apiFetch<WebPlaylistAdminListResponseDto>(
+    `/api/auth/playlists/admin/public${qs ? `?${qs}` : ""}`,
+    { signal },
+  );
+}
+
+export async function setPlaylistAdminHidden(
+  playlistId: string,
+  hidden: boolean,
+  signal?: AbortSignal,
+): Promise<WebPlaylistAdminHideResponseDto> {
+  const body: WebPlaylistAdminHideRequestDto = { hidden };
+  return apiPost<WebPlaylistAdminHideResponseDto>(
+    `/api/auth/playlists/${encodeURIComponent(playlistId)}/admin/hide`,
+    body,
     { signal },
   );
 }
