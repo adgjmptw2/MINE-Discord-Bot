@@ -13,6 +13,13 @@ export interface SoundroomPatchNote {
 /** 최신 항목이 위에 오도록 관리합니다. */
 export const SOUNDROOM_PATCH_NOTES: SoundroomPatchNote[] = [
   {
+    icon: "🔁",
+    timestamp: "5월 26일 18:00",
+    title: "자동재생 반복 추천 완화",
+    detail:
+      "YouTube Mix 계열 URL과 유사 제목 후보에서 같은 노래가 반복되는 문제를 줄이도록 개선",
+  },
+  {
     icon: "🎵",
     timestamp: "5월 26일 17:00",
     title: "웹 리모컨 재생목록 추가와 조작 안내 강화",

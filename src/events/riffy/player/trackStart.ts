@@ -13,7 +13,10 @@ import {
   fetchSoundroomPanelMessage,
 } from "@/utils/soundroomPanel";
 import { bumpSoundroomPanelRevision } from "@/utils/soundroomPanelRevision";
-import { prefetchAutoplayNextHint } from "@/utils/soundroomAutoplay";
+import {
+  prefetchAutoplayNextHint,
+  recordSoundroomPlaybackHistory,
+} from "@/utils/soundroomAutoplay";
 import type { ExtendedPlayer, ExtendedTrack, MineClient } from "@/types";
 
 function controlsRow(paused = false): ActionRowBuilder<ButtonBuilder> {
@@ -50,6 +53,7 @@ export default function registerTrackStart(client: MineClient): void {
     );
 
     if (isSoundroomTextChannel(player.guildId, player.textChannel)) {
+      recordSoundroomPlaybackHistory(player.guildId, track);
       bumpSoundroomPanelRevision(player.guildId);
       const msg = await fetchSoundroomPanelMessage(client, player.guildId);
       if (msg?.editable) {

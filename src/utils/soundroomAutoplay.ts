@@ -1,19 +1,36 @@
 import type { GuildMember } from "discord.js";
 import { getSoundroom } from "@/storage/soundroom";
 import type { ExtendedPlayer, ExtendedTrack, MineClient } from "@/types";
+import {
+  clearSoundroomAutoplayHistory,
+  isAutoplayCandidateDuplicate,
+} from "@/utils/soundroomAutoplayHistory";
+import {
+  extractYouTubePlaylistId,
+  extractYouTubeVideoId,
+  isYouTubeMixPlaylistId,
+  isYouTubeRadioLikeUrl,
+} from "@/utils/soundroomAutoplaySimilarity";
+import { log } from "@/utils/logger";
 import { sanitizeYoutubeQueryForLavalink } from "@/utils/youtubeLavalinkQuery";
+
+export { recordSoundroomPlaybackHistory } from "@/utils/soundroomAutoplayHistory";
 
 type GuildAutoplayState = {
   enabled: boolean;
   seedUri: string | null;
   seedTitle: string | null;
   lastEndedUri: string | null;
-  /** 패널에 미리 보여 줄 다음 자동재생 곡 제목 */
+  mixPlaylistId: string | null;
+  mixSourceUri: string | null;
   autoplayNextHintTitle: string | null;
   idleLeaveTimer: NodeJS.Timeout | null;
 };
 
 const states = new Map<string, GuildAutoplayState>();
+
+const MAX_CANDIDATE_SCAN = 10;
+const MAX_TRACKS_PER_RESOLVE = 15;
 
 function getOrCreate(guildId: string): GuildAutoplayState {
   let s = states.get(guildId);
@@ -23,6 +40,8 @@ function getOrCreate(guildId: string): GuildAutoplayState {
       seedUri: null,
       seedTitle: null,
       lastEndedUri: null,
+      mixPlaylistId: null,
+      mixSourceUri: null,
       autoplayNextHintTitle: null,
       idleLeaveTimer: null,
     };
@@ -48,12 +67,16 @@ export function resetAutoplaySession(guildId: string): void {
   cancelIdleLeaveTimer(guildId);
   const s = states.get(guildId);
   if (!s) {
+    clearSoundroomAutoplayHistory(guildId);
     return;
   }
   s.seedUri = null;
   s.seedTitle = null;
   s.lastEndedUri = null;
+  s.mixPlaylistId = null;
+  s.mixSourceUri = null;
   s.autoplayNextHintTitle = null;
+  clearSoundroomAutoplayHistory(guildId);
 }
 
 export function cancelIdleLeaveTimer(guildId: string): void {
@@ -92,6 +115,30 @@ export function markAutoplayTrack(track: ExtendedTrack): void {
   (track as unknown as { __mineAutoplay?: boolean }).__mineAutoplay = true;
 }
 
+/** Mix/Radio URL 힌트 — Lavalink resolve는 best-effort */
+function syncAutoplayUriHints(
+  guildId: string,
+  uri: string | null | undefined,
+): void {
+  if (!uri?.trim()) {
+    return;
+  }
+  const s = getOrCreate(guildId);
+  const listId = extractYouTubePlaylistId(uri);
+  if (listId && isYouTubeMixPlaylistId(listId)) {
+    s.mixPlaylistId = listId;
+    s.mixSourceUri = uri.trim();
+    return;
+  }
+  if (isYouTubeRadioLikeUrl(uri) && listId && isYouTubeMixPlaylistId(listId)) {
+    s.mixPlaylistId = listId;
+    s.mixSourceUri = uri.trim();
+    return;
+  }
+  s.mixPlaylistId = null;
+  s.mixSourceUri = null;
+}
+
 export function setLastEndedTrack(
   guildId: string,
   track: ExtendedTrack | undefined,
@@ -101,6 +148,7 @@ export function setLastEndedTrack(
   }
   const s = getOrCreate(guildId);
   s.lastEndedUri = track.info.uri;
+  syncAutoplayUriHints(guildId, track.info.uri);
 }
 
 export function ensureSeedTrack(guildId: string, track: ExtendedTrack): void {
@@ -116,6 +164,7 @@ export function ensureSeedTrack(guildId: string, track: ExtendedTrack): void {
   }
   s.seedUri = track.info.uri;
   s.seedTitle = track.info.title ?? null;
+  syncAutoplayUriHints(guildId, track.info.uri);
 }
 
 export function splitSoundroomQueue(player: ExtendedPlayer): {
@@ -148,13 +197,11 @@ export function setSoundroomQueueUserThenAutoplay(
   }
 }
 
-/** 자동재생을 끌 때 큐에 남은 예약 곡만 치웁니다. 지금 재생 중인 곡은 그대로 둡니다. */
 export function removeAutoplayTracksFromQueue(player: ExtendedPlayer): void {
   const { user } = splitSoundroomQueue(player);
   setSoundroomQueueUserThenAutoplay(player, user, []);
 }
 
-/** 사용자가 넣은 곡은 자동재생 예약보다 앞에 둡니다. */
 export function addSoundroomUserTracks(
   player: ExtendedPlayer,
   tracks: ExtendedTrack[],
@@ -201,7 +248,6 @@ export function addTracksRespectingSoundroomAutoplay(
   }
 }
 
-/** 큐에 자동재생 예약 곡이 있으면 패널 힌트를 맞춥니다. */
 export function syncAutoplayHintFromQueue(
   guildId: string,
   player: ExtendedPlayer,
@@ -214,7 +260,6 @@ export function syncAutoplayHintFromQueue(
   s.autoplayNextHintTitle = first?.info.title?.trim() ?? null;
 }
 
-/** 지금 곡 기준으로 다음 자동재생 후보 제목만 미리 가져옵니다. */
 export async function prefetchAutoplayNextHint(
   client: MineClient,
   player: ExtendedPlayer,
@@ -239,17 +284,15 @@ export async function prefetchAutoplayNextHint(
   if (!requester) {
     return;
   }
-  const tracks = await resolveAutoplayTracks(
+  const picked = await pickAutoplayTrack(
     client,
     requester,
+    guildId,
     uri,
     uri,
     player.current?.info.title?.trim() ?? s.seedTitle ?? null,
   );
-  const title = tracks[0]?.info.title?.trim();
-  if (title) {
-    s.autoplayNextHintTitle = title;
-  }
+  s.autoplayNextHintTitle = picked?.info.title?.trim() ?? null;
 }
 
 async function pickVoiceRequester(
@@ -270,100 +313,156 @@ async function pickVoiceRequester(
   return guild.members.me;
 }
 
-/** 유튜브 주소에서 영상 ID를 뽑습니다. */
-function extractYoutubeVideoId(uri: string): string | null {
-  const trimmed = uri.trim();
-  if (!trimmed) {
-    return null;
-  }
-  try {
-    const u = new URL(trimmed);
-    const host = u.hostname.replace(/^www\./i, "").toLowerCase();
-    if (host === "youtu.be") {
-      const id = u.pathname.replace(/^\//, "").split("/")[0] ?? "";
-      return /^[\w-]{6,}$/.test(id) ? id : null;
-    }
-    if (
-      host === "youtube.com" ||
-      host === "m.youtube.com" ||
-      host === "music.youtube.com"
-    ) {
-      const v = u.searchParams.get("v");
-      return v && /^[\w-]{6,}$/.test(v) ? v : null;
-    }
-  } catch {
-    return null;
-  }
-  return null;
-}
-
 function buildYoutubeRadioQuery(uri: string): string | null {
-  const id = extractYoutubeVideoId(uri);
+  const id = extractYouTubeVideoId(uri);
   if (!id) {
     return null;
   }
   return `https://www.youtube.com/watch?v=${encodeURIComponent(id)}`;
 }
 
-/** 단일 영상으로 안 잡히는 경우가 있어 라디오 주소와 제목 검색을 차례로 시도합니다. */
-async function resolveAutoplayTracks(
+async function resolveRawTracks(
   client: MineClient,
   requester: GuildMember,
+  query: string,
+): Promise<ExtendedTrack[]> {
+  try {
+    const r = (await client.riffy.resolve({
+      query,
+      requester,
+    })) as { loadType?: string; tracks?: ExtendedTrack[] };
+    const tracks = (r.tracks ?? []) as ExtendedTrack[];
+    if (tracks.length === 0) {
+      return [];
+    }
+    if (r.loadType === "playlist" || r.loadType === "album") {
+      return tracks.slice(0, MAX_TRACKS_PER_RESOLVE);
+    }
+    return tracks.slice(0, MAX_TRACKS_PER_RESOLVE);
+  } catch {
+    return [];
+  }
+}
+
+function truncateLogTitle(title: string): string {
+  const t = title.trim();
+  if (t.length <= 48) {
+    return t;
+  }
+  return `${t.slice(0, 47)}…`;
+}
+
+/** 자동재생 후보만 중복 필터 — 사용자 직접 추가곡에는 적용하지 않음 */
+async function resolveAutoplayCandidates(
+  client: MineClient,
+  requester: GuildMember,
+  guildId: string,
   sourceUri: string,
   excludeUri: string | null,
   searchFallbackTitle: string | null,
 ): Promise<ExtendedTrack[]> {
-  const attempts: string[] = [];
+  const s = getOrCreate(guildId);
+  const queryBatches: string[] = [];
+
+  if (s.mixPlaylistId) {
+    queryBatches.push(
+      `https://www.youtube.com/playlist?list=${encodeURIComponent(s.mixPlaylistId)}`,
+    );
+  }
+
   const primary = sanitizeYoutubeQueryForLavalink(sourceUri.trim());
   if (primary) {
-    attempts.push(primary);
+    queryBatches.push(primary);
   }
   const radio = buildYoutubeRadioQuery(primary);
-  if (radio && !attempts.includes(radio)) {
-    attempts.push(radio);
+  if (radio && !queryBatches.includes(radio)) {
+    queryBatches.push(radio);
   }
   const title = searchFallbackTitle?.trim();
   if (title) {
-    attempts.push(title);
+    const searchQuery = /^[a-z][a-z0-9]*:/i.test(title)
+      ? title
+      : `ytsearch:${title}`;
+    if (!queryBatches.includes(searchQuery)) {
+      queryBatches.push(searchQuery);
+    }
   }
 
-  for (const query of attempts) {
-    let raw: ExtendedTrack[];
-    try {
-      const r = (await client.riffy.resolve({
-        query,
-        requester,
-      })) as { tracks: ExtendedTrack[] };
-      raw = r.tracks as ExtendedTrack[];
-    } catch {
-      continue;
+  const seenUri = new Set<string>();
+  let inspected = 0;
+
+  for (const query of queryBatches) {
+    const raw = await resolveRawTracks(client, requester, query);
+    if (
+      s.mixPlaylistId &&
+      query.includes(s.mixPlaylistId) &&
+      raw.length === 0
+    ) {
+      log(
+        "debug",
+        "autoplay",
+        `Mix playlist resolve failed guild=${guildId}`,
+      );
     }
-    if (raw.length === 0) {
-      continue;
-    }
-    const seen = new Set<string>();
-    const filtered = raw.filter((t) => {
-      const u = t.info.uri;
+
+    for (const t of raw) {
+      if (inspected >= MAX_CANDIDATE_SCAN) {
+        break;
+      }
+      inspected += 1;
+      const u = t.info.uri?.trim();
       if (!u) {
-        return false;
+        continue;
       }
       if (excludeUri && u === excludeUri) {
-        return false;
+        continue;
       }
-      if (seen.has(u)) {
-        return false;
+      if (seenUri.has(u)) {
+        continue;
       }
-      seen.add(u);
-      return true;
-    });
-    if (filtered.length > 0) {
-      return filtered;
+      seenUri.add(u);
+      if (isAutoplayCandidateDuplicate(guildId, t)) {
+        const titleLabel = truncateLogTitle(t.info.title ?? "");
+        log(
+          "debug",
+          "autoplay",
+          `Skipped similar autoplay candidate guild=${guildId} title=${titleLabel}`,
+        );
+        continue;
+      }
+      return [t];
     }
+  }
+
+  if (inspected > 0) {
+    log(
+      "debug",
+      "autoplay",
+      `No autoplay candidate after filters guild=${guildId}`,
+    );
   }
   return [];
 }
 
-/** 대기열이 비었을 때 연관곡을 자동재생 큐에 넣고 바로 재생합니다. */
+async function pickAutoplayTrack(
+  client: MineClient,
+  requester: GuildMember,
+  guildId: string,
+  sourceUri: string,
+  excludeUri: string | null,
+  searchFallbackTitle: string | null,
+): Promise<ExtendedTrack | null> {
+  const candidates = await resolveAutoplayCandidates(
+    client,
+    requester,
+    guildId,
+    sourceUri,
+    excludeUri,
+    searchFallbackTitle,
+  );
+  return candidates[0] ?? null;
+}
+
 export async function tryEnqueueAutoplayPlaylist(
   client: MineClient,
   player: ExtendedPlayer,
@@ -371,6 +470,10 @@ export async function tryEnqueueAutoplayPlaylist(
   const guildId = player.guildId;
   const s = getOrCreate(guildId);
   if (!s.enabled) {
+    return false;
+  }
+
+  if (countUserSoundroomQueue(player) > 0) {
     return false;
   }
 
@@ -389,22 +492,21 @@ export async function tryEnqueueAutoplayPlaylist(
   }
 
   const lastUri = s.lastEndedUri;
-  const tracks = await resolveAutoplayTracks(
+  const track = await pickAutoplayTrack(
     client,
     requester,
+    guildId,
     sourceUri,
     lastUri,
-    s.seedTitle ?? null,
+    s.seedTitle ?? player.current?.info.title?.trim() ?? null,
   );
-  if (tracks.length === 0) {
+  if (!track) {
     return false;
   }
 
-  for (const t of tracks) {
-    markAutoplayTrack(t);
-    t.info.requester = requester;
-    player.queue.add(t);
-  }
+  markAutoplayTrack(track);
+  track.info.requester = requester;
+  player.queue.add(track);
 
   try {
     await Promise.resolve(player.play());
