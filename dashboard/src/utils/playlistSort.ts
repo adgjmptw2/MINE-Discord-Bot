@@ -150,9 +150,9 @@ export type PlaylistListEmptyKind =
 export function getPlaylistEmptyMessage(kind: PlaylistListEmptyKind): string {
   switch (kind) {
     case "mine-empty":
-      return "플레이리스트가 없습니다. 새로 만들어 보세요.";
+      return "아직 만든 플레이리스트가 없습니다.";
     case "mine-search":
-      return "검색어와 일치하는 플레이리스트가 없습니다.";
+      return "검색어와 일치하는 내 플레이리스트가 없습니다.";
     case "public-empty":
       return "공개 플레이리스트가 없습니다.";
     case "public-search":

@@ -115,22 +115,37 @@ export function PlaylistPanel({
     if (myPlaylists.length === 0) {
       return "mine-empty";
     }
-    return mineSearch.trim() ? "mine-search" : "mine-empty";
-  }, [myPlaylists.length, mineSearch]);
+    if (displayedMine.length === 0 && mineSearch.trim()) {
+      return "mine-search";
+    }
+    return "mine-empty";
+  }, [myPlaylists.length, mineSearch, displayedMine.length]);
 
   const publicEmptyKind = useMemo((): PlaylistListEmptyKind => {
+    const hasSearch = Boolean(publicQuery.trim() || publicSearchInput.trim());
     if (publicPlaylists.length === 0) {
-      return publicQuery.trim() ? "public-search" : "public-empty";
+      return hasSearch ? "public-search" : "public-empty";
+    }
+    if (displayedPublic.length === 0 && hasSearch) {
+      return "public-search";
     }
     return "public-empty";
-  }, [publicPlaylists.length, publicQuery]);
+  }, [
+    publicPlaylists.length,
+    publicQuery,
+    publicSearchInput,
+    displayedPublic.length,
+  ]);
 
   const favoritesEmptyKind = useMemo((): PlaylistListEmptyKind => {
     if (favoritePlaylists.length === 0) {
       return "favorites-empty";
     }
-    return favoritesSearch.trim() ? "favorites-search" : "favorites-empty";
-  }, [favoritePlaylists.length, favoritesSearch]);
+    if (displayedFavorites.length === 0 && favoritesSearch.trim()) {
+      return "favorites-search";
+    }
+    return "favorites-empty";
+  }, [favoritePlaylists.length, favoritesSearch, displayedFavorites.length]);
 
   const loadMine = useCallback(async () => {
     setListLoading(true);
@@ -484,6 +499,11 @@ export function PlaylistPanel({
           sortOptions={MINE_SORT_OPTIONS}
           placeholder="제목·설명·공개/비공개"
           searchDisabled={listLoading}
+          refreshDisabled={listLoading || detailLoading || busy}
+          onRefresh={handleRefresh}
+          totalCount={myPlaylists.length}
+          visibleCount={displayedMine.length}
+          isLoading={listLoading}
         />
       ) : null}
 
@@ -500,6 +520,11 @@ export function PlaylistPanel({
           showClearButton={Boolean(publicQuery.trim() || publicSearchInput.trim())}
           onClear={handlePublicSearchClear}
           searchDisabled={listLoading}
+          refreshDisabled={listActionBusy || detailLoading || busy}
+          onRefresh={handleRefresh}
+          totalCount={publicPlaylists.length}
+          visibleCount={displayedPublic.length}
+          isLoading={listLoading}
         />
       ) : null}
 
@@ -512,6 +537,11 @@ export function PlaylistPanel({
           sortOptions={FAVORITES_SORT_OPTIONS}
           placeholder="제목·설명·만든이"
           searchDisabled={listLoading}
+          refreshDisabled={listActionBusy || detailLoading || busy}
+          onRefresh={handleRefresh}
+          totalCount={favoritePlaylists.length}
+          visibleCount={displayedFavorites.length}
+          isLoading={listLoading}
         />
       ) : null}
 

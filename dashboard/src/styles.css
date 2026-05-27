@@ -1368,11 +1368,25 @@ img {
   gap: 0.4rem;
 }
 
+.playlist-list-toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem 0.75rem;
+}
+
 .playlist-list-toolbar-sort {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
   font-size: 0.8rem;
+}
+
+.playlist-list-toolbar-count {
+  margin: 0;
+  font-size: 0.75rem;
+  white-space: nowrap;
 }
 
 .playlist-sort-select {
@@ -1476,6 +1490,31 @@ img {
   margin: 0.25rem 0 0;
   font-size: 0.75rem;
   line-height: 1.35;
+}
+
+.playlist-card-meta-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.3rem;
+}
+
+.playlist-meta-chip {
+  font-size: 0.68rem;
+  padding: 0.12rem 0.38rem;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  background: var(--bg);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playlist-meta-chip--favorite {
+  border-color: rgba(250, 204, 21, 0.45);
+  color: #facc15;
 }
 
 .playlist-card-head {
@@ -1794,11 +1833,19 @@ img {
     min-width: 0;
   }
 
+  .playlist-list-toolbar-row {
+    width: 100%;
+  }
+
   .playlist-list-toolbar-sort {
     flex: 0 0 auto;
     flex-direction: row;
     align-items: center;
     gap: 0.35rem;
+  }
+
+  .playlist-list-toolbar-count {
+    margin-left: auto;
   }
 
   .playlist-card-actions {

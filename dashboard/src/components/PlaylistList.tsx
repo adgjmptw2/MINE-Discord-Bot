@@ -105,12 +105,19 @@ export function PlaylistList(props: PlaylistListProps) {
                   {mine.description ? (
                     <p className="playlist-card-desc muted">{mine.description}</p>
                   ) : null}
-                  <p className="playlist-card-meta muted">
-                    <span>{mine.trackCount}곡</span>
-                    {formatPlaylistDate(mine.updatedAt) ? (
-                      <span> · 수정 {formatPlaylistDate(mine.updatedAt)}</span>
+                  <div className="playlist-card-meta-chips">
+                    <span className="playlist-meta-chip">{mine.trackCount}곡</span>
+                    {formatPlaylistDate(mine.createdAt) ? (
+                      <span className="playlist-meta-chip">
+                        생성 {formatPlaylistDate(mine.createdAt)}
+                      </span>
                     ) : null}
-                  </p>
+                    {formatPlaylistDate(mine.updatedAt) ? (
+                      <span className="playlist-meta-chip">
+                        수정 {formatPlaylistDate(mine.updatedAt)}
+                      </span>
+                    ) : null}
+                  </div>
                 </button>
               </div>
             </li>
@@ -150,19 +157,20 @@ export function PlaylistList(props: PlaylistListProps) {
                 {item.description ? (
                   <p className="playlist-card-desc muted">{item.description}</p>
                 ) : null}
-                <p className="playlist-card-meta muted">
-                  <span>{item.trackCount}곡</span>
-                  <span> · {ownerName}</span>
+                <div className="playlist-card-meta-chips">
+                  <span className="playlist-meta-chip">{item.trackCount}곡</span>
+                  <span className="playlist-meta-chip">{ownerName}</span>
                   {formatPlaylistDate(item.updatedAt) ? (
-                    <span> · 수정 {formatPlaylistDate(item.updatedAt)}</span>
-                  ) : null}
-                  {favoritedAt && formatPlaylistDate(favoritedAt) ? (
-                    <span className="playlist-card-favorited-at">
-                      {" "}
-                      · 즐겨찾기 {formatPlaylistDate(favoritedAt)}
+                    <span className="playlist-meta-chip">
+                      수정 {formatPlaylistDate(item.updatedAt)}
                     </span>
                   ) : null}
-                </p>
+                  {favoritedAt && formatPlaylistDate(favoritedAt) ? (
+                    <span className="playlist-meta-chip playlist-meta-chip--favorite">
+                      ★ {formatPlaylistDate(favoritedAt)}
+                    </span>
+                  ) : null}
+                </div>
               </button>
               <div className="playlist-card-actions">
                 {showQueueAdd ? (
