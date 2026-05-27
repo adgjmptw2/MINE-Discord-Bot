@@ -30,6 +30,7 @@ import {
   isSoundroomPanelRevisionCurrent,
 } from "@/utils/soundroomPanelRevision";
 import { SR_PATCH_NOTES_CUSTOM_ID } from "@/utils/soundroomPatchNotes";
+import { getWebDashboardConfig, getWebDashboardUrl } from "@/web/config";
 import type { ExtendedPlayer, ExtendedTrack, MineClient } from "@/types";
 
 const MENTION_NONE = { parse: [] as const };
@@ -93,6 +94,29 @@ export function getSoundroomMaintenanceNotice(): string | null {
   return "-# 현재 점검중이라 음악 기능이 불안정할 수 있습니다.";
 }
 
+/** Link 버튼은 customId 없음. row당 최대 5개 제한을 지킨다. */
+function appendWebRemoteLinkButton(
+  rows: ActionRowBuilder<ButtonBuilder>[],
+): void {
+  const url = getWebDashboardUrl(getWebDashboardConfig());
+  if (!url) {
+    return;
+  }
+
+  const btn = new ButtonBuilder()
+    .setLabel("웹 리모컨")
+    .setEmoji("🌐")
+    .setStyle(ButtonStyle.Link)
+    .setURL(url);
+
+  const lastRow = rows[rows.length - 1];
+  if (lastRow && lastRow.components.length < 5) {
+    lastRow.addComponents(btn);
+    return;
+  }
+  rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(btn));
+}
+
 export function buildSoundroomIdlePayload(
   client: MineClient,
   guildId?: string,
@@ -153,9 +177,12 @@ export function buildSoundroomIdlePayload(
       .setStyle(ButtonStyle.Secondary),
   );
 
+  const rows = [row1];
+  appendWebRemoteLinkButton(rows);
+
   return {
     embeds: [embed],
-    components: [row1],
+    components: rows,
     allowedMentions: MENTION_NONE,
     files: includeMedia ? files : [],
   };
@@ -264,9 +291,12 @@ export function buildSoundroomPlayingPayload(
       .setStyle(ButtonStyle.Secondary),
   );
 
+  const rows = [row1, row2];
+  appendWebRemoteLinkButton(rows);
+
   return {
     embeds: [embed],
-    components: [row1, row2],
+    components: rows,
     allowedMentions: MENTION_NONE,
     files: includeMedia ? panelFiles : [],
   };

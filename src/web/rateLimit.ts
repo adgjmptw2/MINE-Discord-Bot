@@ -11,6 +11,10 @@ export type RateLimitBucket =
   | "search"
   | "add"
   | "playlist-add"
+  | "playlist-read"
+  | "playlist-write"
+  | "playlist-add-to-queue"
+  | "playlist-admin"
   | "queue"
   | "logout";
 
@@ -24,6 +28,10 @@ const BUCKET_LIMITS: Record<RateLimitBucket, { windowMs: number; max: number }> 
     search: { windowMs: 10_000, max: 5 },
     add: { windowMs: 5_000, max: 5 },
     "playlist-add": { windowMs: 30_000, max: 3 },
+    "playlist-read": { windowMs: 10_000, max: 30 },
+    "playlist-write": { windowMs: 10_000, max: 10 },
+    "playlist-add-to-queue": { windowMs: 30_000, max: 3 },
+    "playlist-admin": { windowMs: 30_000, max: 10 },
     queue: { windowMs: 5_000, max: 10 },
     logout: { windowMs: 10_000, max: 10 },
   };
@@ -46,6 +54,9 @@ const AUTH_SOUNDROOM_QUEUE_REMOVE_PATH =
   /^\/api\/auth\/guilds\/(\d{17,20})\/soundroom\/queue\/remove\/?$/;
 const AUTH_SOUNDROOM_QUEUE_SWAP_PATH =
   /^\/api\/auth\/guilds\/(\d{17,20})\/soundroom\/queue\/swap\/?$/;
+const AUTH_PLAYLIST_ADD_TO_QUEUE_PATH =
+  /^\/api\/auth\/guilds\/(\d{17,20})\/soundroom\/playlists\/[^/]+\/add-to-queue\/?$/;
+const AUTH_PLAYLISTS_PATH = /^\/api\/auth\/playlists(\/|$)/;
 
 interface WindowCounter {
   count: number;
@@ -123,6 +134,20 @@ export function resolveRateLimitBucket(
     method === "POST"
   ) {
     return "queue";
+  }
+  if (AUTH_PLAYLIST_ADD_TO_QUEUE_PATH.test(pathname) && method === "POST") {
+    return "playlist-add-to-queue";
+  }
+  if (AUTH_PLAYLISTS_PATH.test(pathname)) {
+    if (method === "GET") {
+      return "playlist-read";
+    }
+    if (pathname.includes("/admin/hide") && method === "POST") {
+      return "playlist-admin";
+    }
+    if (method === "POST" || method === "PATCH" || method === "DELETE") {
+      return "playlist-write";
+    }
   }
   return null;
 }

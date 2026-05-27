@@ -76,6 +76,18 @@ function normalizeOrigin(origin) {
   return origin.replace(/\/+$/, "");
 }
 
+function normalizePublicUrl(raw) {
+  const trimmed = raw?.trim() ?? "";
+  if (!trimmed) {
+    return null;
+  }
+  const without = trimmed.replace(/\/+$/, "");
+  if (!/^https?:\/\//i.test(without)) {
+    return null;
+  }
+  return without;
+}
+
 function ok(msg) {
   console.log(`[OK] ${msg}`);
 }
@@ -286,6 +298,35 @@ function main() {
     );
   }
 
+  const publicUrlRaw = env.WEB_DASHBOARD_PUBLIC_URL?.trim() ?? "";
+  const publicUrl = normalizePublicUrl(publicUrlRaw);
+  if (publicUrl) {
+    ok("WEB_DASHBOARD_PUBLIC_URL is set");
+    if (allowedOrigin && publicUrl !== allowedOrigin) {
+      warn(
+        "WEB_DASHBOARD_PUBLIC_URL differs from WEB_DASHBOARD_ALLOWED_ORIGIN — verify both are correct",
+      );
+    }
+  } else if (publicUrlRaw) {
+    warn(
+      "WEB_DASHBOARD_PUBLIC_URL is invalid — must start with http:// or https://",
+    );
+  } else {
+    info(
+      "WEB_DASHBOARD_PUBLIC_URL is not set — Soundroom panel will not show the web remote link button",
+    );
+  }
+
+  const homeStats = parseBool(env.WEB_DASHBOARD_HOME_STATS_ENABLED, false);
+  if (homeStats) {
+    ok("WEB_DASHBOARD_HOME_STATS_ENABLED=true — public aggregate stats on landing page");
+    info(
+      "Landing stats expose counts only (no server names, user names, or IDs)",
+    );
+  } else {
+    ok("WEB_DASHBOARD_HOME_STATS_ENABLED=false — landing page shows static intro cards");
+  }
+
   console.log("");
   if (allowedOrigin) {
     info(`Privacy Policy URL: ${allowedOrigin}/privacy`);
@@ -293,6 +334,10 @@ function main() {
   }
   if (redirectUriRaw) {
     info(`Discord OAuth Redirect URI (register in Developer Portal): ${redirectUriRaw}`);
+  }
+  if (publicUrl) {
+    info(`Public home page: ${publicUrl}/`);
+    info(`Soundroom panel web remote: ${publicUrl}/dashboard`);
   }
   info(
     "Register Privacy Policy URL, Terms URL, and Redirect URI in Discord Developer Portal (OAuth2)",

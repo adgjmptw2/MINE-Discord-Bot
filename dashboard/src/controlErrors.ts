@@ -204,6 +204,47 @@ export function mapQueueSwapError(err: unknown): string {
   return mapQueueError(err, QUEUE_SWAP_UI_MESSAGES);
 }
 
+const PLAYLIST_UI_MESSAGES: Record<string, string> = {
+  ...CSRF_UI_MESSAGES,
+  PLAYLIST_NOT_FOUND: "플레이리스트를 찾을 수 없습니다.",
+  PLAYLIST_ACCESS_DENIED: "이 플레이리스트를 볼 권한이 없습니다.",
+  PLAYLIST_MANAGE_DENIED: "이 플레이리스트를 수정할 권한이 없습니다.",
+  PLAYLIST_ADMIN_REQUIRED: "봇 운영자만 사용할 수 있습니다.",
+  INVALID_PLAYLIST_TITLE: "제목은 1~40자로 입력해 주세요.",
+  INVALID_PLAYLIST_DESCRIPTION: "설명은 200자 이내로 입력해 주세요.",
+  INVALID_PLAYLIST_VISIBILITY: "공개 범위가 올바르지 않습니다.",
+  PLAYLIST_LIMIT_EXCEEDED: "만들 수 있는 플레이리스트 수를 초과했습니다.",
+  PUBLIC_PLAYLIST_LIMIT_EXCEEDED:
+    "공개 플레이리스트는 최대 5개까지 만들 수 있습니다.",
+  PLAYLIST_TRACK_LIMIT_EXCEEDED:
+    "한 플레이리스트에는 최대 50곡까지 저장할 수 있습니다.",
+  PLAYLIST_TRACK_NOT_FOUND: "플레이리스트에서 곡을 찾을 수 없습니다.",
+  INVALID_PLAYLIST_TRACK_ORDER:
+    "곡 순서 정보가 올바르지 않습니다. 새로고침 후 다시 시도해 주세요.",
+  INVALID_PLAYLIST_TRACK_INPUT: "곡 추가 요청이 올바르지 않습니다.",
+  PLAYLIST_DELETED: "삭제된 플레이리스트입니다.",
+  PLAYLIST_HIDDEN: "숨김 처리된 플레이리스트입니다.",
+  PLAYLIST_NOT_SUPPORTED:
+    "재생목록 URL은 저장할 수 없습니다. 단일 곡만 추가해 주세요.",
+  PLAYLIST_EMPTY: "플레이리스트에 곡이 없습니다.",
+  NO_TRACK_LOADED: "곡을 불러오지 못했습니다.",
+  LAVALINK_UNAVAILABLE:
+    "음악 서버가 응답하지 않습니다. 잠시 후 다시 시도해 주세요.",
+  USER_NOT_IN_VOICE_CHANNEL: "먼저 Discord 노래채널에 들어가 주세요.",
+  NOT_SAME_VOICE_CHANNEL: "봇과 같은 노래채널에서만 추가할 수 있습니다.",
+  SOUNDROOM_NOT_CONFIGURED: "이 서버에는 노래채널이 설정되어 있지 않습니다.",
+};
+
+export function mapPlaylistError(err: unknown): string {
+  if (err instanceof ApiClientError) {
+    if (err.code && err.code in PLAYLIST_UI_MESSAGES) {
+      return apiErrorMessage(err, PLAYLIST_UI_MESSAGES);
+    }
+    return err.message;
+  }
+  return "API 서버에 연결할 수 없습니다.";
+}
+
 /** 대기열 삭제: 음성·같은 채널·플레이어 연결 필요 (search/add보다 보수적). */
 export function getCanModifyQueue(
   soundroomConfigured: boolean,

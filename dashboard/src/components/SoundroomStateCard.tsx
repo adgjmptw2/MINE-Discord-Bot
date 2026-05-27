@@ -8,7 +8,10 @@ import type {
 import { CollapsibleSection } from "./CollapsibleSection";
 
 const SECTION_ADD_OPEN_KEY = "mine-dashboard:soundroom:section:add-song-open";
+const SECTION_PLAYLIST_OPEN_KEY =
+  "mine-dashboard:soundroom:section:playlists-open";
 const SECTION_QUEUE_OPEN_KEY = "mine-dashboard:soundroom:section:queue-open";
+import { PlaylistPanel } from "./PlaylistPanel";
 import { QueueList } from "./QueueList";
 import { SoundroomControls } from "./SoundroomControls";
 import { SoundroomSearchPanel } from "./SoundroomSearchPanel";
@@ -224,6 +227,26 @@ export function SoundroomStateCard({
             onStateChange={onStateChange}
             onAdded={onSearchAdded}
             onUnauthorized={onUnauthorized}
+            onUserActionStart={onUserActionStart}
+            onUserActionEnd={onUserActionEnd}
+          />
+        </CollapsibleSection>
+      ) : null}
+
+      {guildId && onStateChange ? (
+        <CollapsibleSection
+          title="플레이리스트"
+          subtitle="내 목록 · 공개 · 대기열 추가"
+          defaultOpen={false}
+          storageKey={SECTION_PLAYLIST_OPEN_KEY}
+        >
+          <PlaylistPanel
+            guildId={guildId}
+            queueAddDisabled={searchDisabled.disabled || loading}
+            queueAddDisabledReason={searchDisabled.reason}
+            onStateChange={onStateChange}
+            onUnauthorized={onUnauthorized}
+            onAfterQueueChanged={onSearchAdded}
             onUserActionStart={onUserActionStart}
             onUserActionEnd={onUserActionEnd}
           />

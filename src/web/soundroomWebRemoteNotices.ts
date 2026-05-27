@@ -18,6 +18,16 @@ export function buildWebRemoteTrackAddNotice(trackTitle: string): string {
   return `곡을 대기열에 추가: ${truncateTitle(trackTitle)}`;
 }
 
+export function buildWebRemoteSavedPlaylistAddNotice(
+  addedCount: number,
+  truncated: boolean,
+): string {
+  if (truncated) {
+    return `저장된 플레이리스트 ${addedCount}곡을 대기열에 추가 (일부 곡은 제한으로 제외)`;
+  }
+  return `저장된 플레이리스트 ${addedCount}곡을 대기열에 추가`;
+}
+
 export function buildWebRemotePlaylistAddNotice(
   addedCount: number,
   truncated: boolean,

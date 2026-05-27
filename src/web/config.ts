@@ -13,6 +13,8 @@ export interface WebDashboardConfig {
   host: string;
   port: number;
   allowedOrigin: string;
+  /** 공개 웹 origin (패널 링크·랜딩 CTA). CORS/OAuth는 allowedOrigin 사용. */
+  publicUrl?: string;
   staticEnabled: boolean;
   staticRoot: string;
   authEnabled: boolean;
@@ -27,6 +29,7 @@ export interface WebDashboardConfig {
   cookieSecure: boolean;
   requireStrongSessionSecret: boolean;
   rateLimitEnabled: boolean;
+  homeStatsEnabled: boolean;
 }
 
 let warnedWeakSessionSecret = false;
@@ -42,6 +45,39 @@ function parsePositiveInt(raw: string | undefined, fallback: number): number {
 export function getWebDashboardAllowedOrigin(): string {
   const origin = process.env.WEB_DASHBOARD_ALLOWED_ORIGIN?.trim();
   return origin && origin.length > 0 ? origin : "http://127.0.0.1:3000";
+}
+
+/** http(s)만 허용. trailing slash 제거. invalid면 undefined. */
+export function normalizePublicWebUrl(
+  value: string | undefined,
+): string | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  const withoutTrailing = trimmed.replace(/\/+$/, "");
+  if (!/^https?:\/\//i.test(withoutTrailing)) {
+    log(
+      "warn",
+      "web",
+      "WEB_DASHBOARD_PUBLIC_URL must start with http:// or https:// — ignored",
+    );
+    return undefined;
+  }
+  return withoutTrailing;
+}
+
+export function getWebDashboardPublicUrl(): string | undefined {
+  return normalizePublicWebUrl(process.env.WEB_DASHBOARD_PUBLIC_URL);
+}
+
+export function getWebDashboardUrl(
+  config: WebDashboardConfig,
+): string | undefined {
+  if (!config.publicUrl) {
+    return undefined;
+  }
+  return `${config.publicUrl}/dashboard`;
 }
 
 export function isWebDashboardEnabled(): boolean {
@@ -94,6 +130,10 @@ export function isWebDashboardRateLimitEnabled(): boolean {
   return parseEnvBool(process.env.WEB_DASHBOARD_RATE_LIMIT_ENABLED, true);
 }
 
+export function isWebDashboardHomeStatsEnabled(): boolean {
+  return parseEnvBool(process.env.WEB_DASHBOARD_HOME_STATS_ENABLED, false);
+}
+
 export function isWebDashboardSessionSecretStrong(
   config: WebDashboardConfig,
 ): boolean {
@@ -137,6 +177,7 @@ export function getWebDashboardConfig(): WebDashboardConfig {
     host: getWebDashboardHost(),
     port: getWebDashboardPort(),
     allowedOrigin: getWebDashboardAllowedOrigin(),
+    publicUrl: getWebDashboardPublicUrl(),
     staticEnabled: isWebDashboardStaticEnabled(),
     staticRoot: resolveStaticDashboardRoot(staticDir),
     authEnabled: isWebDashboardAuthEnabled(),
@@ -157,6 +198,7 @@ export function getWebDashboardConfig(): WebDashboardConfig {
     cookieSecure: isWebDashboardCookieSecure(),
     requireStrongSessionSecret: isWebDashboardStrongSessionSecretRequired(),
     rateLimitEnabled: isWebDashboardRateLimitEnabled(),
+    homeStatsEnabled: isWebDashboardHomeStatsEnabled(),
   };
 }
 

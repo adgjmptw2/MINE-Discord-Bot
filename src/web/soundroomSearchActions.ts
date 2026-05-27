@@ -338,3 +338,23 @@ export async function addSoundroomTrackFromWeb(
 
   return trackToAddedDto(addedTrack, user);
 }
+
+/** 저장형 플레이리스트 곡 추가용 단일 트랙 resolve (음성 채널 불필요). */
+export async function resolveSingleSoundroomTrackForWeb(
+  client: MineClient,
+  rawInput: string,
+): Promise<ExtendedTrack> {
+  const normalized = validateSoundroomQueryInput(rawInput);
+  const { loadType, tracks, rawInput: resolvedRaw } =
+    await resolveSoundroomTracks(client, normalized);
+  assertNotExplicitPlaylist(loadType, tracks, resolvedRaw);
+  const track = tracks[0];
+  if (!track) {
+    throw new SoundroomSearchActionError(
+      404,
+      "NO_TRACK_LOADED",
+      "곡을 불러오지 못했습니다.",
+    );
+  }
+  return track;
+}

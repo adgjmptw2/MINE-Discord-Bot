@@ -218,6 +218,13 @@ Discord **음성 채널(노래채널)** 에 들어간 상태에서 조작이 필
 - [ ] **노래 검색**
 - [ ] **노래 추가** (단일 곡)
 - [ ] **URL 재생목록 추가** (최대 50곡, 초과 시 일부만 추가·truncated 안내)
+- [ ] **플레이리스트** 섹션: 내 목록·공개 목록·생성·수정·soft delete·곡 추가/삭제·위/아래 순서
+- [ ] public 목록에 **ownerUserId 미노출**, `ownerNameSnapshot`만 표시
+- [ ] 상세에서 **canManage=false**이면 수정·삭제·곡 관리 버튼 숨김
+- [ ] **현재 대기열에 추가**(10/25/50) · `canControl`/노래채널 권한 없으면 비활성
+- [ ] `POST …/soundroom/playlists/:id/add-to-queue` 성공 시 state 즉시 반영·노래채널 안내 1건·30초 삭제·멘션 무알림
+- [ ] 플레이리스트 CRUD·곡 관리만으로는 Discord 안내 없음
+- [ ] `DISCORD_OWNER_IDS`만 `POST …/admin/hide` 사용 가능 (웹 UI 없음)
 - [ ] **본인이 추가한 곡** 대기열 삭제
 - [ ] 대기열 **위/아래** 이동 (queue/swap)
 - [ ] Soundroom 패널 **🌐 웹 리모컨** 링크 (`WEB_DASHBOARD_PUBLIC_URL` 설정 시)

@@ -34,6 +34,7 @@ import {
   handleSoundroomAddPlaylist,
   handleSoundroomSearch,
 } from "@/web/routes/soundroomSearch";
+import { handleWebPlaylistRoutes } from "@/web/routes/playlists";
 import { handleHealth, markWebDashboardServerStarted } from "@/web/routes/health";
 import { handleSoundroomGuildState } from "@/web/routes/soundroomState";
 import { handleLegalPageRequest } from "@/web/legalPages";
@@ -306,6 +307,35 @@ async function handleRequest(
       return;
     }
 
+    if (pathname.startsWith("/api/auth/playlists")) {
+      const handled = await handleWebPlaylistRoutes(
+        req,
+        res,
+        client,
+        pathname,
+        method,
+      );
+      if (handled) {
+        return;
+      }
+    }
+
+    const playlistAddToQueueEarly = pathname.match(
+      /^\/api\/auth\/guilds\/(\d{17,20})\/soundroom\/playlists\/[^/]+\/add-to-queue\/?$/,
+    );
+    if (playlistAddToQueueEarly) {
+      const handled = await handleWebPlaylistRoutes(
+        req,
+        res,
+        client,
+        pathname,
+        method,
+      );
+      if (handled) {
+        return;
+      }
+    }
+
     if (pathname === "/api/auth/guilds") {
       if (method !== "GET") {
         sendMethodNotAllowed(res);
@@ -339,6 +369,8 @@ async function handleRequest(
       authSoundroomQueueRemoveMatch ||
       authSoundroomQueueSwapMatch ||
       authSoundroomStateMatch ||
+      pathname.startsWith("/api/auth/playlists") ||
+      playlistAddToQueueEarly ||
       pathname.startsWith("/api/auth/") ||
       pathname.startsWith("/api/soundroom/")
     ) {

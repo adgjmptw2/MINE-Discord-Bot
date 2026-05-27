@@ -16,6 +16,19 @@ import type {
   SoundroomQueueSwapRequestDto,
   SoundroomQueueSwapResponseDto,
   SoundroomSearchResponseDto,
+  WebPlaylistAddToQueueRequestDto,
+  WebPlaylistAddToQueueResponseDto,
+  WebPlaylistCreateRequestDto,
+  WebPlaylistCreateResponseDto,
+  WebPlaylistDetailResponseDto,
+  WebPlaylistDeleteResponseDto,
+  WebPlaylistMineResponseDto,
+  WebPlaylistPublicListResponseDto,
+  WebPlaylistTrackAddRequestDto,
+  WebPlaylistTrackAddResponseDto,
+  WebPlaylistTrackReorderRequestDto,
+  WebPlaylistTrackReorderResponseDto,
+  WebPlaylistUpdateRequestDto,
 } from "./types";
 
 const DEFAULT_API_BASE = "http://127.0.0.1:3077";
@@ -165,6 +178,41 @@ async function apiPost<T>(
   return run(true);
 }
 
+async function apiWriteWithCsrf<T>(
+  method: "PATCH" | "DELETE",
+  path: string,
+  body: unknown | undefined,
+  init?: RequestInit,
+): Promise<T> {
+  const run = async (allowCsrfRetry: boolean): Promise<T> => {
+    try {
+      const csrfToken = await getCachedCsrfTokenOrFetch(init?.signal);
+      return await apiFetch<T>(path, {
+        ...init,
+        method,
+        headers: {
+          ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+          "X-CSRF-Token": csrfToken,
+          ...init?.headers,
+        },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+    } catch (err) {
+      if (
+        allowCsrfRetry &&
+        err instanceof ApiClientError &&
+        err.code &&
+        CSRF_RETRY_CODES.has(err.code)
+      ) {
+        clearCsrfTokenCache();
+        return run(false);
+      }
+      throw err;
+    }
+  };
+  return run(true);
+}
+
 export async function getMe(signal?: AbortSignal): Promise<AuthMeResponse> {
   return apiFetch<AuthMeResponse>("/api/auth/me", { signal });
 }
@@ -270,6 +318,131 @@ export async function swapSoundroomQueueItems(
 ): Promise<SoundroomQueueSwapResponseDto> {
   return apiPost<SoundroomQueueSwapResponseDto>(
     `/api/auth/guilds/${encodeURIComponent(guildId)}/soundroom/queue/swap`,
+    request,
+    { signal },
+  );
+}
+
+export async function getMyPlaylists(
+  signal?: AbortSignal,
+): Promise<WebPlaylistMineResponseDto> {
+  return apiFetch<WebPlaylistMineResponseDto>("/api/auth/playlists/mine", {
+    signal,
+  });
+}
+
+export async function getPublicPlaylists(
+  params: { q?: string; limit?: number; offset?: number },
+  signal?: AbortSignal,
+): Promise<WebPlaylistPublicListResponseDto> {
+  const search = new URLSearchParams();
+  if (params.q?.trim()) {
+    search.set("q", params.q.trim());
+  }
+  if (params.limit != null) {
+    search.set("limit", String(params.limit));
+  }
+  if (params.offset != null) {
+    search.set("offset", String(params.offset));
+  }
+  const qs = search.toString();
+  return apiFetch<WebPlaylistPublicListResponseDto>(
+    `/api/auth/playlists/public${qs ? `?${qs}` : ""}`,
+    { signal },
+  );
+}
+
+export async function getPlaylistDetail(
+  playlistId: string,
+  signal?: AbortSignal,
+): Promise<WebPlaylistDetailResponseDto> {
+  return apiFetch<WebPlaylistDetailResponseDto>(
+    `/api/auth/playlists/${encodeURIComponent(playlistId)}`,
+    { signal },
+  );
+}
+
+export async function createPlaylist(
+  request: WebPlaylistCreateRequestDto,
+  signal?: AbortSignal,
+): Promise<WebPlaylistCreateResponseDto> {
+  return apiPost<WebPlaylistCreateResponseDto>(
+    "/api/auth/playlists",
+    request,
+    { signal },
+  );
+}
+
+export async function updatePlaylist(
+  playlistId: string,
+  request: WebPlaylistUpdateRequestDto,
+  signal?: AbortSignal,
+): Promise<WebPlaylistDetailResponseDto> {
+  return apiWriteWithCsrf<WebPlaylistDetailResponseDto>(
+    "PATCH",
+    `/api/auth/playlists/${encodeURIComponent(playlistId)}`,
+    request,
+    { signal },
+  );
+}
+
+export async function deletePlaylist(
+  playlistId: string,
+  signal?: AbortSignal,
+): Promise<WebPlaylistDeleteResponseDto> {
+  return apiWriteWithCsrf<WebPlaylistDeleteResponseDto>(
+    "DELETE",
+    `/api/auth/playlists/${encodeURIComponent(playlistId)}`,
+    undefined,
+    { signal },
+  );
+}
+
+export async function addTrackToPlaylist(
+  playlistId: string,
+  request: WebPlaylistTrackAddRequestDto,
+  signal?: AbortSignal,
+): Promise<WebPlaylistTrackAddResponseDto> {
+  return apiPost<WebPlaylistTrackAddResponseDto>(
+    `/api/auth/playlists/${encodeURIComponent(playlistId)}/tracks`,
+    request,
+    { signal },
+  );
+}
+
+export async function removeTrackFromPlaylist(
+  playlistId: string,
+  trackId: string,
+  signal?: AbortSignal,
+): Promise<{ ok: true; removed: true }> {
+  return apiWriteWithCsrf<{ ok: true; removed: true }>(
+    "DELETE",
+    `/api/auth/playlists/${encodeURIComponent(playlistId)}/tracks/${encodeURIComponent(trackId)}`,
+    undefined,
+    { signal },
+  );
+}
+
+export async function reorderPlaylistTracks(
+  playlistId: string,
+  request: WebPlaylistTrackReorderRequestDto,
+  signal?: AbortSignal,
+): Promise<WebPlaylistTrackReorderResponseDto> {
+  return apiPost<WebPlaylistTrackReorderResponseDto>(
+    `/api/auth/playlists/${encodeURIComponent(playlistId)}/tracks/reorder`,
+    request,
+    { signal },
+  );
+}
+
+export async function addPlaylistToQueue(
+  guildId: string,
+  playlistId: string,
+  request: WebPlaylistAddToQueueRequestDto,
+  signal?: AbortSignal,
+): Promise<WebPlaylistAddToQueueResponseDto> {
+  return apiPost<WebPlaylistAddToQueueResponseDto>(
+    `/api/auth/guilds/${encodeURIComponent(guildId)}/soundroom/playlists/${encodeURIComponent(playlistId)}/add-to-queue`,
     request,
     { signal },
   );

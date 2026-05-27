@@ -214,3 +214,126 @@ export interface SoundroomQueueSwapResponseDto {
   swapped: SoundroomQueueSwapSummaryDto;
   state: SoundroomGuildStateDto;
 }
+
+export type WebPlaylistVisibility = "private" | "public";
+
+export interface WebPlaylistSummaryDto {
+  id: string;
+  title: string;
+  description: string;
+  visibility: WebPlaylistVisibility;
+  trackCount: number;
+  isHiddenByAdmin: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WebPlaylistPublicSummaryDto {
+  id: string;
+  title: string;
+  description: string;
+  ownerNameSnapshot: string;
+  trackCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WebPlaylistTrackDto {
+  id: string;
+  position: number;
+  title: string;
+  uri: string;
+  author: string;
+  durationMs: number;
+  thumbnailUrl: string | null;
+  source: string;
+}
+
+export interface WebPlaylistDetailDto {
+  id: string;
+  title: string;
+  description: string;
+  visibility: WebPlaylistVisibility;
+  ownerNameSnapshot: string;
+  isOwner: boolean;
+  canManage: boolean;
+  isHiddenByAdmin: boolean;
+  createdAt: string;
+  updatedAt: string;
+  tracks: WebPlaylistTrackDto[];
+}
+
+export interface WebPlaylistCreateRequestDto {
+  title: string;
+  description?: string;
+  visibility: WebPlaylistVisibility;
+}
+
+export interface WebPlaylistUpdateRequestDto {
+  title?: string;
+  description?: string;
+  visibility?: WebPlaylistVisibility;
+}
+
+export interface WebPlaylistTrackAddRequestDto {
+  query?: string;
+  uri?: string;
+}
+
+export interface WebPlaylistTrackReorderRequestDto {
+  trackIds: string[];
+}
+
+export interface WebPlaylistAddToQueueRequestDto {
+  limit?: number;
+}
+
+export interface WebPlaylistMineResponseDto {
+  ok: true;
+  playlists: WebPlaylistSummaryDto[];
+}
+
+export interface WebPlaylistPublicListResponseDto {
+  ok: true;
+  playlists: WebPlaylistPublicSummaryDto[];
+  limit: number;
+  offset: number;
+}
+
+export interface WebPlaylistDetailResponseDto {
+  ok: true;
+  playlist: WebPlaylistDetailDto;
+}
+
+export interface WebPlaylistCreateResponseDto {
+  ok: true;
+  playlist: WebPlaylistDetailDto;
+}
+
+export interface WebPlaylistTrackAddResponseDto {
+  ok: true;
+  track: WebPlaylistTrackDto;
+}
+
+export interface WebPlaylistTrackReorderResponseDto {
+  ok: true;
+  tracks: WebPlaylistTrackDto[];
+}
+
+export interface WebPlaylistDeleteResponseDto {
+  ok: true;
+  deleted: true;
+}
+
+export interface WebPlaylistAddToQueueResponseDto {
+  ok: true;
+  addedCount: number;
+  requestedCount: number;
+  limit: number;
+  truncated: boolean;
+  playlist: {
+    id: string;
+    title: string;
+  };
+  state: SoundroomGuildStateDto;
+}

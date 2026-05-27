@@ -13,6 +13,20 @@ export interface SoundroomPatchNote {
 /** 최신 항목이 위에 오도록 관리합니다. */
 export const SOUNDROOM_PATCH_NOTES: SoundroomPatchNote[] = [
   {
+    icon: "📋",
+    timestamp: "5월 26일 20:00",
+    title: "웹 리모컨 플레이리스트 UI 추가",
+    detail:
+      "내 플레이리스트와 공개 플레이리스트를 만들고 현재 대기열에 추가할 수 있는 화면을 추가",
+  },
+  {
+    icon: "📚",
+    timestamp: "5월 26일 19:00",
+    title: "저장형 플레이리스트 API 추가",
+    detail:
+      "개인/공개 플레이리스트 저장, 수정, 삭제와 Soundroom 대기열 추가 API 기반을 추가",
+  },
+  {
     icon: "🔁",
     timestamp: "5월 26일 18:00",
     title: "자동재생 반복 추천 완화",
