@@ -15,6 +15,7 @@ export type RateLimitBucket =
   | "playlist-write"
   | "playlist-add-to-queue"
   | "playlist-admin"
+  | "playlist-report"
   | "queue"
   | "logout";
 
@@ -32,6 +33,7 @@ const BUCKET_LIMITS: Record<RateLimitBucket, { windowMs: number; max: number }> 
     "playlist-write": { windowMs: 10_000, max: 10 },
     "playlist-add-to-queue": { windowMs: 30_000, max: 3 },
     "playlist-admin": { windowMs: 30_000, max: 10 },
+    "playlist-report": { windowMs: 60_000, max: 3 },
     queue: { windowMs: 5_000, max: 10 },
     logout: { windowMs: 10_000, max: 10 },
   };
@@ -142,8 +144,17 @@ export function resolveRateLimitBucket(
     if (pathname.includes("/admin/public") && method === "GET") {
       return "playlist-admin";
     }
+    if (pathname.includes("/admin/reports") && method === "GET") {
+      return "playlist-admin";
+    }
+    if (pathname.includes("/admin/reports/") && pathname.endsWith("/resolve")) {
+      return "playlist-admin";
+    }
     if (pathname.includes("/admin/hide") && method === "POST") {
       return "playlist-admin";
+    }
+    if (pathname.endsWith("/report") && method === "POST") {
+      return "playlist-report";
     }
     if (method === "GET") {
       return "playlist-read";

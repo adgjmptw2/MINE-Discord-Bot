@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { getAdminPublicPlaylists, setPlaylistAdminHidden } from "../api";
+import { PlaylistReportsPanel } from "./PlaylistReportsPanel";
 import {
   isControlUnauthorized,
   isPlaylistAdminRequired,
@@ -34,6 +35,8 @@ function formatUpdatedAt(iso: string): string {
   });
 }
 
+type AdminSection = "playlists" | "reports";
+
 export function PlaylistAdminPanel({
   active,
   selectedId,
@@ -44,6 +47,7 @@ export function PlaylistAdminPanel({
   onUserActionEnd,
   onBusyChange,
 }: PlaylistAdminPanelProps) {
+  const [section, setSection] = useState<AdminSection>("playlists");
   const [accessDenied, setAccessDenied] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [items, setItems] = useState<WebPlaylistAdminSummaryDto[]>([]);
@@ -158,6 +162,41 @@ export function PlaylistAdminPanel({
 
   return (
     <div className="playlist-admin-panel">
+      <div className="playlist-admin-section-tabs" role="tablist">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={section === "playlists"}
+          className={`playlist-tab playlist-tab--compact${section === "playlists" ? " playlist-tab--active" : ""}`}
+          onClick={() => setSection("playlists")}
+        >
+          공개 관리
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={section === "reports"}
+          className={`playlist-tab playlist-tab--compact${section === "reports" ? " playlist-tab--active" : ""}`}
+          onClick={() => setSection("reports")}
+        >
+          신고 목록
+        </button>
+      </div>
+
+      {section === "reports" ? (
+        <PlaylistReportsPanel
+          active={active && section === "reports"}
+          busy={busy}
+          onSelectPlaylist={onSelect}
+          onUnauthorized={onUnauthorized}
+          onUserActionStart={onUserActionStart}
+          onUserActionEnd={onUserActionEnd}
+          onBusyChange={onBusyChange}
+        />
+      ) : null}
+
+      {section === "playlists" ? (
+        <>
       <p className="playlist-admin-intro muted">
         운영자는 공개 플레이리스트를 숨김 처리하거나 다시 표시할 수 있습니다.
         숨김은 삭제가 아니며 일반 공개 목록에서만 제외됩니다.
@@ -304,6 +343,8 @@ export function PlaylistAdminPanel({
         <p className="playlist-error" role="alert">
           {error}
         </p>
+      ) : null}
+        </>
       ) : null}
     </div>
   );

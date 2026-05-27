@@ -15,6 +15,7 @@ import {
   getWebPlaylistById,
   getWebPlaylistTrackById,
   getWebPlaylistTracks,
+  listAdminPlaylistReports,
   listAdminPublicWebPlaylists,
   listMyWebPlaylists,
   listPublicWebPlaylists,
@@ -35,11 +36,13 @@ import {
   addWebPlaylistTracksToSoundroomQueue,
   assertPlaylistCreateLimits,
   assertPublicVisibilityChange,
+  completeWebPlaylistReport,
   PlaylistActionError,
   requireManageablePlaylist,
   requireViewablePlaylist,
   resolveTrackForWebPlaylist,
   sanitizePlaylistSnapshotName,
+  submitWebPlaylistReport,
   trackRecordToDto,
   validatePlaylistDescription,
   validatePlaylistTitle,
@@ -53,11 +56,14 @@ import { sendWebRemoteNotice } from "@/web/soundroomChannelNotice";
 import { buildWebRemoteSavedPlaylistAddNotice } from "@/web/soundroomWebRemoteNotices";
 import type {
   WebPlaylistAdminListHiddenFilter,
+  WebPlaylistAdminReportStatusFilter,
+  WebPlaylistAdminReportSummaryDto,
   WebPlaylistAdminSummaryDto,
   WebPlaylistDetailDto,
   WebPlaylistPublicSummaryDto,
   WebPlaylistSummaryDto,
 } from "@/web/types";
+import type { AdminPlaylistReportRow } from "@/web/playlistDb";
 import { log } from "@/utils/logger";
 
 const PLAYLIST_ID_PATTERN =
@@ -125,6 +131,29 @@ function toAdminSummaryDto(
   };
 }
 
+function toAdminReportDto(row: AdminPlaylistReportRow): WebPlaylistAdminReportSummaryDto {
+  const deleted = row.playlist_is_deleted === 1;
+  return {
+    id: row.id,
+    playlist: {
+      id: row.playlist_id,
+      title: deleted
+        ? "삭제된 플레이리스트"
+        : (row.playlist_title?.trim() || "제목 없음"),
+      ownerNameSnapshot:
+        row.playlist_owner_name_snapshot?.trim() || "알 수 없음",
+      isHiddenByAdmin: row.playlist_is_hidden_by_admin === 1,
+    },
+    reporterNameSnapshot: row.reporter_name_snapshot,
+    reason: row.reason,
+    detail: row.detail,
+    status: row.status,
+    createdAt: row.created_at,
+    resolvedAt: row.resolved_at,
+    resolutionNote: row.resolution_note,
+  };
+}
+
 function toPublicSummaryDto(
   row: Awaited<ReturnType<typeof listPublicWebPlaylists>>[number],
 ): WebPlaylistPublicSummaryDto {
@@ -185,6 +214,9 @@ type PlaylistRoute =
   | { kind: "mine" }
   | { kind: "public" }
   | { kind: "admin_public" }
+  | { kind: "admin_reports" }
+  | { kind: "admin_report_resolve"; reportId: string }
+  | { kind: "playlist_report"; playlistId: string }
   | { kind: "root" }
   | { kind: "detail"; playlistId: string }
   | { kind: "tracks"; playlistId: string }
@@ -211,6 +243,25 @@ function parsePlaylistRoute(pathname: string): PlaylistRoute | null {
   // "admin"이 playlist UUID로 해석되지 않도록 :id보다 먼저 매칭
   if (parts.length === 2 && parts[0] === "admin" && parts[1] === "public") {
     return { kind: "admin_public" };
+  }
+  if (parts.length === 2 && parts[0] === "admin" && parts[1] === "reports") {
+    return { kind: "admin_reports" };
+  }
+  if (
+    parts.length === 4 &&
+    parts[0] === "admin" &&
+    parts[1] === "reports" &&
+    PLAYLIST_ID_PATTERN.test(parts[2]!) &&
+    parts[3] === "resolve"
+  ) {
+    return { kind: "admin_report_resolve", reportId: parts[2]! };
+  }
+  if (
+    parts.length === 2 &&
+    PLAYLIST_ID_PATTERN.test(parts[0]!) &&
+    parts[1] === "report"
+  ) {
+    return { kind: "playlist_report", playlistId: parts[0]! };
   }
   if (parts.length === 1 && PLAYLIST_ID_PATTERN.test(parts[0]!)) {
     return { kind: "detail", playlistId: parts[0]! };
@@ -448,6 +499,113 @@ export async function handleWebPlaylistRoutes(
       limit,
       offset,
     });
+    return true;
+  }
+
+  if (route.kind === "admin_reports") {
+    if (method !== "GET") {
+      sendError(res, 405, "METHOD_NOT_ALLOWED", "허용되지 않은 메서드입니다.");
+      return true;
+    }
+    const session = requireSession(req, res);
+    if (!session) {
+      return true;
+    }
+    const admin = requirePlaylistAdminAccess(session, client);
+    if (!admin.ok) {
+      sendError(
+        res,
+        403,
+        "PLAYLIST_ADMIN_REQUIRED",
+        "플레이리스트 운영자 권한이 필요합니다.",
+      );
+      return true;
+    }
+    const { searchParams } = readRequestUrl(req);
+    const q = searchParams.get("q") ?? undefined;
+    const statusRaw = searchParams.get("status") ?? "open";
+    const status: WebPlaylistAdminReportStatusFilter =
+      statusRaw === "resolved" || statusRaw === "all" ? statusRaw : "open";
+    let limit = Number.parseInt(searchParams.get("limit") ?? "20", 10);
+    let offset = Number.parseInt(searchParams.get("offset") ?? "0", 10);
+    if (!Number.isFinite(limit) || limit < 1) {
+      limit = 20;
+    }
+    if (limit > 50) {
+      limit = 50;
+    }
+    if (!Number.isFinite(offset) || offset < 0) {
+      offset = 0;
+    }
+    const rows = listAdminPlaylistReports({ status, q, limit, offset });
+    sendJson(res, 200, {
+      ok: true,
+      reports: rows.map(toAdminReportDto),
+      status,
+      limit,
+      offset,
+    });
+    return true;
+  }
+
+  if (route.kind === "admin_report_resolve" && method === "POST") {
+    const session = requireAuthenticatedSessionWithCsrf(req, res);
+    if (!session) {
+      return true;
+    }
+    const admin = requirePlaylistAdminAccess(session, client);
+    if (!admin.ok) {
+      sendError(
+        res,
+        403,
+        "PLAYLIST_ADMIN_REQUIRED",
+        "플레이리스트 운영자 권한이 필요합니다.",
+      );
+      return true;
+    }
+    const bodyResult = await readJsonBody<{ resolutionNote?: unknown }>(req);
+    if (!bodyResult.ok) {
+      const message =
+        bodyResult.code === "PAYLOAD_TOO_LARGE"
+          ? "요청 본문이 너무 큽니다."
+          : "요청 JSON을 읽을 수 없습니다.";
+      sendError(res, bodyResult.status, bodyResult.code, message);
+      return true;
+    }
+    try {
+      completeWebPlaylistReport(
+        route.reportId,
+        session.user.id,
+        bodyResult.data?.resolutionNote,
+      );
+      sendJson(res, 200, { ok: true, resolved: true });
+    } catch (error) {
+      handlePlaylistActionError(res, error);
+    }
+    return true;
+  }
+
+  if (route.kind === "playlist_report" && method === "POST") {
+    const session = requireAuthenticatedSessionWithCsrf(req, res);
+    if (!session) {
+      return true;
+    }
+    const bodyResult = await readJsonBody<unknown>(req);
+    if (!bodyResult.ok) {
+      const message =
+        bodyResult.code === "PAYLOAD_TOO_LARGE"
+          ? "요청 본문이 너무 큽니다."
+          : "요청 JSON을 읽을 수 없습니다.";
+      sendError(res, bodyResult.status, bodyResult.code, message);
+      return true;
+    }
+    try {
+      const body = bodyResult.data as { reason?: unknown; detail?: unknown };
+      submitWebPlaylistReport(session, client, route.playlistId, body);
+      sendJson(res, 200, { ok: true, reported: true });
+    } catch (error) {
+      handlePlaylistActionError(res, error);
+    }
     return true;
   }
 

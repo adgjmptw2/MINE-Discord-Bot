@@ -417,3 +417,60 @@ export interface WebPlaylistAdminListResponseDto {
   limit: number;
   offset: number;
 }
+
+export type WebPlaylistReportReason =
+  | "inappropriate"
+  | "spam"
+  | "misleading"
+  | "broken"
+  | "other";
+
+export type WebPlaylistReportStatus = "open" | "resolved";
+
+export type WebPlaylistAdminReportStatusFilter = "open" | "resolved" | "all";
+
+export interface WebPlaylistReportRequestDto {
+  reason: WebPlaylistReportReason;
+  detail?: string;
+}
+
+export interface WebPlaylistReportResponseDto {
+  ok: true;
+  reported: true;
+}
+
+export interface WebPlaylistAdminReportPlaylistDto {
+  id: string;
+  title: string;
+  ownerNameSnapshot: string;
+  isHiddenByAdmin: boolean;
+}
+
+export interface WebPlaylistAdminReportSummaryDto {
+  id: string;
+  playlist: WebPlaylistAdminReportPlaylistDto;
+  reporterNameSnapshot: string;
+  reason: WebPlaylistReportReason;
+  detail: string;
+  status: WebPlaylistReportStatus;
+  createdAt: string;
+  resolvedAt: string | null;
+  resolutionNote: string;
+}
+
+export interface WebPlaylistAdminReportsResponseDto {
+  ok: true;
+  reports: WebPlaylistAdminReportSummaryDto[];
+  status: WebPlaylistAdminReportStatusFilter;
+  limit: number;
+  offset: number;
+}
+
+export interface WebPlaylistReportResolveRequestDto {
+  resolutionNote?: string;
+}
+
+export interface WebPlaylistReportResolveResponseDto {
+  ok: true;
+  resolved: true;
+}

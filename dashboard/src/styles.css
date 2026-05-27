@@ -1764,3 +1764,54 @@ img {
     min-width: 0;
   }
 }
+
+.playlist-admin-section-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.playlist-report-panel {
+  margin: 0.75rem 0;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.playlist-report-panel h5 {
+  margin: 0 0 0.35rem;
+  font-size: 0.9rem;
+}
+
+.playlist-report-hint {
+  margin: 0 0 0.55rem;
+  font-size: 0.8rem;
+}
+
+.playlist-reports-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.playlist-report-card .playlist-report-reason {
+  margin: 0.25rem 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.playlist-report-hidden-tag {
+  margin: 0.2rem 0;
+  font-size: 0.75rem;
+}
+
+.playlist-resolve-note {
+  margin: 0.45rem 0 0;
+}
+
+.playlist-resolve-done {
+  margin: 0.45rem 0 0;
+  font-size: 0.8rem;
+}

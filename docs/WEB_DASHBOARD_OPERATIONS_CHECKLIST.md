@@ -224,10 +224,12 @@ Discord **음성 채널(노래채널)** 에 들어간 상태에서 조작이 필
 - [ ] **현재 대기열에 추가**(10/25/50) · `canControl`/노래채널 권한 없으면 비활성
 - [ ] `POST …/soundroom/playlists/:id/add-to-queue` 성공 시 state 즉시 반영·노래채널 안내 1건·30초 삭제·멘션 무알림
 - [ ] 플레이리스트 CRUD·곡 관리만으로는 Discord 안내 없음
-- [ ] 일반 사용자: `GET …/admin/public`·`POST …/admin/hide` → 403 `PLAYLIST_ADMIN_REQUIRED`
-- [ ] `DISCORD_OWNER_IDS` 운영자: **운영자** 탭에서 공개 목록 관리·숨김/해제
-- [ ] 숨김 플레이리스트는 일반 공개 목록에서 제외, 운영자 목록(hidden 필터)에서는 조회
-- [ ] 숨김/해제 시 Discord 채널 안내 없음
+- [ ] 일반 사용자: `GET …/admin/public`·`GET …/admin/reports`·`POST …/admin/hide` → 403
+- [ ] 공개 플레이리스트 **신고** (본인 플레이리스트·중복 신고 거절, detail 300자)
+- [ ] 신고 제출·처리 완료·숨김/해제 시 Discord 채널 안내 없음
+- [ ] 신고/관리 UI에 **reporterUserId·ownerUserId 미노출**
+- [ ] `DISCORD_OWNER_IDS` 운영자: **운영자** 탭(공개 관리·신고 목록)·숨김/해제·처리 완료
+- [ ] 숨김 플레이리스트는 일반 공개 목록에서 제외, 운영자 목록에서는 조회
 - [ ] **본인이 추가한 곡** 대기열 삭제
 - [ ] 대기열 **위/아래** 이동 (queue/swap)
 - [ ] Soundroom 패널 **🌐 웹 리모컨** 링크 (`WEB_DASHBOARD_PUBLIC_URL` 설정 시)

@@ -84,7 +84,75 @@ export function ensureWebPlaylistTables(): void {
     CREATE UNIQUE INDEX IF NOT EXISTS idx_web_playlist_tracks_playlist_position
       ON web_playlist_tracks(playlist_id, position);
   `);
+  ensureWebPlaylistReportTable();
   tablesReady = true;
+}
+
+export type WebPlaylistReportReason =
+  | "inappropriate"
+  | "spam"
+  | "misleading"
+  | "broken"
+  | "other";
+
+export type WebPlaylistReportStatus = "open" | "resolved";
+
+export type WebPlaylistReportRecord = {
+  id: string;
+  playlist_id: string;
+  reporter_user_id: string;
+  reporter_name_snapshot: string;
+  reason: WebPlaylistReportReason;
+  detail: string;
+  status: WebPlaylistReportStatus;
+  created_at: string;
+  resolved_at: string | null;
+  resolved_by_user_id: string | null;
+  resolution_note: string;
+};
+
+export type AdminPlaylistReportRow = WebPlaylistReportRecord & {
+  playlist_title: string | null;
+  playlist_owner_name_snapshot: string | null;
+  playlist_is_deleted: number | null;
+  playlist_is_hidden_by_admin: number | null;
+};
+
+let reportTablesReady = false;
+
+function ensureWebPlaylistReportTable(): void {
+  if (reportTablesReady) {
+    return;
+  }
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS web_playlist_reports (
+      id TEXT PRIMARY KEY,
+      playlist_id TEXT NOT NULL,
+      reporter_user_id TEXT NOT NULL,
+      reporter_name_snapshot TEXT NOT NULL,
+      reason TEXT NOT NULL,
+      detail TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'open',
+      created_at TEXT NOT NULL,
+      resolved_at TEXT NULL,
+      resolved_by_user_id TEXT NULL,
+      resolution_note TEXT NOT NULL DEFAULT '',
+      FOREIGN KEY (playlist_id) REFERENCES web_playlists(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_web_playlist_reports_playlist_id
+      ON web_playlist_reports(playlist_id);
+
+    CREATE INDEX IF NOT EXISTS idx_web_playlist_reports_status_created_at
+      ON web_playlist_reports(status, created_at);
+
+    CREATE INDEX IF NOT EXISTS idx_web_playlist_reports_reporter
+      ON web_playlist_reports(reporter_user_id);
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_web_playlist_reports_playlist_reporter
+      ON web_playlist_reports(playlist_id, reporter_user_id);
+  `);
+  reportTablesReady = true;
 }
 
 function nowIso(): string {
@@ -506,4 +574,179 @@ export function reorderWebPlaylistTracks(
     throw new Error("INVALID_PLAYLIST_TRACK_ORDER");
   }
   return getWebPlaylistTracks(playlistId);
+}
+
+function mapReportRow(row: WebPlaylistReportRecord): WebPlaylistReportRecord {
+  return {
+    id: row.id,
+    playlist_id: row.playlist_id,
+    reporter_user_id: row.reporter_user_id,
+    reporter_name_snapshot: row.reporter_name_snapshot,
+    reason: row.reason as WebPlaylistReportReason,
+    detail: row.detail,
+    status: row.status as WebPlaylistReportStatus,
+    created_at: row.created_at,
+    resolved_at: row.resolved_at,
+    resolved_by_user_id: row.resolved_by_user_id,
+    resolution_note: row.resolution_note,
+  };
+}
+
+export function getPlaylistReportByPlaylistAndReporter(
+  playlistId: string,
+  reporterUserId: string,
+): WebPlaylistReportRecord | null {
+  ensureWebPlaylistReportTable();
+  const row = db.get<WebPlaylistReportRecord>(
+    `SELECT id, playlist_id, reporter_user_id, reporter_name_snapshot, reason, detail,
+            status, created_at, resolved_at, resolved_by_user_id, resolution_note
+     FROM web_playlist_reports
+     WHERE playlist_id = ? AND reporter_user_id = ?`,
+    [playlistId, reporterUserId],
+  );
+  return row ? mapReportRow(row) : null;
+}
+
+export function getPlaylistReportById(
+  reportId: string,
+): WebPlaylistReportRecord | null {
+  ensureWebPlaylistReportTable();
+  const row = db.get<WebPlaylistReportRecord>(
+    `SELECT id, playlist_id, reporter_user_id, reporter_name_snapshot, reason, detail,
+            status, created_at, resolved_at, resolved_by_user_id, resolution_note
+     FROM web_playlist_reports WHERE id = ?`,
+    [reportId],
+  );
+  return row ? mapReportRow(row) : null;
+}
+
+export function createPlaylistReport(input: {
+  playlistId: string;
+  reporterUserId: string;
+  reporterNameSnapshot: string;
+  reason: WebPlaylistReportReason;
+  detail: string;
+}): WebPlaylistReportRecord {
+  ensureWebPlaylistReportTable();
+  const existing = getPlaylistReportByPlaylistAndReporter(
+    input.playlistId,
+    input.reporterUserId,
+  );
+  if (existing) {
+    throw new Error("PLAYLIST_REPORT_DUPLICATE");
+  }
+  const id = randomUUID();
+  const ts = nowIso();
+  try {
+    db.run(
+      `INSERT INTO web_playlist_reports (
+        id, playlist_id, reporter_user_id, reporter_name_snapshot,
+        reason, detail, status, created_at, resolved_at, resolved_by_user_id, resolution_note
+      ) VALUES (?, ?, ?, ?, ?, ?, 'open', ?, NULL, NULL, '')`,
+      [
+        id,
+        input.playlistId,
+        input.reporterUserId,
+        input.reporterNameSnapshot,
+        input.reason,
+        input.detail,
+        ts,
+      ],
+    );
+  } catch {
+    throw new Error("PLAYLIST_REPORT_DUPLICATE");
+  }
+  const created = getPlaylistReportById(id);
+  if (!created) {
+    throw new Error("PLAYLIST_REPORT_CREATE_FAILED");
+  }
+  return created;
+}
+
+export type WebPlaylistAdminReportStatusFilter = "open" | "resolved" | "all";
+
+export function listAdminPlaylistReports(params: {
+  status: WebPlaylistAdminReportStatusFilter;
+  q?: string;
+  limit: number;
+  offset: number;
+}): AdminPlaylistReportRow[] {
+  ensureWebPlaylistReportTable();
+  const statusClause =
+    params.status === "open"
+      ? " AND r.status = 'open'"
+      : params.status === "resolved"
+        ? " AND r.status = 'resolved'"
+        : "";
+  const q = params.q?.trim();
+  const baseFrom = `FROM web_playlist_reports r
+     LEFT JOIN web_playlists p ON p.id = r.playlist_id
+     WHERE 1=1${statusClause}`;
+  const orderLimit = ` ORDER BY r.created_at DESC LIMIT ? OFFSET ?`;
+
+  if (q) {
+    const like = `%${q.replace(/%/g, "").replace(/_/g, "")}%`;
+    const rows = db.all<AdminPlaylistReportRow>(
+      `SELECT r.id, r.playlist_id, r.reporter_user_id, r.reporter_name_snapshot,
+              r.reason, r.detail, r.status, r.created_at, r.resolved_at,
+              r.resolved_by_user_id, r.resolution_note,
+              p.title AS playlist_title,
+              p.owner_name_snapshot AS playlist_owner_name_snapshot,
+              p.is_deleted AS playlist_is_deleted,
+              p.is_hidden_by_admin AS playlist_is_hidden_by_admin
+       ${baseFrom}
+         AND (
+           r.detail LIKE ? OR r.reporter_name_snapshot LIKE ?
+           OR p.title LIKE ? OR p.owner_name_snapshot LIKE ?
+         )
+       ${orderLimit}`,
+      [like, like, like, like, params.limit, params.offset],
+    );
+    return rows.map((row) => ({
+      ...mapReportRow(row),
+      playlist_title: row.playlist_title,
+      playlist_owner_name_snapshot: row.playlist_owner_name_snapshot,
+      playlist_is_deleted: row.playlist_is_deleted,
+      playlist_is_hidden_by_admin: row.playlist_is_hidden_by_admin,
+    }));
+  }
+
+  const rows = db.all<AdminPlaylistReportRow>(
+    `SELECT r.id, r.playlist_id, r.reporter_user_id, r.reporter_name_snapshot,
+            r.reason, r.detail, r.status, r.created_at, r.resolved_at,
+            r.resolved_by_user_id, r.resolution_note,
+            p.title AS playlist_title,
+            p.owner_name_snapshot AS playlist_owner_name_snapshot,
+            p.is_deleted AS playlist_is_deleted,
+            p.is_hidden_by_admin AS playlist_is_hidden_by_admin
+     ${baseFrom}${orderLimit}`,
+    [params.limit, params.offset],
+  );
+  return rows.map((row) => ({
+    ...mapReportRow(row),
+    playlist_title: row.playlist_title,
+    playlist_owner_name_snapshot: row.playlist_owner_name_snapshot,
+    playlist_is_deleted: row.playlist_is_deleted,
+    playlist_is_hidden_by_admin: row.playlist_is_hidden_by_admin,
+  }));
+}
+
+export function resolvePlaylistReportRecord(
+  reportId: string,
+  resolverUserId: string,
+  resolutionNote: string,
+): WebPlaylistReportRecord | null {
+  ensureWebPlaylistReportTable();
+  const current = getPlaylistReportById(reportId);
+  if (!current || current.status === "resolved") {
+    return null;
+  }
+  const ts = nowIso();
+  db.run(
+    `UPDATE web_playlist_reports
+     SET status = 'resolved', resolved_at = ?, resolved_by_user_id = ?, resolution_note = ?
+     WHERE id = ? AND status = 'open'`,
+    [ts, resolverUserId, resolutionNote, reportId],
+  );
+  return getPlaylistReportById(reportId);
 }

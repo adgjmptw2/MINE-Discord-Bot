@@ -13,6 +13,13 @@ export interface SoundroomPatchNote {
 /** 최신 항목이 위에 오도록 관리합니다. */
 export const SOUNDROOM_PATCH_NOTES: SoundroomPatchNote[] = [
   {
+    icon: "🚩",
+    timestamp: "5월 26일 22:00",
+    title: "공개 플레이리스트 신고 기능 추가",
+    detail:
+      "문제 있는 공개 플레이리스트를 신고하고 운영자가 신고 목록을 확인할 수 있게 개선",
+  },
+  {
     icon: "🛡️",
     timestamp: "5월 26일 21:00",
     title: "공개 플레이리스트 운영자 관리 추가",

@@ -227,6 +227,14 @@ const PLAYLIST_UI_MESSAGES: Record<string, string> = {
   PLAYLIST_NOT_SUPPORTED:
     "재생목록 URL은 저장할 수 없습니다. 단일 곡만 추가해 주세요.",
   PLAYLIST_EMPTY: "플레이리스트에 곡이 없습니다.",
+  PLAYLIST_REPORT_SELF_DENIED: "내가 만든 플레이리스트는 신고할 수 없습니다.",
+  PLAYLIST_REPORT_DUPLICATE: "이미 신고한 플레이리스트입니다.",
+  INVALID_PLAYLIST_REPORT_REASON: "신고 사유를 선택해 주세요.",
+  INVALID_PLAYLIST_REPORT_DETAIL:
+    "신고 상세 내용은 300자 이내로 입력해 주세요.",
+  PLAYLIST_REPORT_NOT_FOUND: "신고 내역을 찾을 수 없습니다.",
+  INVALID_PLAYLIST_REPORT_RESOLUTION:
+    "처리 메모는 300자 이내로 입력해 주세요.",
   NO_TRACK_LOADED: "곡을 불러오지 못했습니다.",
   LAVALINK_UNAVAILABLE:
     "음악 서버가 응답하지 않습니다. 잠시 후 다시 시도해 주세요.",

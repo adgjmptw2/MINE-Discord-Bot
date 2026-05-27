@@ -15,6 +15,7 @@ import type {
   WebPlaylistDetailDto,
 } from "../types";
 import { PlaylistEditor } from "./PlaylistEditor";
+import { PlaylistReportDialog } from "./PlaylistReportDialog";
 import { PlaylistTrackList } from "./PlaylistTrackList";
 
 type PlaylistDetailProps = {
@@ -67,7 +68,11 @@ export function PlaylistDetail({
   const [queueLimit, setQueueLimit] = useState(50);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reportOpen, setReportOpen] = useState(false);
   const { message: success, show: showSuccess } = useTransientNotice();
+
+  const canReport =
+    playlist.visibility === "public" && !playlist.canManage;
 
   const runBusy = async (fn: () => Promise<void>) => {
     setBusy(true);
@@ -272,8 +277,34 @@ export function PlaylistDetail({
                   삭제
                 </button>
               </div>
+            ) : canReport && !reportOpen ? (
+              <div className="playlist-actions playlist-actions--header">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={busy}
+                  onClick={() => setReportOpen(true)}
+                >
+                  신고
+                </button>
+              </div>
             ) : null}
           </header>
+
+          {canReport && reportOpen ? (
+            <PlaylistReportDialog
+              playlistId={playlist.id}
+              disabled={busy}
+              onSuccess={() => {
+                setReportOpen(false);
+                showSuccess(
+                  "신고가 접수되었습니다. 운영자가 확인할 수 있습니다.",
+                );
+              }}
+              onCancel={() => setReportOpen(false)}
+              onUnauthorized={onUnauthorized}
+            />
+          ) : null}
 
           <div className="playlist-queue-add">
             <h5>현재 대기열에 추가</h5>

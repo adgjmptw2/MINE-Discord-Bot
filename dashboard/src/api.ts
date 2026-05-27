@@ -22,6 +22,12 @@ import type {
   WebPlaylistAdminHideResponseDto,
   WebPlaylistAdminListHiddenFilter,
   WebPlaylistAdminListResponseDto,
+  WebPlaylistAdminReportStatusFilter,
+  WebPlaylistAdminReportsResponseDto,
+  WebPlaylistReportRequestDto,
+  WebPlaylistReportResolveRequestDto,
+  WebPlaylistReportResolveResponseDto,
+  WebPlaylistReportResponseDto,
   WebPlaylistCreateRequestDto,
   WebPlaylistCreateResponseDto,
   WebPlaylistDetailResponseDto,
@@ -490,6 +496,59 @@ export async function setPlaylistAdminHidden(
   return apiPost<WebPlaylistAdminHideResponseDto>(
     `/api/auth/playlists/${encodeURIComponent(playlistId)}/admin/hide`,
     body,
+    { signal },
+  );
+}
+
+export async function reportPlaylist(
+  playlistId: string,
+  request: WebPlaylistReportRequestDto,
+  signal?: AbortSignal,
+): Promise<WebPlaylistReportResponseDto> {
+  return apiPost<WebPlaylistReportResponseDto>(
+    `/api/auth/playlists/${encodeURIComponent(playlistId)}/report`,
+    request,
+    { signal },
+  );
+}
+
+export async function getAdminPlaylistReports(
+  params: {
+    status?: WebPlaylistAdminReportStatusFilter;
+    q?: string;
+    limit?: number;
+    offset?: number;
+  },
+  signal?: AbortSignal,
+): Promise<WebPlaylistAdminReportsResponseDto> {
+  const search = new URLSearchParams();
+  if (params.status) {
+    search.set("status", params.status);
+  }
+  if (params.q?.trim()) {
+    search.set("q", params.q.trim());
+  }
+  if (params.limit != null) {
+    search.set("limit", String(params.limit));
+  }
+  if (params.offset != null) {
+    search.set("offset", String(params.offset));
+  }
+  const qs = search.toString();
+  return apiFetch<WebPlaylistAdminReportsResponseDto>(
+    `/api/auth/playlists/admin/reports${qs ? `?${qs}` : ""}`,
+    { signal },
+  );
+}
+
+export async function resolvePlaylistReport(
+  reportId: string,
+  request: WebPlaylistReportResolveRequestDto,
+  signal?: AbortSignal,
+): Promise<WebPlaylistReportResolveResponseDto> {
+  return apiPost<WebPlaylistReportResolveResponseDto>(
+    `/api/auth/playlists/admin/reports/${encodeURIComponent(reportId)}/resolve`,
+    request,
     { signal },
   );
 }

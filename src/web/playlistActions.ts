@@ -17,11 +17,15 @@ import {
 import {
   countUserPublicWebPlaylists,
   countUserWebPlaylists,
+  createPlaylistReport,
+  getWebPlaylistById,
   getWebPlaylistTracks,
   MAX_WEB_PLAYLIST_TRACKS,
   MAX_WEB_PLAYLISTS_PER_USER,
   MAX_WEB_PUBLIC_PLAYLISTS_PER_USER,
+  resolvePlaylistReportRecord,
   type WebPlaylistRecord,
+  type WebPlaylistReportReason,
   type WebPlaylistTrackRecord,
   type WebPlaylistVisibility,
 } from "@/web/playlistDb";
@@ -474,4 +478,147 @@ export async function addWebPlaylistTracksToSoundroomQueue(
     limit,
     truncated: truncated || skippedCount > 0,
   };
+}
+
+const PLAYLIST_REPORT_REASONS = new Set<WebPlaylistReportReason>([
+  "inappropriate",
+  "spam",
+  "misleading",
+  "broken",
+  "other",
+]);
+
+export function validatePlaylistReportReason(
+  reason: unknown,
+): WebPlaylistReportReason {
+  if (
+    typeof reason !== "string" ||
+    !PLAYLIST_REPORT_REASONS.has(reason as WebPlaylistReportReason)
+  ) {
+    throw new PlaylistActionError(
+      400,
+      "INVALID_PLAYLIST_REPORT_REASON",
+      "신고 사유를 선택해 주세요.",
+    );
+  }
+  return reason as WebPlaylistReportReason;
+}
+
+export function validatePlaylistReportDetail(detail: unknown): string {
+  if (detail === undefined || detail === null) {
+    return "";
+  }
+  if (typeof detail !== "string") {
+    throw new PlaylistActionError(
+      400,
+      "INVALID_PLAYLIST_REPORT_DETAIL",
+      "신고 상세 내용 형식이 올바르지 않습니다.",
+    );
+  }
+  const d = detail.trim();
+  if (d.length > 300) {
+    throw new PlaylistActionError(
+      400,
+      "INVALID_PLAYLIST_REPORT_DETAIL",
+      "신고 상세 내용은 300자 이내로 입력해 주세요.",
+    );
+  }
+  return d;
+}
+
+export function validatePlaylistResolutionNote(note: unknown): string {
+  if (note === undefined || note === null) {
+    return "";
+  }
+  if (typeof note !== "string") {
+    throw new PlaylistActionError(
+      400,
+      "INVALID_PLAYLIST_REPORT_RESOLUTION",
+      "처리 메모 형식이 올바르지 않습니다.",
+    );
+  }
+  const n = note.trim();
+  if (n.length > 300) {
+    throw new PlaylistActionError(
+      400,
+      "INVALID_PLAYLIST_REPORT_RESOLUTION",
+      "처리 메모는 300자 이내로 입력해 주세요.",
+    );
+  }
+  return n;
+}
+
+/** 신고는 운영자 확인용이며 자동 제재·숨김은 하지 않는다. */
+export function submitWebPlaylistReport(
+  session: WebSession,
+  client: MineClient,
+  playlistId: string,
+  body: { reason?: unknown; detail?: unknown },
+): void {
+  const playlist = getWebPlaylistById(playlistId);
+  if (!playlist || playlist.is_deleted) {
+    throw new PlaylistActionError(
+      404,
+      "PLAYLIST_NOT_FOUND",
+      "플레이리스트를 찾을 수 없습니다.",
+    );
+  }
+  if (playlist.visibility !== "public") {
+    throw new PlaylistActionError(
+      403,
+      "PLAYLIST_ACCESS_DENIED",
+      "공개 플레이리스트만 신고할 수 있습니다.",
+    );
+  }
+  if (isPlaylistOwner(session, playlist)) {
+    throw new PlaylistActionError(
+      403,
+      "PLAYLIST_REPORT_SELF_DENIED",
+      "내가 만든 플레이리스트는 신고할 수 없습니다.",
+    );
+  }
+  requireViewablePlaylist(session, playlist, client);
+  const reason = validatePlaylistReportReason(body.reason);
+  const detail = validatePlaylistReportDetail(body.detail);
+  try {
+    createPlaylistReport({
+      playlistId,
+      reporterUserId: session.user.id,
+      reporterNameSnapshot: sanitizePlaylistSnapshotName(session.user),
+      reason,
+      detail,
+    });
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === "PLAYLIST_REPORT_DUPLICATE"
+    ) {
+      throw new PlaylistActionError(
+        409,
+        "PLAYLIST_REPORT_DUPLICATE",
+        "이미 신고한 플레이리스트입니다.",
+      );
+    }
+    throw error;
+  }
+}
+
+export function completeWebPlaylistReport(
+  reportId: string,
+  resolverUserId: string,
+  resolutionNote: unknown,
+): void {
+  const note = validatePlaylistResolutionNote(resolutionNote);
+  const updated = resolvePlaylistReportRecord(
+    reportId,
+    resolverUserId,
+    note,
+  );
+  if (!updated) {
+    throw new PlaylistActionError(
+      404,
+      "PLAYLIST_REPORT_NOT_FOUND",
+      "신고 내역을 찾을 수 없습니다.",
+    );
+  }
 }
