@@ -1,3 +1,24 @@
+/** 공개 랜딩 운영 현황 집계 (서버명·유저명·ID 없음). */
+export interface HomePagePublicStats {
+  guildCount: number;
+  estimatedMemberCount: number;
+  configuredSoundroomCount: number;
+  activePlayerCount: number;
+  playingPlayerCount: number;
+  queuedTrackCount: number;
+  activeVoiceListenerCount?: number;
+  updatedAt: string;
+}
+
+/** 공개 랜딩·패널 링크용 URL 묶음 (secret 아님). */
+export interface WebDashboardPublicLinks {
+  origin: string;
+  dashboardUrl: string;
+  privacyUrl: string;
+  termsUrl: string;
+  inviteUrl?: string;
+}
+
 export interface SoundroomTrackDto {
   title: string;
   uri: string | null;
@@ -190,6 +211,25 @@ export interface SoundroomAddedTrackDto {
 export interface SoundroomAddResponseDto {
   ok: true;
   added: SoundroomAddedTrackDto;
+  state: SoundroomGuildStateDto;
+}
+
+export interface SoundroomPlaylistAddRequestDto {
+  uri: string;
+  limit?: number;
+}
+
+export interface SoundroomPlaylistAddResponseDto {
+  ok: true;
+  addedCount: number;
+  skippedCount: number;
+  requestedCount: number;
+  limit: number;
+  truncated: boolean;
+  playlist: {
+    title: string | null;
+    uri: string | null;
+  };
   state: SoundroomGuildStateDto;
 }
 

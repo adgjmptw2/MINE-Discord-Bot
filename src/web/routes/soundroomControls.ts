@@ -20,6 +20,7 @@ import {
   type WebAuthzError,
 } from "@/web/soundroomControlAuth";
 import { buildSoundroomGuildStateDto } from "@/web/soundroomDto";
+import { sendWebRemoteControlNoticeAfterAction } from "@/web/soundroomWebRemoteNotices";
 import type {
   SoundroomControlAction,
   SoundroomControlRequestDto,
@@ -114,6 +115,9 @@ export async function handleSoundroomControl(
 
   const { session, player } = access;
 
+  let noticeVolume: number | undefined;
+  let noticeAutoplayEnabled: boolean | undefined;
+
   try {
     if (action === "togglePause") {
       await executeSoundroomTogglePause(client, guildId, player);
@@ -128,9 +132,13 @@ export async function handleSoundroomControl(
         sendError(res, 400, "INVALID_VOLUME", "볼륨 값이 올바르지 않습니다.");
         return;
       }
+      noticeVolume = volume;
       await executeSoundroomSetVolume(client, guildId, player, volume);
     } else if (action === "toggleAutoplay") {
-      await executeSoundroomToggleAutoplay(client, guildId);
+      noticeAutoplayEnabled = await executeSoundroomToggleAutoplay(
+        client,
+        guildId,
+      );
     }
   } catch (error) {
     if (error instanceof ControlNothingPlayingError) {
@@ -155,6 +163,15 @@ export async function handleSoundroomControl(
     "info",
     "web",
     `Soundroom control action=${action} guild=${guildId} user=${session.user.id}`,
+  );
+
+  void sendWebRemoteControlNoticeAfterAction(
+    client,
+    guildId,
+    session.user.id,
+    action,
+    noticeVolume,
+    noticeAutoplayEnabled,
   );
 
   const state = buildSoundroomGuildStateDto(client, guildId);

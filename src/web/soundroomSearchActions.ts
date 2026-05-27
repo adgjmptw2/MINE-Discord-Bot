@@ -159,7 +159,7 @@ function assertNotExplicitPlaylist(
     throw new SoundroomSearchActionError(
       400,
       "PLAYLIST_NOT_SUPPORTED",
-      "재생목록 전체 추가는 아직 지원하지 않습니다.",
+      "재생목록 URL은 웹 리모컨의 재생목록 추가를 사용해 주세요.",
     );
   }
 }

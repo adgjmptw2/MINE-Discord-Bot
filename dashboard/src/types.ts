@@ -164,6 +164,25 @@ export interface SoundroomAddResponseDto {
   state: SoundroomGuildStateDto;
 }
 
+export interface SoundroomPlaylistAddRequestDto {
+  uri: string;
+  limit?: number;
+}
+
+export interface SoundroomPlaylistAddResponseDto {
+  ok: true;
+  addedCount: number;
+  skippedCount: number;
+  requestedCount: number;
+  limit: number;
+  truncated: boolean;
+  playlist: {
+    title: string | null;
+    uri: string | null;
+  };
+  state: SoundroomGuildStateDto;
+}
+
 export interface SoundroomQueueRemoveRequestDto {
   queueIndex: number;
   expectedUri?: string | null;

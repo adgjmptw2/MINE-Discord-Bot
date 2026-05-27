@@ -1087,6 +1087,66 @@ img {
   line-height: 1.45;
 }
 
+.playlist-add-block {
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border);
+}
+
+.playlist-add-heading {
+  font-size: 0.875rem;
+  margin: 0 0 0.35rem;
+  color: var(--text-muted);
+}
+
+.playlist-add-hint {
+  margin-bottom: 0.55rem;
+  font-size: 0.8125rem;
+}
+
+.playlist-add-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.playlist-limit-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8125rem;
+}
+
+.playlist-limit-select {
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font: inherit;
+}
+
+.playlist-add-btn {
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .playlist-add-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .playlist-add-input {
+    flex: 1 1 12rem;
+    min-width: 0;
+  }
+
+  .playlist-add-btn {
+    width: auto;
+  }
+}
+
 .search-disabled-hint {
   font-size: 0.8125rem;
   margin-bottom: 0.75rem;

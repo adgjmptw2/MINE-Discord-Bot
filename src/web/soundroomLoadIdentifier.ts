@@ -1,3 +1,4 @@
+import { isExplicitFullPlaylistIntentUrl } from "@/events/bot/client/soundroomMessages";
 import { stripSearchEnginePrefix } from "@/utils/riffyResolve";
 import { sanitizeYoutubeQueryForLavalink } from "@/utils/youtubeLavalinkQuery";
 
@@ -129,4 +130,69 @@ export function buildSoundroomLoadIdentifier(input: string): string {
   }
 
   return `ytsearch:${q}`;
+}
+
+const UNSAFE_URL_PROTOCOL_RE = /^(javascript|data|file):/i;
+
+export const SOUNDROOM_PLAYLIST_MAX_TRACKS = 50;
+export const SOUNDROOM_PLAYLIST_DEFAULT_LIMIT = 50;
+
+/** 재생목록 import limit: 기본 50, 1~50으로 clamp */
+export function clampSoundroomPlaylistLimit(limit: unknown): number {
+  if (typeof limit !== "number" || !Number.isFinite(limit)) {
+    return SOUNDROOM_PLAYLIST_DEFAULT_LIMIT;
+  }
+  const n = Math.floor(limit);
+  return Math.min(SOUNDROOM_PLAYLIST_MAX_TRACKS, Math.max(1, n));
+}
+
+export function isExplicitPlaylistUrlInput(input: string): boolean {
+  return isExplicitFullPlaylistIntentUrl(normalizeSoundroomQuery(input));
+}
+
+/**
+ * /add-playlist 전용 URI 검증. 단일 곡·검색어·지원 불가 Spotify 재생목록은 거절.
+ */
+export function assertSafeHttpPlaylistUri(uri: string): string {
+  const q = validateSoundroomQueryInput(uri);
+
+  if (!HTTP_URL_RE.test(q)) {
+    throw new SoundroomLoadIdentifierError(
+      "INVALID_PLAYLIST_URL",
+      "지원되는 재생목록 URL을 입력해 주세요.",
+    );
+  }
+  if (UNSAFE_URL_PROTOCOL_RE.test(q)) {
+    throw new SoundroomLoadIdentifierError(
+      "INVALID_PLAYLIST_URL",
+      "지원되지 않는 주소 형식입니다.",
+    );
+  }
+  if (isUnsupportedSpotifyUrl(q)) {
+    throw new SoundroomLoadIdentifierError(
+      "PLAYLIST_NOT_SUPPORTED",
+      "아직 지원하지 않는 재생목록 형식입니다.",
+    );
+  }
+  if (!isExplicitPlaylistUrlInput(q)) {
+    if (isSpotifyTrackUrl(q) || (isYoutubeSoundroomUrl(q) && !/list=/i.test(q))) {
+      throw new SoundroomLoadIdentifierError(
+        "INVALID_PLAYLIST_URL",
+        "단일 곡은 일반 추가를 사용해 주세요.",
+      );
+    }
+    throw new SoundroomLoadIdentifierError(
+      "INVALID_PLAYLIST_URL",
+      "지원되는 재생목록 URL을 입력해 주세요.",
+    );
+  }
+  return q;
+}
+
+export function buildPlaylistLoadIdentifier(uri: string): string {
+  const q = assertSafeHttpPlaylistUri(uri);
+  if (isYoutubeSoundroomUrl(q)) {
+    return sanitizeYoutubeQueryForLavalink(q);
+  }
+  return q;
 }

@@ -107,7 +107,7 @@ export async function executeSoundroomStop(
 export async function executeSoundroomToggleAutoplay(
   client: MineClient,
   guildId: string,
-): Promise<void> {
+): Promise<boolean> {
   const enabled = toggleAutoplay(guildId);
   bumpSoundroomPanelRevision(guildId);
   const pl = getPlayer(client, guildId);
@@ -128,6 +128,8 @@ export async function executeSoundroomToggleAutoplay(
       logControlWarn("toggleAutoplay-panel", guildId, error);
     });
   }
+
+  return enabled;
 }
 
 export async function executeSoundroomSetVolume(

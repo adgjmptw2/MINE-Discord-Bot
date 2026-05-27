@@ -79,7 +79,14 @@ const SEARCH_ADD_UI_MESSAGES: Record<string, string> = {
   UNSUPPORTED_URL: "현재 지원하지 않는 URL입니다.",
   NO_SEARCH_RESULTS: "검색 결과를 찾을 수 없습니다.",
   NO_TRACK_LOADED: "노래를 불러오지 못했습니다.",
-  PLAYLIST_NOT_SUPPORTED: "재생목록 전체 추가는 아직 지원하지 않습니다.",
+  PLAYLIST_NOT_SUPPORTED:
+    "재생목록 URL은 아래 재생목록 추가를 사용해 주세요.",
+  INVALID_PLAYLIST_URL: "지원되는 재생목록 URL을 입력해 주세요.",
+  PLAYLIST_EMPTY: "가져올 수 있는 곡이 없는 재생목록입니다.",
+  PLAYLIST_TOO_LARGE:
+    "재생목록이 너무 큽니다. 일부만 추가하거나 더 작은 목록을 사용해 주세요.",
+  LAVALINK_UNAVAILABLE:
+    "음악 서버가 응답하지 않습니다. 잠시 후 다시 시도해 주세요.",
   USER_NOT_IN_VOICE_CHANNEL: "먼저 Discord 노래채널에 들어가 주세요.",
   NOT_SAME_VOICE_CHANNEL: "봇과 같은 노래채널에서만 추가할 수 있습니다.",
   SOUNDROOM_NOT_CONFIGURED: "이 서버에는 노래채널이 설정되어 있지 않습니다.",

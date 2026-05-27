@@ -13,11 +13,39 @@ export interface SoundroomPatchNote {
 /** 최신 항목이 위에 오도록 관리합니다. */
 export const SOUNDROOM_PATCH_NOTES: SoundroomPatchNote[] = [
   {
+    icon: "🎵",
+    timestamp: "5월 26일 17:00",
+    title: "웹 리모컨 재생목록 추가와 조작 안내 강화",
+    detail:
+      "URL 재생목록을 대기열에 추가하고 웹 리모컨 조작 내역을 노래채널에 잠시 표시",
+  },
+  {
+    icon: "📊",
+    timestamp: "5월 26일 16:00",
+    title: "랜딩 페이지 운영 현황 추가",
+    detail:
+      "홈 화면에 공개용 운영 현황 카드와 더 풍성한 소개 섹션을 추가",
+  },
+  {
+    icon: "✨",
+    timestamp: "5월 26일 15:00",
+    title: "공개 랜딩 페이지 디자인 개선",
+    detail:
+      "홈 화면을 히어로, 기능 카드, 명령어, 보안 안내가 있는 소개 페이지로 개선",
+  },
+  {
+    icon: "🌐",
+    timestamp: "5월 26일 14:00",
+    title: "공개 랜딩 페이지와 웹 리모컨 버튼 추가",
+    detail:
+      "기본 웹 페이지를 소개형 랜딩 페이지로 개선하고 Soundroom 패널에서 웹 리모컨을 바로 열 수 있게 추가",
+  },
+  {
     icon: "📋",
     timestamp: "5월 26일 13:00",
-    title: "웹 대시보드 운영 체크리스트 문서 추가",
+    title: "운영 전 최종 점검 문서 추가",
     detail:
-      "운영 전 preflight·CSRF·HTTPS·Discord Portal·롤백 절차를 한 문서로 정리",
+      "CSRF, preflight, HTTPS, Discord Portal, 백업·롤백 절차를 확인할 수 있는 운영 체크리스트 추가",
   },
   {
     icon: "🛡️",

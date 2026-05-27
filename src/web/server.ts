@@ -31,11 +31,13 @@ import {
 } from "@/web/routes/soundroomQueue";
 import {
   handleSoundroomAdd,
+  handleSoundroomAddPlaylist,
   handleSoundroomSearch,
 } from "@/web/routes/soundroomSearch";
 import { handleHealth, markWebDashboardServerStarted } from "@/web/routes/health";
 import { handleSoundroomGuildState } from "@/web/routes/soundroomState";
 import { handleLegalPageRequest } from "@/web/legalPages";
+import { handleHomePageRequest } from "@/web/homePage";
 import { applyWebApiRateLimit } from "@/web/rateLimit";
 import {
   isAuthApiPathRequiringStrongSecret,
@@ -62,6 +64,9 @@ const AUTH_SOUNDROOM_CONTROL_PATH =
 
 const AUTH_SOUNDROOM_SEARCH_PATH =
   /^\/api\/auth\/guilds\/(\d{17,20})\/soundroom\/search\/?$/;
+
+const AUTH_SOUNDROOM_ADD_PLAYLIST_PATH =
+  /^\/api\/auth\/guilds\/(\d{17,20})\/soundroom\/add-playlist\/?$/;
 
 const AUTH_SOUNDROOM_ADD_PATH =
   /^\/api\/auth\/guilds\/(\d{17,20})\/soundroom\/add\/?$/;
@@ -225,6 +230,23 @@ async function handleRequest(
       return;
     }
 
+    const authSoundroomAddPlaylistMatch = pathname.match(
+      AUTH_SOUNDROOM_ADD_PLAYLIST_PATH,
+    );
+    if (authSoundroomAddPlaylistMatch) {
+      if (method !== "POST") {
+        sendMethodNotAllowed(res);
+        return;
+      }
+      await handleSoundroomAddPlaylist(
+        req,
+        res,
+        client,
+        authSoundroomAddPlaylistMatch[1],
+      );
+      return;
+    }
+
     const authSoundroomAddMatch = pathname.match(AUTH_SOUNDROOM_ADD_PATH);
     if (authSoundroomAddMatch) {
       if (method !== "POST") {
@@ -298,6 +320,10 @@ async function handleRequest(
       return;
     }
 
+    if (handleHomePageRequest(req, res, pathname, webConfig, client)) {
+      return;
+    }
+
     if (await handleStaticDashboardRequest(req, res, pathname, webConfig)) {
       return;
     }
@@ -308,6 +334,7 @@ async function handleRequest(
       authSoundroomControlStatusMatch ||
       authSoundroomControlMatch ||
       authSoundroomSearchMatch ||
+      authSoundroomAddPlaylistMatch ||
       authSoundroomAddMatch ||
       authSoundroomQueueRemoveMatch ||
       authSoundroomQueueSwapMatch ||
@@ -357,8 +384,12 @@ export async function startWebDashboardServer(
       markWebDashboardServerStarted();
       log("success", "web", `Web dashboard API listening on ${host}:${port}`);
       log("success", "web", "Legal pages at /privacy and /terms");
+      log("success", "web", "Home page at /");
       if (webConfig.staticEnabled) {
         log("success", "web", "Dashboard UI available at /dashboard");
+      }
+      if (webConfig.publicUrl) {
+        log("success", "web", "Soundroom panel web remote link enabled");
       }
       resolve();
     });

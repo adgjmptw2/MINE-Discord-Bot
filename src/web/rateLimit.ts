@@ -10,6 +10,7 @@ export type RateLimitBucket =
   | "control"
   | "search"
   | "add"
+  | "playlist-add"
   | "queue"
   | "logout";
 
@@ -22,6 +23,7 @@ const BUCKET_LIMITS: Record<RateLimitBucket, { windowMs: number; max: number }> 
     control: { windowMs: 3_000, max: 5 },
     search: { windowMs: 10_000, max: 5 },
     add: { windowMs: 5_000, max: 5 },
+    "playlist-add": { windowMs: 30_000, max: 3 },
     queue: { windowMs: 5_000, max: 10 },
     logout: { windowMs: 10_000, max: 10 },
   };
@@ -36,6 +38,8 @@ const AUTH_SOUNDROOM_CONTROL_PATH =
   /^\/api\/auth\/guilds\/(\d{17,20})\/soundroom\/control\/?$/;
 const AUTH_SOUNDROOM_SEARCH_PATH =
   /^\/api\/auth\/guilds\/(\d{17,20})\/soundroom\/search\/?$/;
+const AUTH_SOUNDROOM_ADD_PLAYLIST_PATH =
+  /^\/api\/auth\/guilds\/(\d{17,20})\/soundroom\/add-playlist\/?$/;
 const AUTH_SOUNDROOM_ADD_PATH =
   /^\/api\/auth\/guilds\/(\d{17,20})\/soundroom\/add\/?$/;
 const AUTH_SOUNDROOM_QUEUE_REMOVE_PATH =
@@ -106,6 +110,9 @@ export function resolveRateLimitBucket(
   }
   if (AUTH_SOUNDROOM_SEARCH_PATH.test(pathname) && method === "POST") {
     return "search";
+  }
+  if (AUTH_SOUNDROOM_ADD_PLAYLIST_PATH.test(pathname) && method === "POST") {
+    return "playlist-add";
   }
   if (AUTH_SOUNDROOM_ADD_PATH.test(pathname) && method === "POST") {
     return "add";

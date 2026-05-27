@@ -6,6 +6,8 @@ import type {
   AuthSoundroomStateResponse,
   SoundroomAddRequestDto,
   SoundroomAddResponseDto,
+  SoundroomPlaylistAddRequestDto,
+  SoundroomPlaylistAddResponseDto,
   SoundroomControlRequestDto,
   SoundroomControlResponseDto,
   SoundroomControlStatusResponseDto,
@@ -232,6 +234,18 @@ export async function addSoundroomTrack(
 ): Promise<SoundroomAddResponseDto> {
   return apiPost<SoundroomAddResponseDto>(
     `/api/auth/guilds/${encodeURIComponent(guildId)}/soundroom/add`,
+    request,
+    { signal },
+  );
+}
+
+export async function addSoundroomPlaylist(
+  guildId: string,
+  request: SoundroomPlaylistAddRequestDto,
+  signal?: AbortSignal,
+): Promise<SoundroomPlaylistAddResponseDto> {
+  return apiPost<SoundroomPlaylistAddResponseDto>(
+    `/api/auth/guilds/${encodeURIComponent(guildId)}/soundroom/add-playlist`,
     request,
     { signal },
   );

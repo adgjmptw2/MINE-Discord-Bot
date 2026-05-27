@@ -1,10 +1,10 @@
 # MINE Soundroom Web Dashboard 운영 체크리스트
 
-웹 대시보드를 **실제 운영(HTTPS 공개)** 하기 전에 확인할 항목을 한 곳에 모은 문서입니다.
+웹 대시보드를 **실제 운영(HTTPS 공개)** 하기 전·후에 확인할 항목을 한 곳에 모은 문서입니다.
 
 이 문서는 **법률 자문**이나 **보안 감사 보고서**가 아니며, 운영자가 따라 할 **체크리스트·런북**입니다. 실제 공개 전에는 운영자가 내용·정책 페이지·Discord Portal 설정을 직접 확인해야 합니다.
 
-민감 정보(Discord Bot Token, OAuth Client Secret, `WEB_DASHBOARD_SESSION_SECRET`, Lavalink 비밀번호, DB 경로, `.env` 전체)는 **문서·스크린샷·Git에 넣지 마세요.** 예시는 `example.com`, `your-client-id` 같은 placeholder만 사용합니다.
+민감 정보(Discord Bot Token, OAuth Client Secret, `WEB_DASHBOARD_SESSION_SECRET`, Lavalink 비밀번호, DB 경로, `.env` 전체)는 **문서·스크린샷·Git에 넣지 마세요.** 예시는 `example.com`, `your-client-id`, `operator@example.com` 같은 **placeholder**만 사용합니다.
 
 관련 문서:
 
@@ -17,14 +17,14 @@
 ## 1. 목적
 
 - 배포 전 빌드·설정·보안 env가 맞는지 확인한다.
-- 배포 후 로그인·조작·정책 페이지가 동작하는지 최소한으로 검증한다.
-- 문제 발생 시 **최소 롤백**으로 이전 상태로 되돌릴 수 있게 한다.
+- 배포 후 로그인·조작·정책 페이지가 동작하는지 검증한다.
+- 문제 발생 시 **백업·롤백**으로 이전 상태로 되돌릴 수 있게 한다.
 
 ---
 
 ## 2. 배포 전 필수 명령어
 
-프로젝트 루트에서 순서대로 실행합니다. **FAIL이 하나라도 있으면 운영 공개를 미룹니다.**
+프로젝트 루트에서 **순서대로** 실행합니다.
 
 ```bash
 npm run check
@@ -37,39 +37,60 @@ npm run dashboard:preflight
 | --- | --- |
 | `npm run check` | TypeScript 타입 검사 |
 | `npm run build` | 봇 `dist` 빌드 |
-| `npm run dashboard:build` | `dashboard/dist` (index.html, assets) |
-| `npm run dashboard:preflight` | `.env` 웹 대시보드·OAuth·보안 env·정적 빌드 (secret 값 미출력) |
+| `npm run dashboard:build` | `dashboard/dist` (`index.html`, `assets/`) |
+| `npm run dashboard:preflight` | `.env`·OAuth·보안 env·정적 빌드 (secret 값 **미출력**) |
 
 `preflight` 별칭: `npm run preflight:web`
 
-자세한 preflight 항목: [배포 가이드 §5](./WEB_DASHBOARD_DEPLOYMENT.md#5-운영 전-preflight-점검)
+### preflight 결과 해석
+
+- **하나라도 FAIL이면** 운영 배포 전에 수정한다. `preflight`에서 **FAIL은 반드시** 해결한다.
+- **WARN**은 운영 정책에 맞게 확인한다 (로컬 개발 origin이면 Secure cookie WARN 등은 정상일 수 있음).
+- **OK**만 있거나 WARN만 있으면 exit code 0이다.
+
+자세한 항목: [배포 가이드 §5 preflight](./WEB_DASHBOARD_DEPLOYMENT.md#5-운영 전-preflight-점검)
 
 ---
 
-## 3. 운영 `.env` 권장값 (HTTPS 공개)
+## 3. 운영 권장 env (placeholder)
 
-로컬 개발(`http://127.0.0.1:3000` + Vite)과 **운영 HTTPS**는 값이 다릅니다. 아래는 **운영 placeholder** 기준입니다.
+아래는 **문서용 예시**입니다. 실제 값은 서버의 `.env`에만 넣고 **커밋하지 마세요.**
 
-| 변수 | 운영 권장 | 비고 |
-| --- | --- | --- |
-| `WEB_DASHBOARD_ENABLED` | `true` | 웹 API 서버 활성화 |
-| `WEB_DASHBOARD_AUTH_ENABLED` | `true` | Discord OAuth 로그인 |
-| `WEB_DASHBOARD_STATIC_ENABLED` | `true` | `/dashboard` 정적 서빙 |
-| `WEB_DASHBOARD_STATIC_DIR` | `dashboard/dist` | `npm run dashboard:build` 후 존재 |
-| `WEB_DASHBOARD_HOST` | `127.0.0.1` | 프록시 뒤 루프백 listen 권장 |
-| `WEB_DASHBOARD_PORT` | `3077` | 외부 직접 노출 금지, 프록시만 공개 |
-| `WEB_DASHBOARD_ALLOWED_ORIGIN` | `https://soundroom.example.com` | **경로 없음** (Origin만) |
-| `DISCORD_OAUTH_CLIENT_ID` | Application ID | Portal에서 확인 |
-| `DISCORD_OAUTH_CLIENT_SECRET` | (비공개) | Git·문서·로그 금지 |
-| `DISCORD_OAUTH_REDIRECT_URI` | `https://soundroom.example.com/api/auth/discord/callback` | Portal Redirects와 **완전 일치** |
-| `WEB_DASHBOARD_SESSION_SECRET` | 32자 이상 랜덤 | `change-me*` 금지 |
-| `WEB_DASHBOARD_PUBLIC_STATE_ENABLED` | `false` | 비인증 state API 차단 |
-| `WEB_DASHBOARD_COOKIE_SECURE` | `true` | HTTPS + Secure 쿠키 |
-| `WEB_DASHBOARD_REQUIRE_STRONG_SESSION_SECRET` | `true` | 약한 시크릿 시 `/api/auth/*` 차단 |
-| `WEB_DASHBOARD_RATE_LIMIT_ENABLED` | `true` | 기본 권장 |
-| `WEB_DASHBOARD_CONTACT_EMAIL` | (선택) | `/privacy`, `/terms` 문의 표시 |
+```env
+WEB_DASHBOARD_ENABLED=true
+WEB_DASHBOARD_AUTH_ENABLED=true
+WEB_DASHBOARD_STATIC_ENABLED=true
+WEB_DASHBOARD_STATIC_DIR=dashboard/dist
 
-생성 예 (로컬 터미널에서만 실행, 값을 문서에 붙여넣지 마세요):
+WEB_DASHBOARD_PUBLIC_STATE_ENABLED=false
+WEB_DASHBOARD_COOKIE_SECURE=true
+WEB_DASHBOARD_REQUIRE_STRONG_SESSION_SECRET=true
+WEB_DASHBOARD_RATE_LIMIT_ENABLED=true
+
+WEB_DASHBOARD_ALLOWED_ORIGIN=https://example.com
+WEB_DASHBOARD_PUBLIC_URL=https://example.com
+WEB_DASHBOARD_HOME_STATS_ENABLED=false
+DISCORD_OAUTH_REDIRECT_URI=https://example.com/api/auth/discord/callback
+WEB_DASHBOARD_SESSION_SECRET=replace-with-long-random-secret
+WEB_DASHBOARD_CONTACT_EMAIL=operator@example.com
+```
+
+추가로 운영에서 흔히 쓰는 값 (placeholder):
+
+```env
+WEB_DASHBOARD_HOST=127.0.0.1
+WEB_DASHBOARD_PORT=3077
+DISCORD_OAUTH_CLIENT_ID=your-client-id
+DISCORD_OAUTH_CLIENT_SECRET=your-client-secret
+```
+
+주의:
+
+- **실제 secret**(`DISCORD_OAUTH_CLIENT_SECRET`, `WEB_DASHBOARD_SESSION_SECRET`, Bot Token)을 Git·문서·채팅에 올리지 않는다.
+- `WEB_DASHBOARD_COOKIE_SECURE=true`는 **HTTPS** 환경에서 사용한다.
+- **로컬 http** 테스트(`http://127.0.0.1:3077` 등)에서는 Secure 쿠키 때문에 **로그인이 안 될 수 있으므로** 개발 시에는 `WEB_DASHBOARD_COOKIE_SECURE=false`를 쓴다.
+
+세션 시크릿 생성(로컬 터미널에서만, 출력값을 문서에 붙여넣지 마세요):
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
@@ -77,205 +98,249 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 ---
 
-## 4. HTTPS · Secure cookie · 세션 시크릿
+## 4. Discord Developer Portal 체크리스트
 
-### HTTPS
+Application → **OAuth2** 및 앱 설정:
 
-- TLS는 **Nginx / Caddy / Cloudflare Tunnel** 등 reverse proxy에서 종료합니다.
-- API 서버(3077)를 인터넷에 직접 노출하지 않습니다.
-- 사용자가 접속하는 URL은 `https://soundroom.example.com/dashboard` 형태입니다.
-
-### Secure cookie
-
-- 운영: `WEB_DASHBOARD_COOKIE_SECURE=true`
-- 로컬 http 개발: `false` (브라우저가 Secure 쿠키를 http에 저장하지 않음)
-- OAuth 로그인 후 `Set-Cookie`에 `Secure`가 포함되는지 DevTools → Application → Cookies에서 확인합니다.
-
-### 강한 session secret
-
-- `WEB_DASHBOARD_REQUIRE_STRONG_SESSION_SECRET=true`일 때 약한 값이면 `SESSION_SECRET_WEAK`(503)로 `/api/auth/*`가 차단됩니다.
-- `/health`, `/dashboard`, `/privacy`, `/terms`는 계속 열립니다.
-
----
-
-## 5. Discord Developer Portal 체크리스트
-
-Application → **OAuth2** (및 앱 설정의 정책 URL 항목):
-
-- [ ] **Redirects**: `https://soundroom.example.com/api/auth/discord/callback` (실제 운영 URL과 **문자열 일치**)
-- [ ] **Privacy Policy URL**: `https://soundroom.example.com/privacy`
-- [ ] **Terms of Service URL**: `https://soundroom.example.com/terms`
-- [ ] Redirect URI와 Privacy/Terms URL은 **서로 다른 항목**임을 인지
+- [ ] **Redirect URI**: `https://example.com/api/auth/discord/callback`  
+  (`.env`의 `DISCORD_OAUTH_REDIRECT_URI`와 **문자열 완전 일치**)
+- [ ] **Privacy Policy URL**: `https://example.com/privacy`
+- [ ] **Terms of Service URL**: `https://example.com/terms`
+- [ ] Redirect URI와 Privacy/Terms는 **서로 다른 항목**
+- [ ] **OAuth scope**: `identify`, `guilds` (봇 OAuth 설정과 일치하는지 확인)
+- [ ] **Client Secret**은 Discord Portal·서버 `.env`에만 저장
+- [ ] **Discord Bot Token**은 `.env`의 `TOKEN` 등에만 두고 **커밋·문서·로그에 출력하지 않음**
 - [ ] Client ID는 `.env`의 `DISCORD_OAUTH_CLIENT_ID`와 일치
-- [ ] Client Secret은 Portal에서만 관리, 커밋·문서·채팅에 공유하지 않음
 
-로컬 개발용 Redirect 예 (운영과 별도 등록 가능):
+로컬 개발용 Redirect 예 (운영 URL과 별도 등록 가능):
 
 `http://127.0.0.1:3077/api/auth/discord/callback`
 
 ---
 
-## 6. preflight 사용 절차
+## 5. 웹 경로 확인
 
-1. `.env`를 운영 값으로 준비한다 (실제 secret은 로컬 파일만).
-2. `npm run dashboard:build`로 `dashboard/dist`를 만든다.
-3. `npm run dashboard:preflight`를 실행한다.
-4. **FAIL**이 있으면 메시지에 따라 `.env` 또는 빌드를 수정한다.
-5. **WARN**은 운영 정책에 맞게 판단한다 (예: 로컬 origin이면 Secure cookie WARN은 정상).
-6. **INFO**에 나온 Privacy/Terms URL을 Portal에 등록했는지 확인한다.
+브라우저 또는 `curl`로 확인합니다. 호스트는 운영 placeholder `https://example.com` 기준입니다.
 
-preflight는 `.env`를 **자동 수정하지 않으며**, Discord API·HTTP 요청도 하지 않습니다.
+| 경로 | 기대 |
+| --- | --- |
+| `/` | 공개 랜딩 HTML (로그인 불필요). `HOME_STATS_ENABLED=true` 시 집계 수치만 표시 |
+| `/health` | JSON `{ "ok": true, ... }` |
+| `/dashboard` | 대시보드 UI (로그인 화면 또는 SPA) |
+| `/privacy` | 개인정보처리방침 HTML, **로그인 불필요** |
+| `/terms` | 이용약관 HTML, **로그인 불필요** |
+| `/api/auth/me` | 로그인 전 401, 로그인 후 사용자 JSON |
+| `/api/auth/csrf` | 로그인 전 **401**, 로그인 후 `{ "ok": true, "csrfToken": ... }` |
+
+예시 (placeholder):
+
+```bash
+curl -s https://example.com/health
+curl -s -o /dev/null -w "%{http_code}" https://example.com/privacy
+curl -s -o /dev/null -w "%{http_code}" https://example.com/terms
+curl -s -o /dev/null -w "%{http_code}" https://example.com/api/auth/csrf
+```
+
+주의:
+
+- `/privacy`, `/terms`는 **로그인 없이** 열려야 한다 (`SESSION_SECRET_WEAK`여도 차단되지 않음).
+- `/api/auth/csrf`는 **로그인 전 401** (`UNAUTHORIZED`)이어야 한다.
+- `GET /api/soundroom/guilds/:guildId/state` (비인증)는 운영에서 **404** (`WEB_DASHBOARD_PUBLIC_STATE_ENABLED=false`).
 
 ---
 
-## 7. CSRF 수동 테스트 (선택·권장)
+## 6. CSRF 수동 테스트
 
-대시보드 UI는 `GET /api/auth/csrf` 후 POST에 `X-CSRF-Token`을 자동으로 붙입니다. 운영 전에 아래를 **curl 등으로** 확인할 수 있습니다. (쿠키·토큰 값은 문서에 기록하지 마세요.)
+대시보드는 `GET /api/auth/csrf` 후 POST에 `X-CSRF-Token`을 붙입니다. 문서·로그에 **실제 csrfToken 값을 넣지 마세요.** 예시는 `<csrf-token>` placeholder만 사용합니다.
 
-### 7.1 로그인 전
+### 로그인 전
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3077/api/auth/csrf
+curl -s -o /dev/null -w "%{http_code}" https://example.com/api/auth/csrf
 ```
 
-기대: `401` (UNAUTHORIZED)
+기대: **401** `UNAUTHORIZED`
 
-### 7.2 로그인 후 (브라우저로 OAuth 로그인 후 쿠키 파일 사용)
+### 로그인 후
 
-브라우저에서 로그인한 뒤, DevTools에서 세션 쿠키를 확인합니다. curl 테스트 시 `-b cookies.txt` 형태로 전달합니다.
+브라우저로 OAuth 로그인 후, curl에 세션 쿠키 파일(`cookies.txt`)을 사용합니다.
 
-**CSRF 토큰 발급 (GET):**
+| 테스트 | 기대 |
+| --- | --- |
+| `GET /api/auth/csrf` | `{ "ok": true, "csrfToken": "<csrf-token>" }` 형태 (값 기록 금지) |
+| `POST .../soundroom/control` **CSRF 헤더 없음** | **403** `CSRF_TOKEN_REQUIRED`, **음악 조작 실행 안 됨** |
+| `POST` + `X-CSRF-Token: wrong-token` | **403** `CSRF_TOKEN_INVALID` |
+| `POST` + `X-CSRF-Token: <csrf-token>` (GET 응답 값) | 같은 노래채널 권한이 맞으면 **성공** |
+
+예시 (placeholder, `GUILD_ID`·쿠키 파일은 실제 값으로 교체):
 
 ```bash
-curl -s -b cookies.txt http://127.0.0.1:3077/api/auth/csrf
-```
+curl -s -b cookies.txt https://example.com/api/auth/csrf
 
-기대: JSON `{ "ok": true, "csrfToken": "..." }` — **토큰 값을 로그·문서에 남기지 마세요.**
-
-**CSRF 없이 POST (차단 확인):**
-
-```bash
 curl -s -b cookies.txt -X POST \
   -H "Content-Type: application/json" \
   -d '{"action":"togglePause"}' \
-  http://127.0.0.1:3077/api/auth/guilds/GUILD_ID/soundroom/control
-```
+  https://example.com/api/auth/guilds/GUILD_ID/soundroom/control
 
-기대: `403`, code `CSRF_TOKEN_REQUIRED` — **음악 조작이 실행되지 않아야 합니다.**
-
-**잘못된 CSRF (차단 확인):**
-
-```bash
 curl -s -b cookies.txt -X POST \
   -H "Content-Type: application/json" \
   -H "X-CSRF-Token: wrong-token" \
   -d '{"action":"togglePause"}' \
-  http://127.0.0.1:3077/api/auth/guilds/GUILD_ID/soundroom/control
+  https://example.com/api/auth/guilds/GUILD_ID/soundroom/control
 ```
 
-기대: `403`, code `CSRF_TOKEN_INVALID`
+### 프론트·로그아웃
 
-**올바른 CSRF (성공 가능):**
+- [ ] DevTools → Network: POST 요청에 **`X-CSRF-Token`** 헤더 존재
+- [ ] 로그아웃 후: CSRF 캐시 비움(프론트 메모리), `/api/auth/me`·`/api/auth/csrf`가 **401**
+- [ ] `CSRF_TOKEN_*` 오류 시 페이지 **새로고침** (프론트는 토큰 1회 재발급 후 재시도)
 
-위 GET `/api/auth/csrf` 응답의 토큰을 `X-CSRF-Token`에 넣고 동일 POST를 호출합니다. 같은 노래채널 권한이 맞으면 기존과 같이 동작합니다.
-
-### 7.3 프록시 확인
-
-reverse proxy가 **`X-CSRF-Token` 헤더를 제거하지 않는지** 확인합니다. 제거되면 대시보드 POST가 모두 `CSRF_TOKEN_REQUIRED`로 실패합니다.
-
-### 7.4 UI 스모크 (권장)
-
-브라우저에서 로그인 후:
-
-- [ ] 재생/일시정지, 스킵, 정지, 볼륨, 자동재생
-- [ ] 노래 검색·추가
-- [ ] 대기열 삭제(본인 곡), 위/아래 순서 변경
-- [ ] 로그아웃
-- [ ] DevTools Network에서 POST 요청에 `X-CSRF-Token` 헤더 존재
-
-CSRF 오류 시: 페이지 **새로고침** 후 재시도 (프론트는 1회 토큰 재발급 후 재시도).
+reverse proxy가 **`X-CSRF-Token` 헤더를 제거하지 않는지** 확인한다.
 
 ---
 
-## 8. 배포 후 최소 확인 (스모크)
+## 7. 주요 기능 수동 테스트
 
-HTTPS 공개 URL 기준 (`https://soundroom.example.com` placeholder):
+Discord **음성 채널(노래채널)** 에 들어간 상태에서 조작이 필요한 항목이 있습니다.
 
-- [ ] `GET /health` → JSON `{ "ok": true, ... }`
-- [ ] `GET /privacy`, `GET /terms` → 로그인 없이 HTML (약한 session secret이어도 접근 가능)
-- [ ] `GET /dashboard` → 로그인 화면
-- [ ] Discord OAuth 로그인 → `/dashboard`로 리다이렉트
-- [ ] 서버 목록·노래채널 상태 표시
-- [ ] (음성 채널 입장 후) 조작·검색·대기열 동작
-- [ ] `GET /api/soundroom/guilds/:id/state` (비인증) → **404** (`PUBLIC_STATE_ENABLED=false`일 때)
-- [ ] 패치노트 버튼(Discord 패널) 기존 동작
+- [ ] Discord OAuth 로그인
+- [ ] 서버 목록 표시
+- [ ] Soundroom(노래채널) 상태 표시
+- [ ] 같은 노래채널에서 **재생/일시정지**
+- [ ] **스킵**
+- [ ] **정지**
+- [ ] **볼륨** 적용
+- [ ] **자동재생** 토글
+- [ ] **노래 검색**
+- [ ] **노래 추가** (단일 곡)
+- [ ] **URL 재생목록 추가** (최대 50곡, 초과 시 일부만 추가·truncated 안내)
+- [ ] **본인이 추가한 곡** 대기열 삭제
+- [ ] 대기열 **위/아래** 이동 (queue/swap)
+- [ ] Soundroom 패널 **🌐 웹 리모컨** 링크 (`WEB_DASHBOARD_PUBLIC_URL` 설정 시)
+- [ ] 웹 리모컨 **조작·추가·대기열 변경** 시 노래채널 안내가 잠시 표시되고 **약 30초 뒤 삭제**
+- [ ] **검색만**·**상태/control-status 조회** 시에는 안내 메시지가 뜨지 않음
+- [ ] 안내에 `<@userId>`가 있어도 **`allowedMentions: { parse: [] }`** 로 멘션 알림이 울리지 않음
+- [ ] Discord Soundroom 패널 **패치노트** 버튼
+- [ ] 대시보드 하단 **개인정보처리방침**·**이용약관** 링크
 
 ---
 
-## 9. 보안·정책 요약 (변경 없음)
+## 8. 보안 확인
 
-- **코인·가상 경제**: 서버 내 가상 기능이며, 실제 돈·환전·현물 보상·캐시 아웃과 무관합니다.
-- **주식**: 서버 내 **모의투자**이며 실제 투자·증권 자문이 아닙니다.
-- 정책 페이지: [이용약관](./TERMS_OF_SERVICE.md) 참고.
+- [ ] **비인증 state API 차단**: `GET /api/soundroom/guilds/:guildId/state` → 404 (`PUBLIC_STATE_ENABLED=false`)
+- [ ] **SESSION_SECRET_WEAK**: 약한 `WEB_DASHBOARD_SESSION_SECRET` + `REQUIRE_STRONG_SESSION_SECRET=true` → `/api/auth/*` 503, `/privacy`·`/terms`는 열림
+- [ ] **Secure cookie**: HTTPS에서 `Set-Cookie`에 `Secure` 포함
+- [ ] **rate limit**: 과도한 POST 반복 시 **429** `RATE_LIMITED`, `Retry-After` 헤더
+- [ ] **path traversal**: `/dashboard/../.env` 등 위험 경로 차단
+- [ ] **`.env`, DB, 소스 파일**이 웹으로 노출되지 않음
+- [ ] API 응답에 **stack trace** 없음
+- [ ] 로그·API 응답에 **Bot Token, OAuth Secret, session secret, csrfToken** 과다 출력 없음
 
 ---
 
-## 10. 최소 롤백 절차
+## 9. SQLite 백업 (운영 전 권장)
 
-문제 발생 시 아래 순서로 **이전에 동작하던 상태**로 되돌립니다.
+코드·설정 롤백 전에 **DB를 백업**합니다. 실제 DB 파일 경로는 환경마다 다르므로 문서에는 **placeholder**만 사용합니다.
 
-### 10.1 설정·빌드만 롤백
+```bash
+mkdir -p backups
+cp path/to/your-database.sqlite backups/database-$(date +%Y%m%d-%H%M%S).sqlite
+```
 
-1. `.env` 백업본으로 복구 (또는 문제가 된 변수만 되돌림).
-2. 이전에 동작하던 Git 커밋/태그로 체크아웃한다.
-3. `npm run build:all` 재실행.
-4. `npm run dashboard:preflight`로 FAIL 없음 확인.
-5. **봇 프로세스 재시작** (인메모리 세션·CSRF는 재시작 시 초기화됨).
-6. 브라우저 강력 새로고침 후 로그인·조작 재확인.
+주의:
 
-### 10.2 프록시·Portal 롤백
+- **실제 DB 경로**를 이 문서에 적지 마세요.
+- Git 롤백 시 **SQLite 파일을 실수로 덮어쓰지** 마세요. DB는 별도 백업·복구한다.
 
-1. reverse proxy 설정을 이전 버전으로 복구.
-2. Discord Portal Redirect / Privacy / Terms URL이 **현재 공개 Origin**과 일치하는지 재확인.
-3. OAuth Redirect와 `WEB_DASHBOARD_ALLOWED_ORIGIN` 불일치 시 로그인 실패.
+---
 
-### 10.3 긴급 차단 (대시보드만 끄기)
+## 10. 업데이트 절차
 
-웹 대시보드만 빠르게 끄려면 (Discord 봇 음악 기능은 유지):
+권장 순서 (placeholder):
+
+```bash
+git pull
+npm ci
+npm run check
+npm run build
+npm run dashboard:build
+npm run dashboard:preflight
+```
+
+그다음 **봇 프로세스 재시작** (예: PM2·systemd — 실제 프로세스 이름은 환경에 맞게):
+
+```bash
+# 예: pm2 restart <your-bot-process-name>
+# 예: sudo systemctl restart <your-bot-service-name>
+```
+
+- `dashboard:build`만 바꿨다면: 재시작 후 브라우저 **강력 새로고침**
+- 인메모리 **세션·CSRF**는 재시작 시 초기화됨 → 사용자는 다시 로그인할 수 있음
+
+---
+
+## 11. 문제 발생 시 롤백
+
+### 11.1 Git·빌드 롤백
+
+이전에 동작하던 커밋으로 되돌린 뒤 다시 빌드합니다.
+
+```bash
+git log --oneline -5
+git checkout <previous-commit-hash>
+npm ci
+npm run build
+npm run dashboard:build
+npm run dashboard:preflight
+```
+
+`git reset --hard` 등은 **데이터·설정을 되돌릴 수 있으므로** 운영자가 변경 내용을 이해한 뒤에만 사용하세요. 불확실하면 `git checkout <commit>`으로 detached 상태에서 빌드·검증 후 브랜치를 정리하는 편이 안전합니다.
+
+### 11.2 DB·설정
+
+- 롤백 **전** §9 백업본이 있으면 DB 복구
+- `.env` 백업본으로 복구
+- Discord Portal Redirect / Privacy / Terms가 **현재 공개 Origin**과 일치하는지 재확인
+
+### 11.3 긴급 차단 (웹만)
 
 ```env
 WEB_DASHBOARD_ENABLED=false
 ```
 
-봇 재시작 후 `/dashboard`, `/api/auth/*`는 더 이상 서빙되지 않습니다. Discord 슬래시·패널 음악 기능은 별도 설정입니다.
+봇 재시작 후 `/dashboard`, `/api/auth/*` 비활성. Discord 슬래시·패널 음악은 별도 설정입니다.
 
-### 10.4 롤백 후 확인
+### 11.4 롤백 후 확인
 
-- [ ] `/health` (웹 API가 켜져 있을 때만)
+- [ ] `npm run dashboard:preflight` FAIL 없음
 - [ ] 로그인·조작 또는 의도한 비활성 상태
 - [ ] secret·토큰이 로그에 출력되지 않음
 
 ---
 
-## 11. 체크리스트 한 페이지 요약
+## 12. 운영 정책 고지
 
-**배포 전**
+서비스·Discord 서버 안내와 정책 페이지에 다음을 유지합니다.
 
-- [ ] `npm run check` / `build` / `dashboard:build` / `dashboard:preflight` 성공
-- [ ] 운영 HTTPS Origin · OAuth Redirect · Portal Privacy/Terms URL 일치
-- [ ] 강한 `WEB_DASHBOARD_SESSION_SECRET`, `COOKIE_SECURE=true`, `PUBLIC_STATE_ENABLED=false`
-- [ ] `dashboard/dist` 존재, 3077 외부 직접 노출 없음
+- **코인**, 아이템, 칭호, 랭킹, 시즌, **주식 모의투자**는 Discord 서버 **내 가상 기능**이다.
+- **실제 돈**, 현물, 상품권, 포인트, 암호화폐, **환전**, **현금화**, 현물 보상, 캐시 아웃과 **연결되지 않으며** 현금 가치가 없다.
+- **주식** 기능은 **모의투자**이며, 실제 증권·투자 자문·매매가 아니다.
+- **개인정보처리방침**·**이용약관** URL을 Discord Developer Portal에 등록한다 (`https://example.com/privacy`, `https://example.com/terms` placeholder).
 
-**배포 후**
-
-- [ ] HTTPS `/dashboard` 로그인·조작
-- [ ] `/privacy`, `/terms` 공개
-- [ ] CSRF·rate limit·비인증 state 차단 정상 (필요 시 §7 수동 테스트)
-
-**문제 시**
-
-- [ ] `.env` / Git / 프록시 / Portal 순으로 롤백 → 재빌드 → 봇 재시작
+원문: [TERMS_OF_SERVICE.md](./TERMS_OF_SERVICE.md), [PRIVACY_POLICY.md](./PRIVACY_POLICY.md)
 
 ---
 
-*문서 버전: 웹 대시보드 CSRF·preflight·보안 하드닝 반영 기준. 상세 설정은 [WEB_DASHBOARD_DEPLOYMENT.md](./WEB_DASHBOARD_DEPLOYMENT.md)를 따릅니다.*
+## 13. 한 페이지 요약
+
+| 단계 | 확인 |
+| --- | --- |
+| **배포 전** | 4개 npm 명령 성공 · preflight FAIL 0 · 운영 env · Portal URL · `dashboard/dist` |
+| **경로** | `/health`, `/dashboard`, `/privacy`, `/terms`, `/api/auth/csrf` (미로그인 401) |
+| **CSRF·기능** | §6·§7 수동 테스트 |
+| **보안** | §8 · DB 백업 §9 |
+| **배포** | §10 업데이트 · 문제 시 §11 롤백 |
+
+---
+
+*상세 env·프록시·CSRF 개요: [WEB_DASHBOARD_DEPLOYMENT.md](./WEB_DASHBOARD_DEPLOYMENT.md)*

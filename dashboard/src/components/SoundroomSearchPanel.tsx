@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { addSoundroomTrack, searchSoundroomTracks } from "../api";
+import {
+  addSoundroomPlaylist,
+  addSoundroomTrack,
+  searchSoundroomTracks,
+} from "../api";
 import {
   isControlUnauthorized,
   mapSearchAddError,
@@ -68,12 +72,15 @@ export function SoundroomSearchPanel({
   const [lastQuery, setLastQuery] = useState<string | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
+  const [playlistUrl, setPlaylistUrl] = useState("");
+  const [playlistLimit, setPlaylistLimit] = useState(50);
+  const [playlistLoading, setPlaylistLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { message: success, show: showSuccess } = useTransientNotice();
   const guildIdRef = useRef(guildId);
   const wasBusyRef = useRef(false);
 
-  const busy = searchLoading || addLoading;
+  const busy = searchLoading || addLoading || playlistLoading;
   const controlsDisabled = disabled || busy;
 
   useEffect(() => {
@@ -81,6 +88,8 @@ export function SoundroomSearchPanel({
     setInput("");
     setResults([]);
     setLastQuery(null);
+    setPlaylistUrl("");
+    setPlaylistLimit(50);
     setError(null);
   }, [guildId]);
 
@@ -165,6 +174,46 @@ export function SoundroomSearchPanel({
     }
   };
 
+  const handleAddPlaylist = async () => {
+    const uri = trimInput(playlistUrl);
+    if (!uri) {
+      setError("재생목록 URL을 입력해 주세요.");
+      return;
+    }
+    if (controlsDisabled) {
+      return;
+    }
+    const gid = guildIdRef.current;
+    setPlaylistLoading(true);
+    setError(null);
+    try {
+      const res = await addSoundroomPlaylist(gid, {
+        uri,
+        limit: playlistLimit,
+      });
+      if (isStaleGuild(gid, guildIdRef.current)) {
+        return;
+      }
+      onStateChange(res.state);
+      const base = `재생목록에서 ${res.addedCount}곡을 대기열에 추가했습니다.`;
+      showSuccess(
+        res.truncated ? `${base} 최대 ${res.limit}곡까지만 추가했습니다.` : base,
+      );
+      onAdded?.();
+    } catch (err) {
+      if (isStaleGuild(gid, guildIdRef.current)) {
+        return;
+      }
+      if (isControlUnauthorized(err)) {
+        onUnauthorized?.();
+        return;
+      }
+      setError(mapSearchAddError(err));
+    } finally {
+      setPlaylistLoading(false);
+    }
+  };
+
   const handleAddDirect = () => {
     const value = trimInput(input);
     if (!value) {
@@ -200,7 +249,8 @@ export function SoundroomSearchPanel({
     >
       {embedded ? null : <h3 id="search-heading">노래 추가</h3>}
       <p className="search-hint muted">
-        제목 검색, YouTube·Spotify 단일 곡 URL. 재생목록 URL은 아직 미지원.
+        제목 검색, YouTube·Spotify 단일 곡 URL. 재생목록은 아래 전용 영역을
+        사용해 주세요.
       </p>
 
       {disabledReason && disabled ? (
@@ -245,9 +295,55 @@ export function SoundroomSearchPanel({
         </div>
       </form>
 
-      {searchLoading || addLoading ? (
+      <div className="playlist-add-block">
+        <h4 className="playlist-add-heading">URL 재생목록 추가</h4>
+        <p className="search-hint muted playlist-add-hint">
+          지원되는 재생목록 URL을 최대 50곡까지 대기열에 추가합니다.
+        </p>
+        <div className="playlist-add-row">
+          <input
+            className="search-input playlist-add-input"
+            type="url"
+            value={playlistUrl}
+            onChange={(e) => setPlaylistUrl(e.target.value)}
+            placeholder="YouTube 재생목록 URL"
+            disabled={controlsDisabled}
+            maxLength={300}
+            autoComplete="off"
+          />
+          <label className="playlist-limit-label muted">
+            최대
+            <select
+              className="playlist-limit-select"
+              value={playlistLimit}
+              onChange={(e) =>
+                setPlaylistLimit(Number.parseInt(e.target.value, 10))
+              }
+              disabled={controlsDisabled}
+            >
+              <option value={10}>10곡</option>
+              <option value={25}>25곡</option>
+              <option value={50}>50곡</option>
+            </select>
+          </label>
+          <button
+            type="button"
+            className="btn btn-secondary playlist-add-btn"
+            disabled={controlsDisabled}
+            onClick={() => void handleAddPlaylist()}
+          >
+            {playlistLoading ? "추가 중…" : "재생목록 추가"}
+          </button>
+        </div>
+      </div>
+
+      {searchLoading || addLoading || playlistLoading ? (
         <p className="search-busy muted" role="status">
-          {searchLoading ? "검색 중…" : "대기열에 추가하는 중…"}
+          {searchLoading
+            ? "검색 중…"
+            : playlistLoading
+              ? "재생목록을 추가하는 중…"
+              : "대기열에 추가하는 중…"}
         </p>
       ) : null}
 

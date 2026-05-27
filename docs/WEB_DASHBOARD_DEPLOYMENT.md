@@ -115,7 +115,8 @@ npm run start:bot
 - `GET /dashboard/assets/*` → 빌드된 JS/CSS (장기 캐시)
 - 그 외 `/dashboard/*` 경로 → SPA fallback (`index.html`)
 - `/api/*`, `/health` → 기존 JSON API (정적 라우트보다 우선)
-- `GET /privacy`, `/terms` (및 trailing slash) → 공개 HTML 정책 페이지 (로그인 불필요, **API 처리 후**·`/dashboard` 정적 **전**). `SESSION_SECRET_WEAK`·rate limit **미적용**
+- `GET /`, `/index.html` → 공개 랜딩 HTML (로그인 불필요, legal과 동일하게 API 가드 **미적용**). `WEB_DASHBOARD_HOME_STATS_ENABLED=true`이면 cache 기반 집계 수치 표시(서버명·유저명·ID 없음)
+- `GET /privacy`, `/terms` (및 trailing slash) → 공개 HTML 정책 페이지 (로그인 불필요, **API 처리 후**·홈·`/dashboard` 정적 **전**). `SESSION_SECRET_WEAK`·rate limit **미적용**
 - `dashboard/dist`가 없으면 서버는 종료하지 않고 `/dashboard`는 404, warn 로그만 출력
 
 코드·설정 변경 후에는 **봇 프로세스 재시작**이 필요합니다. `dashboard:build`만 다시 했다면 재시작 후 브라우저 새로고침(강력 새로고침)으로 asset을 받으면 됩니다.
@@ -133,10 +134,13 @@ npm run start:bot
    `WEB_DASHBOARD_HOST=0.0.0.0`은 방화벽·인증·HTTPS 설정을 마친 뒤에만 검토하세요.
 3. `WEB_DASHBOARD_ALLOWED_ORIGIN`은 사용자가 브라우저에 입력하는 **공개 URL의 Origin**과 같아야 합니다.  
    예: `https://soundroom.example.com` (경로 `/dashboard`는 Origin에 포함하지 않음)
-4. `DISCORD_OAUTH_REDIRECT_URI`는 **항상 API 콜백 URL**입니다.  
+4. `WEB_DASHBOARD_PUBLIC_URL`은 사용자에게 보여 줄 **공개 웹 base URL**입니다 (secret 아님).  
+   설정 시 Soundroom 패널에 **🌐 웹 리모컨** 링크(`{PUBLIC_URL}/dashboard`)가 표시됩니다. 비우면 패널 버튼 없음.  
+   운영 예: `https://soundroom.example.com` — 랜딩 `/`, 대시보드 `/dashboard`, 정책 `/privacy`·`/terms`
+5. `DISCORD_OAUTH_REDIRECT_URI`는 **항상 API 콜백 URL**입니다.  
    프록시가 TLS를 처리하면: `https://soundroom.example.com/api/auth/discord/callback`  
    Discord Redirects에 **동일 문자열**을 등록합니다.
-5. OAuth 성공 후 리다이렉트: `{WEB_DASHBOARD_ALLOWED_ORIGIN}/dashboard`  
+6. OAuth 성공 후 리다이렉트: `{WEB_DASHBOARD_ALLOWED_ORIGIN}/dashboard`  
    open redirect 방지를 위해 임의 `?next=` 파라미터를 받지 않습니다.
 
 ### 4.1 Discord Developer Portal — 정책 URL
@@ -165,7 +169,9 @@ OAuth **Redirect URI**와 **Privacy Policy / Terms of Service URL**은 서로 �
 - **비인증 상태 API**: `GET /api/soundroom/guilds/:guildId/state`는 `WEB_DASHBOARD_PUBLIC_STATE_ENABLED=false`(기본)이면 **404**로 응답합니다. 대시보드는 인증 API `GET /api/auth/guilds/:guildId/soundroom-state`를 사용합니다.
 - **세션 시크릿**: `change-me` 계열·32자 미만은 약한 값입니다. `WEB_DASHBOARD_REQUIRE_STRONG_SESSION_SECRET=true`이면 `/api/auth/*`가 `SESSION_SECRET_WEAK`(503)로 차단됩니다. `/health`, `/dashboard`, `/privacy`, `/terms`는 계속 동작합니다.
 - **Secure 쿠키**: `WEB_DASHBOARD_COOKIE_SECURE=true`이면 `Set-Cookie`에 `Secure`가 붙습니다. **로컬 http**에서는 브라우저가 쿠키를 저장하지 않을 수 있으므로 개발 시 `false`를 유지하세요.
-- **rate limit**: 과도한 요청 시 **429** `RATE_LIMITED`와 `Retry-After` 헤더가 반환됩니다. 키는 **세션 userId**(로그인 후) 또는 **소켓 IP**(로그인 전)이며, `X-Forwarded-For`는 신뢰하지 않습니다.
+- **rate limit**: 과도한 요청 시 **429** `RATE_LIMITED`와 `Retry-After` 헤더가 반환됩니다. 키는 **세션 userId**(로그인 후) 또는 **소켓 IP**(로그인 전)이며, `X-Forwarded-For`는 신뢰하지 않습니다. 재생목록 추가(`POST .../soundroom/add-playlist`)는 `playlist-add` 버킷(30초 3회)을 사용합니다.
+- **웹 리모컨 재생목록**: 대시보드에서 지원되는 URL 재생목록을 한 번에 최대 **50곡**까지 대기열에 추가할 수 있습니다. 지원되지 않는 형식(Spotify 재생목록·앨범 등)은 거절될 수 있습니다.
+- **웹 리모컨 조작 안내**: 재생·스킵·정지·볼륨·자동재생·곡/재생목록 추가·대기열 삭제·순서 변경 등 **실제 변경**이 발생하면 Soundroom 노래채널에 공개 안내가 잠시 표시되고 **약 30초 뒤 삭제**됩니다. 메시지에 `<@userId>` 형태가 있어도 `allowedMentions: { parse: [] }`로 멘션 알림은 울리지 않습니다. 검색·상태 조회·CSRF·서버 목록 조회에는 안내를 보내지 않습니다.
 - `WEB_DASHBOARD_SESSION_SECRET`은 **32자 이상 랜덤 문자열**로 교체하세요 (예: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`).
 
 ### Nginx 예시 (문서용, 레포 미포함)
@@ -237,6 +243,8 @@ npm run dashboard:preflight
 **주요 검사:** `WEB_DASHBOARD_*` 활성화·보안 env, `dashboard/dist`·`index.html`, OAuth Client ID/Secret·Redirect URI와 `ALLOWED_ORIGIN` 일치 여부, 세션 시크릿 강도(32자 이상·`change-me*` 금지), `WEB_DASHBOARD_CONTACT_EMAIL` 권장.
 
 권장 순서: `npm run check` → `npm run build` → `npm run dashboard:build` → `npm run dashboard:preflight`
+
+**운영 공개 직전 마지막 확인** (CSRF 수동 테스트, 기능·보안·DB 백업·롤백 포함): [WEB_DASHBOARD_OPERATIONS_CHECKLIST.md](./WEB_DASHBOARD_OPERATIONS_CHECKLIST.md)
 
 ### CSRF (POST 조작 API)
 

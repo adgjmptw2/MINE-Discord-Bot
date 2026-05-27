@@ -11,7 +11,11 @@ import {
   requireWebSoundroomQueueAccess,
   type WebAuthzError,
 } from "@/web/soundroomControlAuth";
-import { sendTemporarySoundroomQueueSwapNotice } from "@/web/soundroomChannelNotice";
+import {
+  sendWebRemoteNotice,
+  sendWebRemoteQueueSwapNotice,
+} from "@/web/soundroomChannelNotice";
+import { buildWebRemoteQueueRemoveNotice } from "@/web/soundroomWebRemoteNotices";
 import {
   removeSoundroomQueueItemFromWeb,
   SoundroomQueueActionError,
@@ -99,6 +103,12 @@ export async function handleSoundroomQueueRemove(
       "web",
       `Soundroom queue remove guild=${guildId} user=${access.session.user.id} index=${removeBody.queueIndex}`,
     );
+    void sendWebRemoteNotice(
+      client,
+      guildId,
+      access.session.user.id,
+      buildWebRemoteQueueRemoveNotice(removed.title),
+    );
     sendJson(res, 200, response);
   } catch (error) {
     if (error instanceof SoundroomQueueActionError) {
@@ -180,7 +190,7 @@ export async function handleSoundroomQueueSwap(
       state,
     };
 
-    void sendTemporarySoundroomQueueSwapNotice(
+    void sendWebRemoteQueueSwapNotice(
       client,
       guildId,
       access.session.user.id,
