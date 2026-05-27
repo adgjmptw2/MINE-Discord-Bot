@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ApiClientError,
   getGuilds,
@@ -13,6 +13,7 @@ import type {
   SoundroomGuildStateDto,
   WebDashboardGuildDto,
 } from "../types";
+import { useLocalStorageBoolean } from "../hooks/useLocalStorageBoolean";
 import { isStaleGuild } from "../utils/requestGuards";
 import { ErrorState } from "./ErrorState";
 import { GuildList } from "./GuildList";
@@ -22,8 +23,11 @@ import { LegalLinks } from "./LegalLinks";
 import { SoundroomStateCard } from "./SoundroomStateCard";
 
 const STORAGE_KEY = "mine_soundroom_selected_guild";
+const SIDEBAR_COLLAPSED_KEY =
+  "mine-dashboard:soundroom:server-sidebar-collapsed";
 const POLL_MS = 8000;
 const DELAYED_REFRESH_MS = 1500;
+const DESKTOP_MIN_WIDTH = 900;
 
 type DashboardViewProps = {
   user: DiscordOAuthUserDto;
@@ -47,6 +51,13 @@ function pickInitialGuild(
     return saved;
   }
   return guilds[0]!.id;
+}
+
+function isDesktopViewport(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  return window.matchMedia(`(min-width: ${DESKTOP_MIN_WIDTH}px)`).matches;
 }
 
 function mapStateError(err: unknown): string {
@@ -95,6 +106,12 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
   const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
   const [panelRefreshing, setPanelRefreshing] = useState(false);
   const [pollPaused, setPollPaused] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useLocalStorageBoolean(
+    SIDEBAR_COLLAPSED_KEY,
+    false,
+  );
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(() => isDesktopViewport());
 
   const stateRequestId = useRef(0);
   const controlStatusRequestId = useRef(0);
@@ -105,6 +122,11 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
   useEffect(() => {
     selectedIdRef.current = selectedId;
   }, [selectedId]);
+
+  const selectedGuild = useMemo(
+    () => guilds.find((g) => g.id === selectedId) ?? null,
+    [guilds, selectedId],
+  );
 
   const syncPollPaused = useCallback(() => {
     setPollPaused(userActionDepthRef.current > 0);
@@ -322,8 +344,33 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
     return () => clearDelayedRefresh();
   }, [clearDelayedRefresh]);
 
+  useEffect(() => {
+    const mq = window.matchMedia(`(min-width: ${DESKTOP_MIN_WIDTH}px)`);
+    const onChange = () => setIsDesktop(mq.matches);
+    onChange();
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
   const handleSelectGuild = (guildId: string) => {
     setSelectedId(guildId);
+    if (isDesktopViewport()) {
+      setSidebarCollapsed(true);
+    } else {
+      setMobileSidebarOpen(false);
+    }
+  };
+
+  const expandSidebar = () => {
+    setSidebarCollapsed(false);
+    if (!isDesktopViewport()) {
+      setMobileSidebarOpen(true);
+    }
+  };
+
+  const collapseSidebar = () => {
+    setSidebarCollapsed(true);
+    setMobileSidebarOpen(false);
   };
 
   const handleRefresh = () => {
@@ -379,6 +426,9 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
   const panelBusy =
     panelRefreshing || stateLoading || controlStatusLoading;
 
+  const sidebarExpanded = !sidebarCollapsed || mobileSidebarOpen;
+  const showSidebarRail = sidebarCollapsed && !mobileSidebarOpen;
+
   if (guildsLoading) {
     return <LoadingState label="서버 목록 불러오는 중…" />;
   }
@@ -393,7 +443,7 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
   }
 
   return (
-    <div className="dashboard">
+    <div className="dashboard dashboard-shell">
       <header className="dashboard-header">
         <div>
           <p className="eyebrow">
@@ -422,9 +472,48 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
         </div>
       </header>
 
-      <div className="dashboard-layout">
-        <aside className="guild-panel">
-          <h2>서버</h2>
+      <div
+        className={`dashboard-layout${sidebarCollapsed ? " dashboard-layout--sidebar-collapsed" : ""}${mobileSidebarOpen ? " dashboard-layout--mobile-sidebar-open" : ""}`}
+      >
+        {showSidebarRail ? (
+          <div className="dashboard-sidebar-rail" aria-label="서버 사이드바">
+            <button
+              type="button"
+              className="dashboard-sidebar-toggle"
+              aria-expanded={false}
+              aria-label="서버 목록 펼치기"
+              onClick={expandSidebar}
+            >
+              <span aria-hidden>›</span>
+              <span className="dashboard-sidebar-toggle-label">서버</span>
+            </button>
+            {selectedGuild ? (
+              <span
+                className="dashboard-sidebar-rail-guild"
+                title={selectedGuild.name}
+              >
+                {selectedGuild.name}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+
+        <aside
+          className={`dashboard-server-sidebar guild-panel${sidebarExpanded ? "" : " dashboard-server-sidebar--hidden"}`}
+          aria-label="서버 목록"
+        >
+          <div className="dashboard-sidebar-head">
+            <h2>서버</h2>
+            <button
+              type="button"
+              className="btn btn-secondary dashboard-sidebar-collapse"
+              aria-expanded={sidebarExpanded}
+              aria-label="서버 목록 접기"
+              onClick={collapseSidebar}
+            >
+              ‹
+            </button>
+          </div>
           <GuildList
             guilds={guilds}
             selectedId={selectedId}
@@ -432,47 +521,72 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
           />
         </aside>
 
-        <main className="state-panel">
-          <div className="state-panel-inner">
-          <div className="state-toolbar">
-            <h2 className="state-panel-heading">노래채널</h2>
-            <div className="state-toolbar-actions">
-              <RefreshStatus
-                loading={panelBusy}
-                lastFetchedAt={lastFetchedAt}
-                pollPaused={pollPaused}
-                stateUpdatedAt={state?.updatedAt ?? null}
-                compact
-              />
-              <button
-                type="button"
-                className="btn btn-secondary btn-refresh"
-                onClick={handleRefresh}
-                disabled={!selectedId || panelBusy}
-              >
-                {panelBusy ? "갱신 중…" : "새로고침"}
-              </button>
-            </div>
-          </div>
-          <SoundroomStateCard
-            guildId={selectedId}
-            state={state}
-            loading={stateLoading}
-            error={stateError}
-            controlStatus={controlStatus}
-            controlStatusLoading={controlStatusLoading}
-            controlStatusError={controlStatusError}
-            onStateChange={handleStateChange}
-            onControlSuccess={handleControlSuccess}
-            onUnauthorized={onLogout}
-            onSkipDone={handleSkipDone}
-            onSearchAdded={handleMutationFollowUp}
-            onQueueChanged={handleMutationFollowUp}
-            onRefreshPanel={handleRefresh}
-            onUserActionStart={beginUserAction}
-            onUserActionEnd={endUserAction}
-            currentUserId={user.id}
+        {mobileSidebarOpen ? (
+          <button
+            type="button"
+            className="dashboard-mobile-sidebar-backdrop"
+            aria-label="서버 목록 닫기"
+            onClick={() => setMobileSidebarOpen(false)}
           />
+        ) : null}
+
+        <main className="dashboard-main state-panel">
+          <div className="dashboard-main-inner state-panel-inner">
+            <div className="dashboard-main-header state-toolbar">
+              <div className="dashboard-main-header-title">
+                {!isDesktop && sidebarCollapsed ? (
+                  <button
+                    type="button"
+                    className="btn btn-secondary dashboard-mobile-server-btn"
+                    aria-expanded={mobileSidebarOpen}
+                    aria-label="서버 목록 열기"
+                    onClick={expandSidebar}
+                  >
+                    서버
+                  </button>
+                ) : null}
+                <h2 className="dashboard-guild-heading state-panel-heading">
+                  {selectedGuild?.name ?? "노래채널"}
+                </h2>
+              </div>
+              <div className="state-toolbar-actions">
+                <RefreshStatus
+                  loading={panelBusy}
+                  lastFetchedAt={lastFetchedAt}
+                  pollPaused={pollPaused}
+                  stateUpdatedAt={state?.updatedAt ?? null}
+                  compact
+                />
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-refresh"
+                  onClick={handleRefresh}
+                  disabled={!selectedId || panelBusy}
+                >
+                  {panelBusy ? "갱신 중…" : "새로고침"}
+                </button>
+              </div>
+            </div>
+
+            <SoundroomStateCard
+              guildId={selectedId}
+              state={state}
+              loading={stateLoading}
+              error={stateError}
+              controlStatus={controlStatus}
+              controlStatusLoading={controlStatusLoading}
+              controlStatusError={controlStatusError}
+              onStateChange={handleStateChange}
+              onControlSuccess={handleControlSuccess}
+              onUnauthorized={onLogout}
+              onSkipDone={handleSkipDone}
+              onSearchAdded={handleMutationFollowUp}
+              onQueueChanged={handleMutationFollowUp}
+              onRefreshPanel={handleRefresh}
+              onUserActionStart={beginUserAction}
+              onUserActionEnd={endUserAction}
+              currentUserId={user.id}
+            />
           </div>
         </main>
       </div>

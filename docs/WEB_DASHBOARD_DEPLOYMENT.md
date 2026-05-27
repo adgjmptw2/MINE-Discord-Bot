@@ -170,6 +170,7 @@ OAuth **Redirect URI**와 **Privacy Policy / Terms of Service URL**은 서로 �
 - **세션 시크릿**: `change-me` 계열·32자 미만은 약한 값입니다. `WEB_DASHBOARD_REQUIRE_STRONG_SESSION_SECRET=true`이면 `/api/auth/*`가 `SESSION_SECRET_WEAK`(503)로 차단됩니다. `/health`, `/dashboard`, `/privacy`, `/terms`는 계속 동작합니다.
 - **Secure 쿠키**: `WEB_DASHBOARD_COOKIE_SECURE=true`이면 `Set-Cookie`에 `Secure`가 붙습니다. **로컬 http**에서는 브라우저가 쿠키를 저장하지 않을 수 있으므로 개발 시 `false`를 유지하세요.
 - **rate limit**: 과도한 요청 시 **429** `RATE_LIMITED`와 `Retry-After` 헤더가 반환됩니다. 키는 **세션 userId**(로그인 후) 또는 **소켓 IP**(로그인 전)이며, `X-Forwarded-For`는 신뢰하지 않습니다. 재생목록 추가(`POST .../soundroom/add-playlist`)는 `playlist-add` 버킷(30초 3회)을 사용합니다.
+- **웹 리모컨 레이아웃**: `/dashboard`는 **서버 사이드바**(접기/펼치기, 선택 시 데스크톱에서 자동 접힘)와 **메인 작업 영역**(현재 곡·조작 강조)으로 구성됩니다. **노래 추가 · 플레이리스트 · 대기열**은 작업 탭으로 전환하며, 대기열이 길어도 탭 안 **내부 스크롤**로 페이지 전체 길이를 줄입니다. 새 API·DB 변경 없음.
 - **웹 리모컨 재생목록**: 대시보드에서 지원되는 URL 재생목록을 한 번에 최대 **50곡**까지 대기열에 추가할 수 있습니다. 지원되지 않는 형식(Spotify 재생목록·앨범 등)은 거절될 수 있습니다.
 - **Soundroom 자동재생**: 최근 재생곡과 제목·아티스트·URI가 너무 유사한 후보는 건너뛸 수 있습니다(메모리 기록, 봇 재시작 시 초기화). 후보 검색은 아티스트 radio/similar 위주이며 official/audio/lyrics 변형·같은 아티스트 연속 재생을 완화합니다. YouTube Mix/Radio URL(`list=RD…` 등)은 Lavalink/Riffy resolve가 되는 환경에서 **best-effort**로만 활용하며, 실패 시 조용히 포기하거나 idle로 넘어갑니다. 외부 YouTube API 없이 Lavalink 기반이라 공식 추천과 동일하지 않습니다.
 - **URL 재생목록 추가**: `https://www.youtube.com/watch?v=…&list=PL…` 형태도 `playlist?list=PL…`로 정규화해 처리합니다. `list=RD…`·Mix/Radio는 일반 재생목록 추가가 아니며, 단일 곡 재생 시 자동재생 힌트로만 best-effort 처리합니다.

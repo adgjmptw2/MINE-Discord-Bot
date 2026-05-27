@@ -194,6 +194,9 @@ export function QueueList({
   if (queue.length === 0) {
     return (
       <div className="queue-panel">
+        <div className="queue-summary-bar">
+          <span className="queue-summary-title">대기열 0곡</span>
+        </div>
         {disabledReason && !canModifyQueue ? (
           <p className="queue-disabled-hint muted" role="status">
             {disabledReason}
@@ -206,6 +209,13 @@ export function QueueList({
 
   return (
     <div className="queue-panel">
+      <div className="queue-summary-bar">
+        <span className="queue-summary-title">대기열 {queue.length}곡</span>
+        <span className="queue-summary-hint muted">
+          내가 추가한 곡은 삭제 가능 · 같은 노래채널이면 순서 변경 가능
+        </span>
+      </div>
+
       {disabledReason && !canModifyQueue ? (
         <p className="queue-disabled-hint muted" role="status">
           {disabledReason}
@@ -237,7 +247,8 @@ export function QueueList({
         </p>
       ) : null}
 
-      <ol className="queue-list">
+      <div className="queue-scroll-panel">
+      <ol className="queue-list queue-list--scroll">
         {queue.map((item, arrayPos) => {
           const owned =
             Boolean(item.requesterId) && item.requesterId === currentUserId;
@@ -352,6 +363,7 @@ export function QueueList({
           );
         })}
       </ol>
+      </div>
     </div>
   );
 }

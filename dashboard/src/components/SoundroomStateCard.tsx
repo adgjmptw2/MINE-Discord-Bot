@@ -1,3 +1,4 @@
+import { useCallback, useState } from "react";
 import { getCanModifyQueue, getSearchAddDisabledState } from "../controlErrors";
 import { formatDurationMs } from "../format";
 import type {
@@ -5,16 +6,28 @@ import type {
   SoundroomControlStatusResponseDto,
   SoundroomGuildStateDto,
 } from "../types";
-import { CollapsibleSection } from "./CollapsibleSection";
-
-const SECTION_ADD_OPEN_KEY = "mine-dashboard:soundroom:section:add-song-open";
-const SECTION_PLAYLIST_OPEN_KEY =
-  "mine-dashboard:soundroom:section:playlists-open";
-const SECTION_QUEUE_OPEN_KEY = "mine-dashboard:soundroom:section:queue-open";
+import {
+  readStringPreference,
+  writeStringPreference,
+} from "../utils/storage";
 import { PlaylistPanel } from "./PlaylistPanel";
 import { QueueList } from "./QueueList";
+import {
+  SoundroomWorkspaceTabs,
+  type SoundroomWorkspaceTab,
+} from "./SoundroomWorkspaceTabs";
 import { SoundroomControls } from "./SoundroomControls";
 import { SoundroomSearchPanel } from "./SoundroomSearchPanel";
+
+const WORKSPACE_TAB_KEY = "mine-dashboard:soundroom:workspace-tab";
+
+function resolveWorkspaceTab(): SoundroomWorkspaceTab {
+  const saved = readStringPreference(WORKSPACE_TAB_KEY);
+  if (saved === "add" || saved === "playlist" || saved === "queue") {
+    return saved;
+  }
+  return "add";
+}
 
 type SoundroomStateCardProps = {
   guildId: string | null;
@@ -80,6 +93,14 @@ export function SoundroomStateCard({
   onUserActionEnd,
   currentUserId,
 }: SoundroomStateCardProps) {
+  const [workspaceTab, setWorkspaceTab] =
+    useState<SoundroomWorkspaceTab>(resolveWorkspaceTab);
+
+  const changeWorkspaceTab = useCallback((tab: SoundroomWorkspaceTab) => {
+    setWorkspaceTab(tab);
+    writeStringPreference(WORKSPACE_TAB_KEY, tab);
+  }, []);
+
   if (loading && !state) {
     return (
       <div className="state-card">
@@ -131,35 +152,44 @@ export function SoundroomStateCard({
     controlStatus,
   );
 
-  const queueSubtitle =
-    queueCount > 0 ? `${queueCount}곡 대기 중` : "비어 있음";
-
   return (
-    <div className="state-card">
-      <div className="state-meta-row">
-        <span>볼륨 {Math.round(state.volume)}%</span>
-        <span>자동재생 {state.autoplay ? "켜짐" : "꺼짐"}</span>
-        <span>{playbackStatus(state)}</span>
-      </div>
+    <div className="state-card soundroom-main-card">
+      <section className="soundroom-hero" aria-label="현재 재생">
+        <div className="soundroom-hero-stats">
+          <span className="soundroom-stat-chip">{playbackStatus(state)}</span>
+          <span className="soundroom-stat-chip">
+            볼륨 {Math.round(state.volume)}%
+          </span>
+          <span className="soundroom-stat-chip">
+            자동재생 {state.autoplay ? "켜짐" : "꺼짐"}
+          </span>
+          <span className="soundroom-stat-chip">
+            대기열 {queueCount}곡
+          </span>
+        </div>
 
-      <section className="state-hero" aria-label="현재 재생">
         {current ? (
-          <div className="now-playing">
-            {current.thumbnailUrl ? (
-              <img
-                className="track-thumb"
-                src={current.thumbnailUrl}
-                alt=""
-                width={160}
-                height={160}
-              />
-            ) : (
-              <div className="track-thumb track-thumb--empty" aria-hidden>
-                ♪
-              </div>
-            )}
-            <div className="track-info">
-              <h2 className="track-title">{current.title}</h2>
+          <div className="now-playing soundroom-hero-now">
+            <div className="soundroom-hero-art">
+              {current.thumbnailUrl ? (
+                <img
+                  className="track-thumb track-thumb--hero"
+                  src={current.thumbnailUrl}
+                  alt=""
+                  width={200}
+                  height={200}
+                />
+              ) : (
+                <div
+                  className="track-thumb track-thumb--hero track-thumb--empty"
+                  aria-hidden
+                >
+                  ♪
+                </div>
+              )}
+            </div>
+            <div className="track-info soundroom-hero-meta">
+              <h2 className="track-title track-title--hero">{current.title}</h2>
               <p className="track-author">
                 {current.author ?? "아티스트 알 수 없음"}
               </p>
@@ -172,7 +202,7 @@ export function SoundroomStateCard({
                   : `${formatDurationMs(state.positionMs)} / ${formatDurationMs(current.durationMs)}`}
               </p>
               <div
-                className={`progress-bar${pct == null ? " progress-bar--disabled" : ""}`}
+                className={`progress-bar progress-bar--hero${pct == null ? " progress-bar--disabled" : ""}`}
                 role="progressbar"
                 aria-valuenow={pct ?? 0}
                 aria-valuemin={0}
@@ -189,12 +219,17 @@ export function SoundroomStateCard({
             </div>
           </div>
         ) : (
-          <p className="state-notice">현재 재생 중인 곡이 없습니다.</p>
+          <div className="soundroom-hero-empty">
+            <p className="soundroom-hero-empty-title">대기 중</p>
+            <p className="muted">
+              노래를 추가하거나 플레이리스트를 불러오세요.
+            </p>
+          </div>
         )}
       </section>
 
       {guildId && onStateChange && state.soundroomConfigured ? (
-        <div className="state-controls-wrap">
+        <div className="state-controls-wrap soundroom-controls-wrap">
           <SoundroomControls
             guildId={guildId}
             state={state}
@@ -213,72 +248,56 @@ export function SoundroomStateCard({
       ) : null}
 
       {guildId && onStateChange ? (
-        <CollapsibleSection
-          title="노래 추가"
-          subtitle="검색 · URL · 바로 추가"
-          defaultOpen
-          storageKey={SECTION_ADD_OPEN_KEY}
-        >
-          <SoundroomSearchPanel
-            guildId={guildId}
-            embedded
-            disabled={searchDisabled.disabled || loading}
-            disabledReason={searchDisabled.reason}
-            onStateChange={onStateChange}
-            onAdded={onSearchAdded}
-            onUnauthorized={onUnauthorized}
-            onUserActionStart={onUserActionStart}
-            onUserActionEnd={onUserActionEnd}
-          />
-        </CollapsibleSection>
-      ) : null}
-
-      {guildId && onStateChange ? (
-        <CollapsibleSection
-          title="플레이리스트"
-          subtitle="내 목록 · 공개 · 대기열 추가"
-          defaultOpen={false}
-          storageKey={SECTION_PLAYLIST_OPEN_KEY}
-        >
-          <PlaylistPanel
-            guildId={guildId}
-            queueAddDisabled={searchDisabled.disabled || loading}
-            queueAddDisabledReason={searchDisabled.reason}
-            onStateChange={onStateChange}
-            onUnauthorized={onUnauthorized}
-            onAfterQueueChanged={onSearchAdded}
-            onUserActionStart={onUserActionStart}
-            onUserActionEnd={onUserActionEnd}
-          />
-        </CollapsibleSection>
-      ) : null}
-
-      <CollapsibleSection
-        title="대기열"
-        subtitle={queueSubtitle}
-        defaultOpen={queueCount > 0}
-        storageKey={SECTION_QUEUE_OPEN_KEY}
-      >
-        <QueueList
-          queue={state.queue}
-          guildId={guildId ?? ""}
-          currentUserId={currentUserId ?? ""}
-          canModifyQueue={Boolean(
-            guildId &&
-              onStateChange &&
-              currentUserId &&
-              queueModify.canModify &&
-              !loading,
-          )}
-          disabledReason={queueModify.reason}
-          onStateChange={onStateChange ?? (() => undefined)}
-          onQueueChanged={onQueueChanged}
-          onRefreshPanel={onRefreshPanel}
-          onUnauthorized={onUnauthorized}
-          onUserActionStart={onUserActionStart}
-          onUserActionEnd={onUserActionEnd}
+        <SoundroomWorkspaceTabs
+          activeTab={workspaceTab}
+          onTabChange={changeWorkspaceTab}
+          queueCount={queueCount}
+          addPanel={
+            <SoundroomSearchPanel
+              guildId={guildId}
+              embedded
+              disabled={searchDisabled.disabled || loading}
+              disabledReason={searchDisabled.reason}
+              onStateChange={onStateChange}
+              onAdded={onSearchAdded}
+              onUnauthorized={onUnauthorized}
+              onUserActionStart={onUserActionStart}
+              onUserActionEnd={onUserActionEnd}
+            />
+          }
+          playlistPanel={
+            <PlaylistPanel
+              guildId={guildId}
+              queueAddDisabled={searchDisabled.disabled || loading}
+              queueAddDisabledReason={searchDisabled.reason}
+              onStateChange={onStateChange}
+              onUnauthorized={onUnauthorized}
+              onAfterQueueChanged={onSearchAdded}
+              onUserActionStart={onUserActionStart}
+              onUserActionEnd={onUserActionEnd}
+            />
+          }
+          queuePanel={
+            <QueueList
+              queue={state.queue}
+              guildId={guildId}
+              currentUserId={currentUserId ?? ""}
+              canModifyQueue={Boolean(
+                currentUserId &&
+                  queueModify.canModify &&
+                  !loading,
+              )}
+              disabledReason={queueModify.reason}
+              onStateChange={onStateChange}
+              onQueueChanged={onQueueChanged}
+              onRefreshPanel={onRefreshPanel}
+              onUnauthorized={onUnauthorized}
+              onUserActionStart={onUserActionStart}
+              onUserActionEnd={onUserActionEnd}
+            />
+          }
         />
-      </CollapsibleSection>
+      ) : null}
     </div>
   );
 }

@@ -426,7 +426,13 @@ export function PlaylistPanel({
 
   return (
     <div className="playlist-panel">
-      <div className="playlist-tabs" role="tablist">
+      <div className="playlist-feature-card" role="note">
+        <p>
+          내 플레이리스트를 만들고, 공개 플레이리스트를 찾아 바로 대기열에
+          추가하세요.
+        </p>
+      </div>
+      <div className="playlist-tabs playlist-tabs--inner" role="tablist">
         <button
           type="button"
           role="tab"

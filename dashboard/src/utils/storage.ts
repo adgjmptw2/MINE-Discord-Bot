@@ -26,3 +26,25 @@ export function writeBooleanPreference(key: string, value: boolean): void {
     /* private 모드·용량 초과 등 */
   }
 }
+
+export function readStringPreference(key: string): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+export function writeStringPreference(key: string, value: string): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    /* private 모드·용량 초과 등 */
+  }
+}
