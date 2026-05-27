@@ -3,9 +3,11 @@ import {
   addPlaylistToQueue,
   addTrackToPlaylist,
   deletePlaylist,
+  favoritePlaylist,
   getPlaylistDetail,
   removeTrackFromPlaylist,
   reorderPlaylistTracks,
+  unfavoritePlaylist,
   updatePlaylist,
 } from "../api";
 import { isControlUnauthorized, mapPlaylistError } from "../controlErrors";
@@ -28,6 +30,7 @@ type PlaylistDetailProps = {
   onStateChange: (state: SoundroomGuildStateDto) => void;
   onUnauthorized?: () => void;
   onAfterQueueChanged?: () => void;
+  onFavoriteChanged?: () => void;
   onUserActionStart?: () => void;
   onUserActionEnd?: () => void;
 };
@@ -60,6 +63,7 @@ export function PlaylistDetail({
   onStateChange,
   onUnauthorized,
   onAfterQueueChanged,
+  onFavoriteChanged,
   onUserActionStart,
   onUserActionEnd,
 }: PlaylistDetailProps) {
@@ -73,6 +77,9 @@ export function PlaylistDetail({
 
   const canReport =
     playlist.visibility === "public" && !playlist.canManage;
+
+  const canFavorite =
+    playlist.visibility === "public" && !playlist.isHiddenByAdmin;
 
   const runBusy = async (fn: () => Promise<void>) => {
     setBusy(true);
@@ -204,6 +211,34 @@ export function PlaylistDetail({
     });
   };
 
+  const handleFavoriteToggle = () => {
+    if (!canFavorite) {
+      return;
+    }
+    const isFavorited = playlist.isFavorited === true;
+    void runBusy(async () => {
+      try {
+        if (isFavorited) {
+          await unfavoritePlaylist(playlist.id);
+        } else {
+          await favoritePlaylist(playlist.id);
+        }
+        const detail = await getPlaylistDetail(playlist.id);
+        onPlaylistChange(detail.playlist);
+        showSuccess(
+          isFavorited ? "즐겨찾기에서 제거했습니다." : "즐겨찾기에 추가했습니다.",
+        );
+        onFavoriteChanged?.();
+      } catch (err) {
+        if (isControlUnauthorized(err)) {
+          onUnauthorized?.();
+          return;
+        }
+        setError(mapPlaylistError(err));
+      }
+    });
+  };
+
   const handleAddToQueue = () => {
     if (!guildId) {
       return;
@@ -258,27 +293,42 @@ export function PlaylistDetail({
                 {playlist.isHiddenByAdmin ? " · 운영자 숨김" : ""}
               </p>
             </div>
-            {playlist.canManage ? (
-              <div className="playlist-actions playlist-actions--header">
+            <div className="playlist-actions playlist-actions--header">
+              {canFavorite ? (
                 <button
                   type="button"
-                  className="btn btn-secondary"
+                  className={`playlist-favorite-button${playlist.isFavorited ? " active" : ""}`}
                   disabled={busy}
-                  onClick={() => setEditing(true)}
+                  aria-pressed={playlist.isFavorited === true}
+                  onClick={handleFavoriteToggle}
                 >
-                  수정
+                  {busy
+                    ? "처리 중…"
+                    : playlist.isFavorited
+                      ? "★ 해제"
+                      : "☆ 즐겨찾기"}
                 </button>
-                <button
-                  type="button"
-                  className="btn btn-danger"
-                  disabled={busy}
-                  onClick={handleDelete}
-                >
-                  삭제
-                </button>
-              </div>
-            ) : canReport && !reportOpen ? (
-              <div className="playlist-actions playlist-actions--header">
+              ) : null}
+              {playlist.canManage ? (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    disabled={busy}
+                    onClick={() => setEditing(true)}
+                  >
+                    수정
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    disabled={busy}
+                    onClick={handleDelete}
+                  >
+                    삭제
+                  </button>
+                </>
+              ) : canReport && !reportOpen ? (
                 <button
                   type="button"
                   className="btn btn-secondary"
@@ -287,8 +337,8 @@ export function PlaylistDetail({
                 >
                   신고
                 </button>
-              </div>
-            ) : null}
+              ) : null}
+            </div>
           </header>
 
           {canReport && reportOpen ? (

@@ -25,6 +25,7 @@ import {
   setWebPlaylistHiddenByAdmin,
   softDeleteWebPlaylist,
   updateWebPlaylist,
+  type WebPlaylistFavoriteListRow,
 } from "@/web/playlistDb";
 import {
   canManageWebPlaylist,
@@ -36,14 +37,19 @@ import {
   addWebPlaylistTracksToSoundroomQueue,
   assertPlaylistCreateLimits,
   assertPublicVisibilityChange,
+  attachFavoriteStateToPublicPlaylists,
   completeWebPlaylistReport,
+  favoritePlaylist,
+  listFavoritePlaylists,
   PlaylistActionError,
   requireManageablePlaylist,
   requireViewablePlaylist,
+  resolvePlaylistDetailFavoriteState,
   resolveTrackForWebPlaylist,
   sanitizePlaylistSnapshotName,
   submitWebPlaylistReport,
   trackRecordToDto,
+  unfavoritePlaylist,
   validatePlaylistDescription,
   validatePlaylistTitle,
   validatePlaylistVisibility,
@@ -60,6 +66,7 @@ import type {
   WebPlaylistAdminReportSummaryDto,
   WebPlaylistAdminSummaryDto,
   WebPlaylistDetailDto,
+  WebPlaylistFavoriteSummaryDto,
   WebPlaylistPublicSummaryDto,
   WebPlaylistSummaryDto,
 } from "@/web/types";
@@ -156,6 +163,7 @@ function toAdminReportDto(row: AdminPlaylistReportRow): WebPlaylistAdminReportSu
 
 function toPublicSummaryDto(
   row: Awaited<ReturnType<typeof listPublicWebPlaylists>>[number],
+  isFavorited?: boolean,
 ): WebPlaylistPublicSummaryDto {
   return {
     id: row.id,
@@ -163,6 +171,23 @@ function toPublicSummaryDto(
     description: row.description,
     ownerNameSnapshot: row.owner_name_snapshot,
     trackCount: row.track_count,
+    isFavorited,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function toFavoriteSummaryDto(
+  row: WebPlaylistFavoriteListRow,
+): WebPlaylistFavoriteSummaryDto {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    ownerNameSnapshot: row.owner_name_snapshot,
+    trackCount: row.track_count,
+    isFavorited: true,
+    favoritedAt: row.favorited_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -175,7 +200,7 @@ function toDetailDto(
   tracks: ReturnType<typeof getWebPlaylistTracks>,
 ): WebPlaylistDetailDto {
   const owner = isPlaylistOwner(session, playlist);
-  return {
+  const dto: WebPlaylistDetailDto = {
     id: playlist.id,
     title: playlist.title,
     description: playlist.description,
@@ -188,6 +213,10 @@ function toDetailDto(
     updatedAt: playlist.updated_at,
     tracks: tracks.map(trackRecordToDto),
   };
+  if (playlist.visibility === "public" && !playlist.is_deleted) {
+    dto.isFavorited = resolvePlaylistDetailFavoriteState(session, playlist);
+  }
+  return dto;
 }
 
 function handlePlaylistActionError(
@@ -213,10 +242,12 @@ function handlePlaylistActionError(
 type PlaylistRoute =
   | { kind: "mine" }
   | { kind: "public" }
+  | { kind: "favorites" }
   | { kind: "admin_public" }
   | { kind: "admin_reports" }
   | { kind: "admin_report_resolve"; reportId: string }
   | { kind: "playlist_report"; playlistId: string }
+  | { kind: "playlist_favorite"; playlistId: string }
   | { kind: "root" }
   | { kind: "detail"; playlistId: string }
   | { kind: "tracks"; playlistId: string }
@@ -240,6 +271,9 @@ function parsePlaylistRoute(pathname: string): PlaylistRoute | null {
   if (parts.length === 1 && parts[0] === "public") {
     return { kind: "public" };
   }
+  if (parts.length === 1 && parts[0] === "favorites") {
+    return { kind: "favorites" };
+  }
   // "admin"이 playlist UUID로 해석되지 않도록 :id보다 먼저 매칭
   if (parts.length === 2 && parts[0] === "admin" && parts[1] === "public") {
     return { kind: "admin_public" };
@@ -262,6 +296,13 @@ function parsePlaylistRoute(pathname: string): PlaylistRoute | null {
     parts[1] === "report"
   ) {
     return { kind: "playlist_report", playlistId: parts[0]! };
+  }
+  if (
+    parts.length === 2 &&
+    PLAYLIST_ID_PATTERN.test(parts[0]!) &&
+    parts[1] === "favorite"
+  ) {
+    return { kind: "playlist_favorite", playlistId: parts[0]! };
   }
   if (parts.length === 1 && PLAYLIST_ID_PATTERN.test(parts[0]!)) {
     return { kind: "detail", playlistId: parts[0]! };
@@ -447,9 +488,43 @@ export async function handleWebPlaylistRoutes(
       offset = 0;
     }
     const rows = listPublicWebPlaylists({ q, limit, offset });
+    const withFavorites = attachFavoriteStateToPublicPlaylists(session, rows);
     sendJson(res, 200, {
       ok: true,
-      playlists: rows.map(toPublicSummaryDto),
+      playlists: withFavorites.map((row) =>
+        toPublicSummaryDto(row, row.isFavorited),
+      ),
+      limit,
+      offset,
+    });
+    return true;
+  }
+
+  if (route.kind === "favorites") {
+    if (method !== "GET") {
+      sendError(res, 405, "METHOD_NOT_ALLOWED", "허용되지 않은 메서드입니다.");
+      return true;
+    }
+    const session = requireSession(req, res);
+    if (!session) {
+      return true;
+    }
+    const { searchParams } = readRequestUrl(req);
+    let limit = Number.parseInt(searchParams.get("limit") ?? "20", 10);
+    let offset = Number.parseInt(searchParams.get("offset") ?? "0", 10);
+    if (!Number.isFinite(limit) || limit < 1) {
+      limit = 20;
+    }
+    if (limit > 50) {
+      limit = 50;
+    }
+    if (!Number.isFinite(offset) || offset < 0) {
+      offset = 0;
+    }
+    const rows = listFavoritePlaylists(session, { limit, offset });
+    sendJson(res, 200, {
+      ok: true,
+      playlists: rows.map(toFavoriteSummaryDto),
       limit,
       offset,
     });
@@ -579,6 +654,34 @@ export async function handleWebPlaylistRoutes(
         bodyResult.data?.resolutionNote,
       );
       sendJson(res, 200, { ok: true, resolved: true });
+    } catch (error) {
+      handlePlaylistActionError(res, error);
+    }
+    return true;
+  }
+
+  if (route.kind === "playlist_favorite" && method === "POST") {
+    const session = requireAuthenticatedSessionWithCsrf(req, res);
+    if (!session) {
+      return true;
+    }
+    try {
+      favoritePlaylist(session, route.playlistId);
+      sendJson(res, 200, { ok: true, favorited: true });
+    } catch (error) {
+      handlePlaylistActionError(res, error);
+    }
+    return true;
+  }
+
+  if (route.kind === "playlist_favorite" && method === "DELETE") {
+    const session = requireAuthenticatedSessionWithCsrf(req, res);
+    if (!session) {
+      return true;
+    }
+    try {
+      unfavoritePlaylist(session, route.playlistId);
+      sendJson(res, 200, { ok: true, favorited: false });
     } catch (error) {
       handlePlaylistActionError(res, error);
     }

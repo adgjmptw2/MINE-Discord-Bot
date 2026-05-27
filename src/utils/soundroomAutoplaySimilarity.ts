@@ -188,6 +188,17 @@ function authorsSimilar(a: string, b: string): boolean {
   return a.includes(b) || b.includes(a);
 }
 
+const LOW_QUALITY_TITLE_RE =
+  /\b(lyrics?|lyric\s*video|official\s*lyric|live|cover|reaction|1\s*hour|10\s*hours|loop|slowed|sped\s*up|nightcore|karaoke|instrumental|reupload|가사|자막|라이브|커버|노래방)\b/i;
+
+export function isLowQualityAutoplayCandidate(track: ExtendedTrack): boolean {
+  const title = track.info.title?.trim() ?? "";
+  if (!title) {
+    return false;
+  }
+  return LOW_QUALITY_TITLE_RE.test(title);
+}
+
 export function isSimilarToHistoryEntry(
   entry: SoundroomAutoplayHistoryEntry,
   candidate: SoundroomAutoplayHistoryEntry,

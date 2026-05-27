@@ -212,14 +212,20 @@ Discord **음성 채널(노래채널)** 에 들어간 상태에서 조작이 필
 - [ ] **볼륨** 적용
 - [ ] **자동재생** 토글
 - [ ] 자동재생 ON 시 **같은 곡·유사 제목**(official/audio/lyrics 등)만 반복되지 않음
+- [ ] 자동재생이 **아티스트 radio/similar** 후보를 쓰고 같은 아티스트가 과도하게 연속되지 않음
 - [ ] YouTube **Mix/Radio** URL(`list=RD…`, `start_radio=1`) 후 자동재생이 같은 영상만 반복하지 않음 (Lavalink resolve 환경에 따라 best-effort)
 - [ ] 유사 후보만 있을 때 봇이 **오류 없이** 자동재생을 포기하거나 idle로 넘어감
 - [ ] 사용자가 **같은 곡을 직접 다시 추가**하는 것은 막히지 않음
 - [ ] **노래 검색**
 - [ ] **노래 추가** (단일 곡)
-- [ ] **URL 재생목록 추가** (최대 50곡, 초과 시 일부만 추가·truncated 안내)
-- [ ] **플레이리스트** 섹션: 내 목록·공개 목록·생성·수정·soft delete·곡 추가/삭제·위/아래 순서
-- [ ] public 목록에 **ownerUserId 미노출**, `ownerNameSnapshot`만 표시
+- [ ] **URL 재생목록 추가** (최대 50곡; `watch?v=…&list=PL…` 허용, `list=RD…` Mix는 거절)
+- [ ] 예시: `https://www.youtube.com/watch?v=pYD9J0PsA6g&list=PLRlPVY9e8wsBNFvXxH8m-gSWpWOM7z8fk` → 재생목록으로 추가
+- [ ] **플레이리스트** 섹션: 내/공개/즐겨찾기 **검색·정렬**, 공개·즐겨찾기 **목록에서 바로 대기열 추가**, 생성·수정·soft delete·곡 관리
+- [ ] 공개 플레이리스트 **즐겨찾기/해제** (`POST`/`DELETE …/:id/favorite`, CSRF 필수) · 중복 즐겨찾기 없음
+- [ ] 즐겨찾기 목록(`GET …/favorites`)에 숨김·삭제된 공개 플레이리스트 미표시
+- [ ] 즐겨찾기/해제 시 Discord 채널 안내 없음 · 해제는 **삭제 아님** · 즐겨찾기는 **canManage 아님**
+- [ ] 목록 바로 대기열 추가 성공 시 state 갱신·노래채널 안내 1건(30초 삭제) · `canControl`/0곡 시 버튼 비활성
+- [ ] public·즐겨찾기 목록에 **ownerUserId·userId 미노출**, `ownerNameSnapshot`만 표시
 - [ ] 상세에서 **canManage=false**이면 수정·삭제·곡 관리 버튼 숨김
 - [ ] **현재 대기열에 추가**(10/25/50) · `canControl`/노래채널 권한 없으면 비활성
 - [ ] `POST …/soundroom/playlists/:id/add-to-queue` 성공 시 state 즉시 반영·노래채널 안내 1건·30초 삭제·멘션 무알림

@@ -85,7 +85,32 @@ export function ensureWebPlaylistTables(): void {
       ON web_playlist_tracks(playlist_id, position);
   `);
   ensureWebPlaylistReportTable();
+  ensureWebPlaylistFavoriteTable();
   tablesReady = true;
+}
+
+let favoriteTablesReady = false;
+
+function ensureWebPlaylistFavoriteTable(): void {
+  if (favoriteTablesReady) {
+    return;
+  }
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS web_playlist_favorites (
+      playlist_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      PRIMARY KEY (playlist_id, user_id),
+      FOREIGN KEY (playlist_id) REFERENCES web_playlists(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_web_playlist_favorites_user_created_at
+      ON web_playlist_favorites(user_id, created_at);
+
+    CREATE INDEX IF NOT EXISTS idx_web_playlist_favorites_playlist_id
+      ON web_playlist_favorites(playlist_id);
+  `);
+  favoriteTablesReady = true;
 }
 
 export type WebPlaylistReportReason =
@@ -728,6 +753,93 @@ export function listAdminPlaylistReports(params: {
     playlist_owner_name_snapshot: row.playlist_owner_name_snapshot,
     playlist_is_deleted: row.playlist_is_deleted,
     playlist_is_hidden_by_admin: row.playlist_is_hidden_by_admin,
+  }));
+}
+
+export function addWebPlaylistFavorite(
+  playlistId: string,
+  userId: string,
+): void {
+  ensureWebPlaylistFavoriteTable();
+  db.run(
+    `INSERT OR IGNORE INTO web_playlist_favorites (playlist_id, user_id, created_at)
+     VALUES (?, ?, ?)`,
+    [playlistId, userId, nowIso()],
+  );
+}
+
+export function removeWebPlaylistFavorite(
+  playlistId: string,
+  userId: string,
+): void {
+  ensureWebPlaylistFavoriteTable();
+  db.run(
+    `DELETE FROM web_playlist_favorites WHERE playlist_id = ? AND user_id = ?`,
+    [playlistId, userId],
+  );
+}
+
+export function isWebPlaylistFavoritedByUser(
+  playlistId: string,
+  userId: string,
+): boolean {
+  ensureWebPlaylistFavoriteTable();
+  const row = db.get<{ c: number }>(
+    `SELECT 1 AS c FROM web_playlist_favorites
+     WHERE playlist_id = ? AND user_id = ?`,
+    [playlistId, userId],
+  );
+  return (row?.c ?? 0) > 0;
+}
+
+export function listFavoritePlaylistIds(
+  userId: string,
+  playlistIds: string[],
+): Set<string> {
+  ensureWebPlaylistFavoriteTable();
+  if (playlistIds.length === 0) {
+    return new Set();
+  }
+  const placeholders = playlistIds.map(() => "?").join(", ");
+  const rows = db.all<{ playlist_id: string }>(
+    `SELECT playlist_id FROM web_playlist_favorites
+     WHERE user_id = ? AND playlist_id IN (${placeholders})`,
+    [userId, ...playlistIds],
+  );
+  return new Set(rows.map((r) => r.playlist_id));
+}
+
+export type WebPlaylistFavoriteListRow = WebPlaylistRecord & {
+  track_count: number;
+  favorited_at: string;
+};
+
+/** 즐겨찾기 목록은 숨김·삭제·비공개 플레이리스트를 제외한다(개인 북마크용). */
+export function listFavoriteWebPlaylists(
+  userId: string,
+  params: { limit: number; offset: number },
+): WebPlaylistFavoriteListRow[] {
+  ensureWebPlaylistFavoriteTable();
+  const rows = db.all<PlaylistRow & { favorited_at: string }>(
+    `SELECT p.id, p.owner_user_id, p.owner_name_snapshot, p.title, p.description,
+            p.visibility, p.is_deleted, p.is_hidden_by_admin, p.created_at, p.updated_at, p.deleted_at,
+            COUNT(t.id) AS track_count, f.created_at AS favorited_at
+     FROM web_playlist_favorites f
+     INNER JOIN web_playlists p ON p.id = f.playlist_id
+     LEFT JOIN web_playlist_tracks t ON t.playlist_id = p.id
+     WHERE f.user_id = ?
+       AND p.visibility = 'public'
+       AND p.is_deleted = 0
+       AND p.is_hidden_by_admin = 0
+     GROUP BY p.id, f.created_at
+     ORDER BY f.created_at DESC
+     LIMIT ? OFFSET ?`,
+    [userId, params.limit, params.offset],
+  );
+  return rows.map((row) => ({
+    ...mapPlaylistRow(row),
+    track_count: Number(row.track_count ?? 0),
+    favorited_at: row.favorited_at,
   }));
 }
 

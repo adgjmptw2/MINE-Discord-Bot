@@ -33,6 +33,8 @@ import type {
   WebPlaylistDetailResponseDto,
   WebPlaylistDeleteResponseDto,
   WebPlaylistMineResponseDto,
+  WebPlaylistFavoriteResponseDto,
+  WebPlaylistFavoritesResponseDto,
   WebPlaylistPublicListResponseDto,
   WebPlaylistTrackAddRequestDto,
   WebPlaylistTrackAddResponseDto,
@@ -358,6 +360,47 @@ export async function getPublicPlaylists(
   const qs = search.toString();
   return apiFetch<WebPlaylistPublicListResponseDto>(
     `/api/auth/playlists/public${qs ? `?${qs}` : ""}`,
+    { signal },
+  );
+}
+
+export async function getFavoritePlaylists(
+  params: { limit?: number; offset?: number },
+  signal?: AbortSignal,
+): Promise<WebPlaylistFavoritesResponseDto> {
+  const search = new URLSearchParams();
+  if (params.limit != null) {
+    search.set("limit", String(params.limit));
+  }
+  if (params.offset != null) {
+    search.set("offset", String(params.offset));
+  }
+  const qs = search.toString();
+  return apiFetch<WebPlaylistFavoritesResponseDto>(
+    `/api/auth/playlists/favorites${qs ? `?${qs}` : ""}`,
+    { signal },
+  );
+}
+
+export async function favoritePlaylist(
+  playlistId: string,
+  signal?: AbortSignal,
+): Promise<WebPlaylistFavoriteResponseDto> {
+  return apiPost<WebPlaylistFavoriteResponseDto>(
+    `/api/auth/playlists/${encodeURIComponent(playlistId)}/favorite`,
+    {},
+    { signal },
+  );
+}
+
+export async function unfavoritePlaylist(
+  playlistId: string,
+  signal?: AbortSignal,
+): Promise<WebPlaylistFavoriteResponseDto> {
+  return apiWriteWithCsrf<WebPlaylistFavoriteResponseDto>(
+    "DELETE",
+    `/api/auth/playlists/${encodeURIComponent(playlistId)}/favorite`,
+    undefined,
     { signal },
   );
 }

@@ -234,6 +234,19 @@ export interface WebPlaylistPublicSummaryDto {
   description: string;
   ownerNameSnapshot: string;
   trackCount: number;
+  isFavorited?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WebPlaylistFavoriteSummaryDto {
+  id: string;
+  title: string;
+  description: string;
+  ownerNameSnapshot: string;
+  trackCount: number;
+  isFavorited: true;
+  favoritedAt: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -271,6 +284,7 @@ export interface WebPlaylistDetailDto {
   isOwner: boolean;
   canManage: boolean;
   isHiddenByAdmin: boolean;
+  isFavorited?: boolean;
   createdAt: string;
   updatedAt: string;
   tracks: WebPlaylistTrackDto[];
@@ -311,6 +325,18 @@ export interface WebPlaylistPublicListResponseDto {
   playlists: WebPlaylistPublicSummaryDto[];
   limit: number;
   offset: number;
+}
+
+export interface WebPlaylistFavoritesResponseDto {
+  ok: true;
+  playlists: WebPlaylistFavoriteSummaryDto[];
+  limit: number;
+  offset: number;
+}
+
+export interface WebPlaylistFavoriteResponseDto {
+  ok: true;
+  favorited: boolean;
 }
 
 export interface WebPlaylistDetailResponseDto {

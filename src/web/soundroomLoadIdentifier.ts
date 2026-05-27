@@ -1,5 +1,10 @@
 import { isExplicitFullPlaylistIntentUrl } from "@/events/bot/client/soundroomMessages";
 import { stripSearchEnginePrefix } from "@/utils/riffyResolve";
+import {
+  extractYouTubePlaylistId,
+  isYouTubeMixPlaylistId,
+  isYouTubeRadioLikeUrl,
+} from "@/utils/soundroomAutoplaySimilarity";
 import { sanitizeYoutubeQueryForLavalink } from "@/utils/youtubeLavalinkQuery";
 
 /** 검색어·URL 입력 최대 길이 */
@@ -150,6 +155,26 @@ export function isExplicitPlaylistUrlInput(input: string): boolean {
   return isExplicitFullPlaylistIntentUrl(normalizeSoundroomQuery(input));
 }
 
+export function extractYoutubePlaylistIdFromUrl(uri: string): string | null {
+  return extractYouTubePlaylistId(uri);
+}
+
+/** add-playlist에서 허용하는 일반 YouTube 재생목록 id (PL…) */
+export function isYoutubeStandardPlaylistId(listId: string): boolean {
+  return /^PL[\w-]+$/i.test(listId.trim());
+}
+
+/** watch+list=PL… → playlist?list=… (add-playlist 전용, 단일 /add 동작은 유지) */
+export function normalizeYoutubePlaylistUrlForLavalink(
+  uri: string,
+): string | null {
+  const listId = extractYoutubePlaylistIdFromUrl(uri);
+  if (!listId || !isYoutubeStandardPlaylistId(listId)) {
+    return null;
+  }
+  return `https://www.youtube.com/playlist?list=${encodeURIComponent(listId)}`;
+}
+
 /**
  * /add-playlist 전용 URI 검증. 단일 곡·검색어·지원 불가 Spotify 재생목록은 거절.
  */
@@ -159,7 +184,7 @@ export function assertSafeHttpPlaylistUri(uri: string): string {
   if (!HTTP_URL_RE.test(q)) {
     throw new SoundroomLoadIdentifierError(
       "INVALID_PLAYLIST_URL",
-      "지원되는 재생목록 URL을 입력해 주세요.",
+      "YouTube 재생목록 URL을 입력해 주세요. watch URL도 list=PL...이 있으면 사용할 수 있습니다.",
     );
   }
   if (UNSAFE_URL_PROTOCOL_RE.test(q)) {
@@ -171,11 +196,29 @@ export function assertSafeHttpPlaylistUri(uri: string): string {
   if (isUnsupportedSpotifyUrl(q)) {
     throw new SoundroomLoadIdentifierError(
       "PLAYLIST_NOT_SUPPORTED",
-      "아직 지원하지 않는 재생목록 형식입니다.",
+      "아직 지원하지 않는 재생목록 형식입니다. YouTube 일반 재생목록 URL을 사용해 주세요.",
     );
   }
-  if (!isExplicitPlaylistUrlInput(q)) {
-    if (isSpotifyTrackUrl(q) || (isYoutubeSoundroomUrl(q) && !/list=/i.test(q))) {
+
+  if (isYoutubeSoundroomUrl(q)) {
+    const listId = extractYoutubePlaylistIdFromUrl(q);
+    if (listId && isYouTubeMixPlaylistId(listId)) {
+      throw new SoundroomLoadIdentifierError(
+        "MIX_PLAYLIST_NOT_SUPPORTED",
+        "YouTube Mix/Radio URL은 일반 재생목록 추가로 지원하지 않습니다. 단일 곡으로 재생하면 자동재생에서 best-effort로 처리합니다.",
+      );
+    }
+    if (isYouTubeRadioLikeUrl(q) && !normalizeYoutubePlaylistUrlForLavalink(q)) {
+      throw new SoundroomLoadIdentifierError(
+        "MIX_PLAYLIST_NOT_SUPPORTED",
+        "YouTube Mix/Radio URL은 일반 재생목록 추가로 지원하지 않습니다. 단일 곡으로 재생하면 자동재생에서 best-effort로 처리합니다.",
+      );
+    }
+    const normalized = normalizeYoutubePlaylistUrlForLavalink(q);
+    if (normalized) {
+      return normalized;
+    }
+    if (!/list=/i.test(q)) {
       throw new SoundroomLoadIdentifierError(
         "INVALID_PLAYLIST_URL",
         "단일 곡은 일반 추가를 사용해 주세요.",
@@ -183,7 +226,20 @@ export function assertSafeHttpPlaylistUri(uri: string): string {
     }
     throw new SoundroomLoadIdentifierError(
       "INVALID_PLAYLIST_URL",
-      "지원되는 재생목록 URL을 입력해 주세요.",
+      "YouTube 재생목록 URL을 입력해 주세요. watch URL도 list=PL...이 있으면 사용할 수 있습니다.",
+    );
+  }
+
+  if (!isExplicitPlaylistUrlInput(q)) {
+    if (isSpotifyTrackUrl(q)) {
+      throw new SoundroomLoadIdentifierError(
+        "INVALID_PLAYLIST_URL",
+        "단일 곡은 일반 추가를 사용해 주세요.",
+      );
+    }
+    throw new SoundroomLoadIdentifierError(
+      "INVALID_PLAYLIST_URL",
+      "YouTube 재생목록 URL을 입력해 주세요. watch URL도 list=PL...이 있으면 사용할 수 있습니다.",
     );
   }
   return q;

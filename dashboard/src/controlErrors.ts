@@ -81,7 +81,10 @@ const SEARCH_ADD_UI_MESSAGES: Record<string, string> = {
   NO_TRACK_LOADED: "노래를 불러오지 못했습니다.",
   PLAYLIST_NOT_SUPPORTED:
     "재생목록 URL은 아래 재생목록 추가를 사용해 주세요.",
-  INVALID_PLAYLIST_URL: "지원되는 재생목록 URL을 입력해 주세요.",
+  INVALID_PLAYLIST_URL:
+    "YouTube 재생목록 URL을 입력해 주세요. watch URL도 list=PL...이 있으면 사용할 수 있습니다.",
+  MIX_PLAYLIST_NOT_SUPPORTED:
+    "YouTube Mix/Radio URL은 재생목록 추가로 지원하지 않습니다. 단일 곡 재생 시 자동재생에서 best-effort로 처리합니다.",
   PLAYLIST_EMPTY: "가져올 수 있는 곡이 없는 재생목록입니다.",
   PLAYLIST_TOO_LARGE:
     "재생목록이 너무 큽니다. 일부만 추가하거나 더 작은 목록을 사용해 주세요.",
@@ -233,6 +236,8 @@ const PLAYLIST_UI_MESSAGES: Record<string, string> = {
   INVALID_PLAYLIST_REPORT_DETAIL:
     "신고 상세 내용은 300자 이내로 입력해 주세요.",
   PLAYLIST_REPORT_NOT_FOUND: "신고 내역을 찾을 수 없습니다.",
+  PLAYLIST_FAVORITE_FAILED:
+    "즐겨찾기 처리에 실패했습니다. 잠시 후 다시 시도해 주세요.",
   INVALID_PLAYLIST_REPORT_RESOLUTION:
     "처리 메모는 300자 이내로 입력해 주세요.",
   NO_TRACK_LOADED: "곡을 불러오지 못했습니다.",

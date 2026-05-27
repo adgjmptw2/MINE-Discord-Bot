@@ -15,15 +15,21 @@ import {
   validateSoundroomQueryInput,
 } from "@/web/soundroomLoadIdentifier";
 import {
+  addWebPlaylistFavorite,
   countUserPublicWebPlaylists,
   countUserWebPlaylists,
   createPlaylistReport,
   getWebPlaylistById,
   getWebPlaylistTracks,
+  isWebPlaylistFavoritedByUser,
+  listFavoritePlaylistIds,
+  listFavoriteWebPlaylists,
   MAX_WEB_PLAYLIST_TRACKS,
   MAX_WEB_PLAYLISTS_PER_USER,
   MAX_WEB_PUBLIC_PLAYLISTS_PER_USER,
+  removeWebPlaylistFavorite,
   resolvePlaylistReportRecord,
+  type WebPlaylistFavoriteListRow,
   type WebPlaylistRecord,
   type WebPlaylistReportReason,
   type WebPlaylistTrackRecord,
@@ -621,4 +627,91 @@ export function completeWebPlaylistReport(
       "신고 내역을 찾을 수 없습니다.",
     );
   }
+}
+
+/** 즐겨찾기는 개인 저장용이며 수정·삭제 권한을 주지 않는다. */
+function assertPublicFavoriteable(
+  playlist: WebPlaylistRecord | null,
+): WebPlaylistRecord {
+  if (!playlist) {
+    throw new PlaylistActionError(
+      404,
+      "PLAYLIST_NOT_FOUND",
+      "플레이리스트를 찾을 수 없습니다.",
+    );
+  }
+  if (playlist.is_deleted) {
+    throw new PlaylistActionError(
+      404,
+      "PLAYLIST_DELETED",
+      "삭제된 플레이리스트입니다.",
+    );
+  }
+  if (playlist.visibility !== "public") {
+    throw new PlaylistActionError(
+      403,
+      "PLAYLIST_ACCESS_DENIED",
+      "공개 플레이리스트만 즐겨찾기할 수 있습니다.",
+    );
+  }
+  if (playlist.is_hidden_by_admin) {
+    throw new PlaylistActionError(
+      403,
+      "PLAYLIST_HIDDEN",
+      "운영자에 의해 숨김 처리된 플레이리스트입니다.",
+    );
+  }
+  return playlist;
+}
+
+export function favoritePlaylist(
+  session: WebSession,
+  playlistId: string,
+): void {
+  const playlist = getWebPlaylistById(playlistId);
+  assertPublicFavoriteable(playlist);
+  addWebPlaylistFavorite(playlistId, session.user.id);
+}
+
+export function unfavoritePlaylist(
+  session: WebSession,
+  playlistId: string,
+): void {
+  removeWebPlaylistFavorite(playlistId, session.user.id);
+}
+
+export function listFavoritePlaylists(
+  session: WebSession,
+  params: { limit: number; offset: number },
+): WebPlaylistFavoriteListRow[] {
+  return listFavoriteWebPlaylists(session.user.id, params);
+}
+
+export function attachFavoriteStateToPublicPlaylists<
+  T extends { id: string },
+>(
+  session: WebSession,
+  playlists: T[],
+): Array<T & { isFavorited: boolean }> {
+  if (playlists.length === 0) {
+    return [];
+  }
+  const favoriteIds = listFavoritePlaylistIds(
+    session.user.id,
+    playlists.map((p) => p.id),
+  );
+  return playlists.map((p) => ({
+    ...p,
+    isFavorited: favoriteIds.has(p.id),
+  }));
+}
+
+export function resolvePlaylistDetailFavoriteState(
+  session: WebSession,
+  playlist: WebPlaylistRecord,
+): boolean {
+  if (playlist.visibility !== "public" || playlist.is_deleted) {
+    return false;
+  }
+  return isWebPlaylistFavoritedByUser(playlist.id, session.user.id);
 }

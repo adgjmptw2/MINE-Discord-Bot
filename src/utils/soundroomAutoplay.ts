@@ -1,18 +1,17 @@
 import type { GuildMember } from "discord.js";
 import { getSoundroom } from "@/storage/soundroom";
 import type { ExtendedPlayer, ExtendedTrack, MineClient } from "@/types";
+import { buildAutoplaySearchQueries } from "@/utils/soundroomAutoplayCandidateSearch";
 import {
   clearSoundroomAutoplayHistory,
-  isAutoplayCandidateDuplicate,
+  pickBestAutoplayCandidate,
 } from "@/utils/soundroomAutoplayHistory";
 import {
   extractYouTubePlaylistId,
-  extractYouTubeVideoId,
   isYouTubeMixPlaylistId,
   isYouTubeRadioLikeUrl,
 } from "@/utils/soundroomAutoplaySimilarity";
 import { log } from "@/utils/logger";
-import { sanitizeYoutubeQueryForLavalink } from "@/utils/youtubeLavalinkQuery";
 
 export { recordSoundroomPlaybackHistory } from "@/utils/soundroomAutoplayHistory";
 
@@ -29,8 +28,9 @@ type GuildAutoplayState = {
 
 const states = new Map<string, GuildAutoplayState>();
 
-const MAX_CANDIDATE_SCAN = 10;
-const MAX_TRACKS_PER_RESOLVE = 15;
+const MAX_RESOLVE_ATTEMPTS = 5;
+const MAX_TRACKS_PER_RESOLVE = 10;
+const MAX_TOTAL_POOL = 20;
 
 function getOrCreate(guildId: string): GuildAutoplayState {
   let s = states.get(guildId);
@@ -291,6 +291,7 @@ export async function prefetchAutoplayNextHint(
     uri,
     uri,
     player.current?.info.title?.trim() ?? s.seedTitle ?? null,
+    player.current?.info.author?.trim() ?? null,
   );
   s.autoplayNextHintTitle = picked?.info.title?.trim() ?? null;
 }
@@ -311,14 +312,6 @@ async function pickVoiceRequester(
     }
   }
   return guild.members.me;
-}
-
-function buildYoutubeRadioQuery(uri: string): string | null {
-  const id = extractYouTubeVideoId(uri);
-  if (!id) {
-    return null;
-  }
-  return `https://www.youtube.com/watch?v=${encodeURIComponent(id)}`;
 }
 
 async function resolveRawTracks(
@@ -344,15 +337,7 @@ async function resolveRawTracks(
   }
 }
 
-function truncateLogTitle(title: string): string {
-  const t = title.trim();
-  if (t.length <= 48) {
-    return t;
-  }
-  return `${t.slice(0, 47)}…`;
-}
-
-/** 자동재생 후보만 중복 필터 — 사용자 직접 추가곡에는 적용하지 않음 */
+/** 자동재생 후보만 필터 — 사용자 직접 추가곡·대기열에는 적용하지 않음 */
 async function resolveAutoplayCandidates(
   client: MineClient,
   requester: GuildMember,
@@ -360,56 +345,41 @@ async function resolveAutoplayCandidates(
   sourceUri: string,
   excludeUri: string | null,
   searchFallbackTitle: string | null,
+  searchFallbackAuthor: string | null,
 ): Promise<ExtendedTrack[]> {
   const s = getOrCreate(guildId);
-  const queryBatches: string[] = [];
+  const queryBatches = buildAutoplaySearchQueries({
+    sourceUri: sourceUri.trim(),
+    mixPlaylistId: s.mixPlaylistId,
+    title: searchFallbackTitle,
+    author: searchFallbackAuthor,
+  });
 
-  if (s.mixPlaylistId) {
-    queryBatches.push(
-      `https://www.youtube.com/playlist?list=${encodeURIComponent(s.mixPlaylistId)}`,
-    );
-  }
-
-  const primary = sanitizeYoutubeQueryForLavalink(sourceUri.trim());
-  if (primary) {
-    queryBatches.push(primary);
-  }
-  const radio = buildYoutubeRadioQuery(primary);
-  if (radio && !queryBatches.includes(radio)) {
-    queryBatches.push(radio);
-  }
-  const title = searchFallbackTitle?.trim();
-  if (title) {
-    const searchQuery = /^[a-z][a-z0-9]*:/i.test(title)
-      ? title
-      : `ytsearch:${title}`;
-    if (!queryBatches.includes(searchQuery)) {
-      queryBatches.push(searchQuery);
-    }
-  }
-
+  const pool: ExtendedTrack[] = [];
   const seenUri = new Set<string>();
-  let inspected = 0;
+  let resolveAttempts = 0;
 
   for (const query of queryBatches) {
+    if (resolveAttempts >= MAX_RESOLVE_ATTEMPTS) {
+      break;
+    }
+    if (pool.length >= MAX_TOTAL_POOL) {
+      break;
+    }
+    resolveAttempts += 1;
     const raw = await resolveRawTracks(client, requester, query);
     if (
       s.mixPlaylistId &&
       query.includes(s.mixPlaylistId) &&
       raw.length === 0
     ) {
-      log(
-        "debug",
-        "autoplay",
-        `Mix playlist resolve failed guild=${guildId}`,
-      );
+      log("debug", "autoplay", `Mix resolve failed guild=${guildId}`);
     }
 
     for (const t of raw) {
-      if (inspected >= MAX_CANDIDATE_SCAN) {
+      if (pool.length >= MAX_TOTAL_POOL) {
         break;
       }
-      inspected += 1;
       const u = t.info.uri?.trim();
       if (!u) {
         continue;
@@ -421,27 +391,21 @@ async function resolveAutoplayCandidates(
         continue;
       }
       seenUri.add(u);
-      if (isAutoplayCandidateDuplicate(guildId, t)) {
-        const titleLabel = truncateLogTitle(t.info.title ?? "");
-        log(
-          "debug",
-          "autoplay",
-          `Skipped similar autoplay candidate guild=${guildId} title=${titleLabel}`,
-        );
-        continue;
-      }
-      return [t];
+      pool.push(t);
     }
   }
 
-  if (inspected > 0) {
+  const picked = pickBestAutoplayCandidate(guildId, pool, excludeUri);
+  if (!picked && pool.length > 0) {
     log(
       "debug",
       "autoplay",
-      `No autoplay candidate after filters guild=${guildId}`,
+      `Autoplay candidates filtered out guild=${guildId}`,
     );
+  } else if (!picked) {
+    log("debug", "autoplay", `No autoplay candidate guild=${guildId}`);
   }
-  return [];
+  return picked ? [picked] : [];
 }
 
 async function pickAutoplayTrack(
@@ -451,6 +415,7 @@ async function pickAutoplayTrack(
   sourceUri: string,
   excludeUri: string | null,
   searchFallbackTitle: string | null,
+  searchFallbackAuthor: string | null,
 ): Promise<ExtendedTrack | null> {
   const candidates = await resolveAutoplayCandidates(
     client,
@@ -459,6 +424,7 @@ async function pickAutoplayTrack(
     sourceUri,
     excludeUri,
     searchFallbackTitle,
+    searchFallbackAuthor,
   );
   return candidates[0] ?? null;
 }
@@ -492,13 +458,15 @@ export async function tryEnqueueAutoplayPlaylist(
   }
 
   const lastUri = s.lastEndedUri;
+  const ended = player.previous ?? player.current;
   const track = await pickAutoplayTrack(
     client,
     requester,
     guildId,
     sourceUri,
     lastUri,
-    s.seedTitle ?? player.current?.info.title?.trim() ?? null,
+    ended?.info.title?.trim() ?? s.seedTitle ?? null,
+    ended?.info.author?.trim() ?? null,
   );
   if (!track) {
     return false;

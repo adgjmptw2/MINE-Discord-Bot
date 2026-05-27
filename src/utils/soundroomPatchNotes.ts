@@ -13,6 +13,27 @@ export interface SoundroomPatchNote {
 /** 최신 항목이 위에 오도록 관리합니다. */
 export const SOUNDROOM_PATCH_NOTES: SoundroomPatchNote[] = [
   {
+    icon: "🔀",
+    timestamp: "5월 27일 16:00",
+    title: "자동재생 다양성 개선",
+    detail:
+      "같은 노래 반복 추천을 줄이고 YouTube watch+list 재생목록 URL을 웹 리모컨에서 처리하도록 개선",
+  },
+  {
+    icon: "📑",
+    timestamp: "5월 27일 14:00",
+    title: "플레이리스트 목록 UX 개선",
+    detail:
+      "검색·정렬·즐겨찾기 해제와 목록에서 바로 대기열 추가를 지원하도록 개선",
+  },
+  {
+    icon: "⭐",
+    timestamp: "5월 27일 12:00",
+    title: "공개 플레이리스트 즐겨찾기 추가",
+    detail:
+      "마음에 드는 공개 플레이리스트를 저장하고 다시 찾아 사용할 수 있게 추가",
+  },
+  {
     icon: "🚩",
     timestamp: "5월 26일 22:00",
     title: "공개 플레이리스트 신고 기능 추가",
