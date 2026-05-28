@@ -48,3 +48,24 @@ export function writeStringPreference(key: string, value: string): void {
     /* private 모드·용량 초과 등 */
   }
 }
+
+export type SoundroomWorkspaceTabId = "add" | "playlist" | "queue";
+
+const SOUNDROOM_WORKSPACE_TABS: SoundroomWorkspaceTabId[] = [
+  "add",
+  "playlist",
+  "queue",
+];
+
+export function readSoundroomWorkspaceTabPreference(
+  key: string,
+): SoundroomWorkspaceTabId {
+  const saved = readStringPreference(key);
+  if (
+    saved != null &&
+    (SOUNDROOM_WORKSPACE_TABS as string[]).includes(saved)
+  ) {
+    return saved as SoundroomWorkspaceTabId;
+  }
+  return "add";
+}

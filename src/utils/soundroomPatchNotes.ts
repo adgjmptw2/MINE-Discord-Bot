@@ -13,6 +13,13 @@ export interface SoundroomPatchNote {
 /** 최신 항목이 위에 오도록 관리합니다. */
 export const SOUNDROOM_PATCH_NOTES: SoundroomPatchNote[] = [
   {
+    icon: "✨",
+    timestamp: "5월 28일 12:00",
+    title: "웹 리모컨 레이아웃 마감",
+    detail:
+      "서버 사이드바, 현재 곡 화면, 작업 탭, 긴 대기열과 모바일 표시를 더 안정적으로 다듬음",
+  },
+  {
     icon: "🖥️",
     timestamp: "5월 27일 20:00",
     title: "웹 리모컨 레이아웃 개선",

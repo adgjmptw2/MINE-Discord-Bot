@@ -247,7 +247,11 @@ export function QueueList({
         </p>
       ) : null}
 
-      <div className="queue-scroll-panel">
+      <div
+        className="queue-scroll-panel"
+        role="region"
+        aria-label={`대기열 ${queue.length}곡`}
+      >
       <ol className="queue-list queue-list--scroll">
         {queue.map((item, arrayPos) => {
           const owned =
@@ -305,8 +309,10 @@ export function QueueList({
               <div className="queue-item-main">
                 <span className="queue-index">{item.index + 1}</span>
                 <span className="queue-body">
-                  <span className="queue-title">{item.title}</span>
-                  <span className="queue-sub">
+                  <span className="queue-title" title={item.title}>
+                    {item.title}
+                  </span>
+                  <span className="queue-sub queue-meta-clamp">
                     {item.requesterName ? item.requesterName : "신청자 없음"}
                     {" · "}
                     {formatDurationMs(item.durationMs)}

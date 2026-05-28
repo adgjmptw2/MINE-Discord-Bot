@@ -3,12 +3,20 @@ import { guildInitial } from "../format";
 import type { WebDashboardGuildDto } from "../types";
 
 type GuildListProps = {
+  id?: string;
   guilds: WebDashboardGuildDto[];
   selectedId: string | null;
+  compact?: boolean;
   onSelect: (guildId: string) => void;
 };
 
-export function GuildList({ guilds, selectedId, onSelect }: GuildListProps) {
+export function GuildList({
+  id,
+  guilds,
+  selectedId,
+  compact = false,
+  onSelect,
+}: GuildListProps) {
   const [brokenIcons, setBrokenIcons] = useState<Record<string, true>>({});
 
   if (guilds.length === 0) {
@@ -21,7 +29,12 @@ export function GuildList({ guilds, selectedId, onSelect }: GuildListProps) {
   }
 
   return (
-    <ul className="guild-list" role="listbox" aria-label="서버 목록">
+    <ul
+      id={id}
+      className={`guild-list${compact ? " guild-list--compact" : ""}`}
+      role="listbox"
+      aria-label="서버 목록"
+    >
       {guilds.map((g) => {
         const selected = g.id === selectedId;
         const showIcon = Boolean(g.iconUrl) && !brokenIcons[g.id];
@@ -32,7 +45,9 @@ export function GuildList({ guilds, selectedId, onSelect }: GuildListProps) {
               type="button"
               role="option"
               aria-selected={selected}
+              aria-current={selected ? "true" : undefined}
               className={`guild-item${selected ? " guild-item--selected" : ""}`}
+              title={g.name}
               onClick={() => onSelect(g.id)}
             >
               {showIcon ? (
@@ -52,7 +67,7 @@ export function GuildList({ guilds, selectedId, onSelect }: GuildListProps) {
                 </span>
               )}
               <span className="guild-meta">
-                <span className="guild-name">{g.name}</span>
+                <span className="guild-name guild-name--ellipsis">{g.name}</span>
                 <span className="guild-badges">
                   <span
                     className={

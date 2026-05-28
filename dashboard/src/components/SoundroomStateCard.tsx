@@ -7,9 +7,11 @@ import type {
   SoundroomGuildStateDto,
 } from "../types";
 import {
-  readStringPreference,
+  readSoundroomWorkspaceTabPreference,
   writeStringPreference,
 } from "../utils/storage";
+
+const WORKSPACE_TAB_KEY = "mine-dashboard:soundroom:workspace-tab";
 import { PlaylistPanel } from "./PlaylistPanel";
 import { QueueList } from "./QueueList";
 import {
@@ -18,16 +20,6 @@ import {
 } from "./SoundroomWorkspaceTabs";
 import { SoundroomControls } from "./SoundroomControls";
 import { SoundroomSearchPanel } from "./SoundroomSearchPanel";
-
-const WORKSPACE_TAB_KEY = "mine-dashboard:soundroom:workspace-tab";
-
-function resolveWorkspaceTab(): SoundroomWorkspaceTab {
-  const saved = readStringPreference(WORKSPACE_TAB_KEY);
-  if (saved === "add" || saved === "playlist" || saved === "queue") {
-    return saved;
-  }
-  return "add";
-}
 
 type SoundroomStateCardProps = {
   guildId: string | null;
@@ -93,8 +85,9 @@ export function SoundroomStateCard({
   onUserActionEnd,
   currentUserId,
 }: SoundroomStateCardProps) {
-  const [workspaceTab, setWorkspaceTab] =
-    useState<SoundroomWorkspaceTab>(resolveWorkspaceTab);
+  const [workspaceTab, setWorkspaceTab] = useState<SoundroomWorkspaceTab>(() =>
+    readSoundroomWorkspaceTabPreference(WORKSPACE_TAB_KEY),
+  );
 
   const changeWorkspaceTab = useCallback((tab: SoundroomWorkspaceTab) => {
     setWorkspaceTab(tab);
@@ -160,7 +153,9 @@ export function SoundroomStateCard({
           <span className="soundroom-stat-chip">
             볼륨 {Math.round(state.volume)}%
           </span>
-          <span className="soundroom-stat-chip">
+          <span
+            className={`soundroom-stat-chip${state.autoplay ? " soundroom-stat-chip--autoplay-on" : ""}`}
+          >
             자동재생 {state.autoplay ? "켜짐" : "꺼짐"}
           </span>
           <span className="soundroom-stat-chip">
@@ -189,11 +184,19 @@ export function SoundroomStateCard({
               )}
             </div>
             <div className="track-info soundroom-hero-meta">
-              <h2 className="track-title track-title--hero">{current.title}</h2>
-              <p className="track-author">
+              <h2
+                className="track-title track-title--hero track-title--clamp"
+                title={current.title}
+              >
+                {current.title}
+              </h2>
+              <p className="track-author track-meta-clamp" title={current.author ?? undefined}>
                 {current.author ?? "아티스트 알 수 없음"}
               </p>
-              <p className="track-requester">
+              <p
+                className="track-requester track-meta-clamp"
+                title={current.requesterName ?? undefined}
+              >
                 신청: {current.requesterName ?? "알 수 없음"}
               </p>
               <p className="track-time">
@@ -221,9 +224,17 @@ export function SoundroomStateCard({
         ) : (
           <div className="soundroom-hero-empty">
             <p className="soundroom-hero-empty-title">대기 중</p>
-            <p className="muted">
-              노래를 추가하거나 플레이리스트를 불러오세요.
+            <p className="muted soundroom-hero-empty-hint">
+              아래 <strong>노래 추가</strong> 탭에서 검색·URL로 곡을 넣거나,
+              플레이리스트를 불러오세요.
             </p>
+            <button
+              type="button"
+              className="btn btn-secondary soundroom-hero-empty-cta"
+              onClick={() => changeWorkspaceTab("add")}
+            >
+              노래 추가 탭으로 이동
+            </button>
           </div>
         )}
       </section>

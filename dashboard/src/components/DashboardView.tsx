@@ -426,8 +426,17 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
   const panelBusy =
     panelRefreshing || stateLoading || controlStatusLoading;
 
-  const sidebarExpanded = !sidebarCollapsed || mobileSidebarOpen;
-  const showSidebarRail = sidebarCollapsed && !mobileSidebarOpen;
+  const hideSidebar = !isDesktop && !mobileSidebarOpen;
+  const sidebarCompact =
+    isDesktop && sidebarCollapsed && !mobileSidebarOpen;
+
+  const toggleSidebar = () => {
+    if (sidebarCollapsed) {
+      expandSidebar();
+    } else {
+      collapseSidebar();
+    }
+  };
 
   if (guildsLoading) {
     return <LoadingState label="서버 목록 불러오는 중…" />;
@@ -475,31 +484,8 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
       <div
         className={`dashboard-layout${sidebarCollapsed ? " dashboard-layout--sidebar-collapsed" : ""}${mobileSidebarOpen ? " dashboard-layout--mobile-sidebar-open" : ""}`}
       >
-        {showSidebarRail ? (
-          <div className="dashboard-sidebar-rail" aria-label="서버 사이드바">
-            <button
-              type="button"
-              className="dashboard-sidebar-toggle"
-              aria-expanded={false}
-              aria-label="서버 목록 펼치기"
-              onClick={expandSidebar}
-            >
-              <span aria-hidden>›</span>
-              <span className="dashboard-sidebar-toggle-label">서버</span>
-            </button>
-            {selectedGuild ? (
-              <span
-                className="dashboard-sidebar-rail-guild"
-                title={selectedGuild.name}
-              >
-                {selectedGuild.name}
-              </span>
-            ) : null}
-          </div>
-        ) : null}
-
         <aside
-          className={`dashboard-server-sidebar guild-panel${sidebarExpanded ? "" : " dashboard-server-sidebar--hidden"}`}
+          className={`dashboard-server-sidebar guild-panel${hideSidebar ? " dashboard-server-sidebar--hidden" : ""}`}
           aria-label="서버 목록"
         >
           <div className="dashboard-sidebar-head">
@@ -507,16 +493,30 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
             <button
               type="button"
               className="btn btn-secondary dashboard-sidebar-collapse"
-              aria-expanded={sidebarExpanded}
-              aria-label="서버 목록 접기"
-              onClick={collapseSidebar}
+              aria-expanded={isDesktop ? !sidebarCollapsed : mobileSidebarOpen}
+              aria-controls="dashboard-guild-list"
+              aria-label={
+                isDesktop
+                  ? sidebarCollapsed
+                    ? "서버 목록 펼치기"
+                    : "서버 목록 접기"
+                  : mobileSidebarOpen
+                    ? "서버 목록 닫기"
+                    : "서버 목록 열기"
+              }
+              onClick={toggleSidebar}
             >
-              ‹
+              <span aria-hidden>{sidebarCollapsed ? "›" : "‹"}</span>
+              <span className="visually-hidden">
+                {sidebarCollapsed ? "펼치기" : "접기"}
+              </span>
             </button>
           </div>
           <GuildList
+            id="dashboard-guild-list"
             guilds={guilds}
             selectedId={selectedId}
+            compact={sidebarCompact}
             onSelect={handleSelectGuild}
           />
         </aside>
@@ -534,18 +534,36 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
           <div className="dashboard-main-inner state-panel-inner">
             <div className="dashboard-main-header state-toolbar">
               <div className="dashboard-main-header-title">
-                {!isDesktop && sidebarCollapsed ? (
+                {!isDesktop ? (
                   <button
                     type="button"
                     className="btn btn-secondary dashboard-mobile-server-btn"
                     aria-expanded={mobileSidebarOpen}
-                    aria-label="서버 목록 열기"
+                    aria-controls="dashboard-guild-list"
+                    aria-label={
+                      selectedGuild
+                        ? `서버 목록 열기, 현재 ${selectedGuild.name}`
+                        : "서버 목록 열기"
+                    }
                     onClick={expandSidebar}
                   >
-                    서버
+                    <span className="dashboard-mobile-server-btn-prefix">
+                      서버
+                    </span>
+                    {selectedGuild ? (
+                      <span
+                        className="dashboard-mobile-server-btn-name"
+                        title={selectedGuild.name}
+                      >
+                        {selectedGuild.name}
+                      </span>
+                    ) : null}
                   </button>
                 ) : null}
-                <h2 className="dashboard-guild-heading state-panel-heading">
+                <h2
+                  className="dashboard-guild-heading state-panel-heading"
+                  title={selectedGuild?.name}
+                >
                   {selectedGuild?.name ?? "노래채널"}
                 </h2>
               </div>

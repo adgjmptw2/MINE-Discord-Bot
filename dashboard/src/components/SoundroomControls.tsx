@@ -76,6 +76,16 @@ export function SoundroomControls({
   const canStop = state.playerConnected || Boolean(state.current);
   const canVolume = state.playerConnected;
 
+  const volumeSliderValue = Math.min(
+    MAX_VOLUME,
+    Math.max(
+      MIN_VOLUME,
+      parseVolumeDraft(volumeDraft) ?? Math.round(state.volume),
+    ),
+  );
+  const volumeSliderPct =
+    ((volumeSliderValue - MIN_VOLUME) / (MAX_VOLUME - MIN_VOLUME)) * 100;
+
   useEffect(() => {
     guildIdRef.current = guildId;
   }, [guildId]);
@@ -172,7 +182,7 @@ export function SoundroomControls({
     <section className="controls-section" aria-labelledby="controls-heading">
       <h3 id="controls-heading">조작</h3>
 
-      <div className="controls-status-block">
+      <div className="controls-status-block controls-status-block--compact">
         <ControlStatusNotice
           status={controlStatus}
           loading={controlStatusLoading}
@@ -223,7 +233,7 @@ export function SoundroomControls({
           </button>
           <button
             type="button"
-            className={`btn btn-autoplay${state.autoplay ? " btn-autoplay--on" : ""}`}
+            className={`btn${state.autoplay ? " btn-active" : " btn-secondary"}`}
             disabled={disabled}
             onClick={() => {
               void runControl(
@@ -238,7 +248,11 @@ export function SoundroomControls({
             {state.autoplay ? "자동재생 끄기" : "자동재생 켜기"}
           </button>
         </div>
-        <div className="controls-button-row controls-button-row--danger">
+        <div
+          className="controls-button-row controls-button-row--danger"
+          role="group"
+          aria-label="재생 정지"
+        >
           <button
             type="button"
             className="btn btn-danger"
@@ -262,13 +276,8 @@ export function SoundroomControls({
             min={MIN_VOLUME}
             max={MAX_VOLUME}
             step={1}
-            value={Math.min(
-              MAX_VOLUME,
-              Math.max(
-                MIN_VOLUME,
-                parseVolumeDraft(volumeDraft) ?? Math.round(state.volume),
-              ),
-            )}
+            value={volumeSliderValue}
+            style={{ ["--volume-pct" as string]: `${volumeSliderPct}%` }}
             disabled={disabled || !canVolume}
             onChange={(e) => setVolumeDraft(e.target.value)}
             onFocus={() => {

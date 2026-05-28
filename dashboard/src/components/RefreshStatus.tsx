@@ -33,7 +33,7 @@ export function RefreshStatus({
 
   return (
     <div
-      className={`refresh-status${compact ? " refresh-status--compact" : ""}`}
+      className={`refresh-status${compact ? " refresh-status--compact" : ""}${pollPaused && !loading ? " refresh-status--poll-paused" : ""}`}
       role="status"
     >
       <span className="refresh-status-label">{label}</span>

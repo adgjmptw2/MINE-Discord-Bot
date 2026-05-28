@@ -426,18 +426,22 @@ export function PlaylistPanel({
 
   return (
     <div className="playlist-panel">
-      <div className="playlist-feature-card" role="note">
+      <div className="playlist-feature-card playlist-feature-card--compact" role="note">
         <p>
           내 플레이리스트를 만들고, 공개 플레이리스트를 찾아 바로 대기열에
           추가하세요.
         </p>
       </div>
-      <div className="playlist-tabs playlist-tabs--inner" role="tablist">
+      <div
+        className="playlist-tabs playlist-tabs--inner"
+        role="tablist"
+        aria-label="플레이리스트 종류"
+      >
         <button
           type="button"
           role="tab"
           aria-selected={tab === "mine"}
-          className={`playlist-tab${tab === "mine" ? " playlist-tab--active" : ""}`}
+          className={`playlist-tab playlist-tab--segment${tab === "mine" ? " playlist-tab--active" : ""}`}
           onClick={() => handleTabChange("mine")}
         >
           내 플레이리스트
@@ -446,7 +450,7 @@ export function PlaylistPanel({
           type="button"
           role="tab"
           aria-selected={tab === "public"}
-          className={`playlist-tab${tab === "public" ? " playlist-tab--active" : ""}`}
+          className={`playlist-tab playlist-tab--segment${tab === "public" ? " playlist-tab--active" : ""}`}
           onClick={() => handleTabChange("public")}
         >
           공개 플레이리스트
@@ -455,7 +459,7 @@ export function PlaylistPanel({
           type="button"
           role="tab"
           aria-selected={tab === "favorites"}
-          className={`playlist-tab${tab === "favorites" ? " playlist-tab--active" : ""}`}
+          className={`playlist-tab playlist-tab--segment${tab === "favorites" ? " playlist-tab--active" : ""}`}
           onClick={() => handleTabChange("favorites")}
         >
           즐겨찾기
@@ -464,7 +468,7 @@ export function PlaylistPanel({
           type="button"
           role="tab"
           aria-selected={tab === "admin"}
-          className={`playlist-tab playlist-tab--subtle${tab === "admin" ? " playlist-tab--active" : ""}`}
+          className={`playlist-tab playlist-tab--segment playlist-tab--subtle${tab === "admin" ? " playlist-tab--active" : ""}`}
           onClick={() => handleTabChange("admin")}
         >
           운영자
