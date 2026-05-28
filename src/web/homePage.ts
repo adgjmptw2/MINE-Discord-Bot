@@ -103,14 +103,46 @@ function formatUpdatedLabel(iso: string): string {
   }
 }
 
+type FeatureIconKind =
+  | "monitor"
+  | "shield"
+  | "list"
+  | "repeat"
+  | "message-circle"
+  | "lock";
+
+/** 랜딩 전용 — 외부 아이콘 라이브러리 없이 Lucide 스타일 stroke SVG */
+function featureIconSvg(kind: FeatureIconKind): string {
+  const base =
+    'xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+  switch (kind) {
+    case "monitor":
+      return `<svg ${base}><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>`;
+    case "shield":
+      return `<svg ${base}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>`;
+    case "list":
+      return `<svg ${base}><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>`;
+    case "repeat":
+      return `<svg ${base}><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>`;
+    case "message-circle":
+      return `<svg ${base}><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>`;
+    case "lock":
+      return `<svg ${base}><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`;
+    default:
+      return "";
+  }
+}
+
 function metricCard(
   value: string,
   label: string,
   hint: string,
   live: boolean,
+  featured = false,
 ): string {
-  const liveCls = live ? " metric-card-live" : "";
-  return `<article class="metric-card glass${liveCls}">
+  const featuredCls = featured ? " metric-card-featured" : "";
+  void live;
+  return `<article class="metric-card${featuredCls}">
     <p class="metric-value">${escapeHtml(value)}</p>
     <h3 class="metric-label">${escapeHtml(label)}</h3>
     <p class="metric-hint">${escapeHtml(hint)}</p>
@@ -128,7 +160,7 @@ function renderLiveStatusSection(
     const s: HomePagePublicStats = getHomePagePublicStats(client);
     const updated = formatUpdatedLabel(s.updatedAt);
     const cards: string[] = [
-      metricCard(formatKoNumber(s.guildCount), "서버", "봇이 참여 중인 서버", true),
+      metricCard(formatKoNumber(s.guildCount), "서버", "봇이 참여 중인 서버", true, true),
       metricCard(
         formatKoNumber(s.estimatedMemberCount),
         "추정 멤버",
@@ -255,7 +287,7 @@ function renderHomePageHtml(
             </p>
             <div class="hero-cta">
               ${anchor(dashboardHref, "웹 리모컨 열기", "btn btn-primary")}
-              ${inviteCta(inviteHref, "btn btn-glass")}
+              ${inviteCta(inviteHref, "btn btn-secondary")}
             </div>
             <p class="trust-line">
               Discord OAuth · 같은 노래채널 권한 검사 · CSRF 보호
@@ -296,27 +328,33 @@ function renderHomePageHtml(
             <p class="section-desc">노래채널과 웹 대시보드가 함께 동작합니다.</p>
           </header>
           <div class="feature-grid">
-            <article class="feature-card glass">
+            <article class="feature-card">
+              <span class="feature-icon" aria-hidden="true">${featureIconSvg("monitor")}</span>
               <h3>웹 리모컨</h3>
               <p>재생·스킵·검색·대기열·볼륨·자동재생을 브라우저에서 조작합니다.</p>
             </article>
-            <article class="feature-card glass">
+            <article class="feature-card">
+              <span class="feature-icon" aria-hidden="true">${featureIconSvg("shield")}</span>
               <h3>같은 노래채널 권한</h3>
               <p>음성 채널 참여와 노래채널 멤버 여부를 확인한 뒤 조작을 허용합니다.</p>
             </article>
-            <article class="feature-card glass">
+            <article class="feature-card">
+              <span class="feature-icon" aria-hidden="true">${featureIconSvg("list")}</span>
               <h3>대기열 관리</h3>
               <p>본인이 추가한 곡 삭제, 위·아래 순서 변경을 지원합니다.</p>
             </article>
-            <article class="feature-card glass">
+            <article class="feature-card">
+              <span class="feature-icon" aria-hidden="true">${featureIconSvg("repeat")}</span>
               <h3>자동재생 제어</h3>
               <p>패널·웹에서 자동재생 ON/OFF와 대기열 흐름을 확인합니다.</p>
             </article>
-            <article class="feature-card glass">
+            <article class="feature-card">
+              <span class="feature-icon" aria-hidden="true">${featureIconSvg("message-circle")}</span>
               <h3>한국어 중심</h3>
               <p>패널, 웹 UI, <code>/도움말</code> 음악 카테고리를 한국어로 제공합니다.</p>
             </article>
-            <article class="feature-card glass">
+            <article class="feature-card">
+              <span class="feature-icon" aria-hidden="true">${featureIconSvg("lock")}</span>
               <h3>운영 보안</h3>
               <p>Secure cookie, rate limit, CSRF 보호, 비인증 state 차단을 적용했습니다.</p>
             </article>
@@ -330,19 +368,19 @@ function renderHomePageHtml(
             <h2 class="section-title">지원 소스</h2>
             <p class="section-desc">코드에서 처리하는 범위만 안내합니다.</p>
           </header>
-          <div class="platform-grid">
-            <article class="platform-card glass">
-              <h3>YouTube</h3>
-              <p>영상 URL, 검색어, 재생목록(playlist URL) 입력</p>
-            </article>
-            <article class="platform-card glass">
-              <h3>Spotify</h3>
-              <p>단일 곡(track) 링크 처리 — 앨범·재생목록 URL은 지원하지 않음</p>
-            </article>
-            <article class="platform-card glass">
-              <h3>채널 검색</h3>
-              <p>노래채널에 제목·URL을 내면 YouTube 검색으로 재생</p>
-            </article>
+          <div class="source-list">
+            <div class="source-item">
+              <span class="source-badge">YouTube</span>
+              <p class="source-desc">영상 URL, 검색어, 재생목록(playlist URL) 입력</p>
+            </div>
+            <div class="source-item">
+              <span class="source-badge">Spotify</span>
+              <p class="source-desc">단일 곡(track) 링크 처리 — 앨범·재생목록 URL은 지원하지 않음</p>
+            </div>
+            <div class="source-item">
+              <span class="source-badge">채널 검색</span>
+              <p class="source-desc">노래채널에 제목·URL을 내면 YouTube 검색으로 재생</p>
+            </div>
           </div>
         </div>
       </section>
@@ -353,38 +391,50 @@ function renderHomePageHtml(
             <h2 class="section-title">자주 쓰는 방법</h2>
             <p class="section-desc">Discord 명령과 웹 리모컨 역할을 구분합니다. 자세한 관리는 웹 리모컨에서 이어서 할 수 있습니다.</p>
           </header>
-          <ul class="command-list">
-            <li class="command-item glass">
-              <span class="cmd-pill">slash</span>
-              <code>/세팅</code>
-              <span>노래채널과 패널을 설정합니다.</span>
-            </li>
-            <li class="command-item glass">
-              <span class="cmd-pill">slash</span>
-              <code>/플레이리스트</code>
-              <span>저장한 목록을 불러옵니다.</span>
-            </li>
-            <li class="command-item glass">
-              <span class="cmd-pill">slash</span>
-              <code>/도움말</code>
-              <span>사용 가능한 명령어를 확인합니다.</span>
-            </li>
-            <li class="command-item glass">
-              <span class="cmd-pill">기능</span>
-              <code>채널 메시지</code>
-              <span>노래채널에서 검색어와 URL을 바로 처리합니다.</span>
-            </li>
-            <li class="command-item glass">
-              <span class="cmd-pill">기능</span>
-              <code>패널 버튼</code>
-              <span>정지·스킵·대기열·자동 재생을 Discord에서 조작합니다.</span>
-            </li>
-            <li class="command-item glass">
-              <span class="cmd-pill">웹</span>
-              <code>웹 리모컨</code>
-              <span>대기열과 볼륨을 브라우저에서 조작합니다.</span>
-            </li>
-          </ul>
+          <dl class="command-dl">
+            <div class="command-row">
+              <dt>
+                <span class="cmd-pill">slash</span>
+                <code>/세팅</code>
+              </dt>
+              <dd>노래채널과 패널을 설정합니다.</dd>
+            </div>
+            <div class="command-row">
+              <dt>
+                <span class="cmd-pill">slash</span>
+                <code>/플레이리스트</code>
+              </dt>
+              <dd>저장한 목록을 불러옵니다.</dd>
+            </div>
+            <div class="command-row">
+              <dt>
+                <span class="cmd-pill">slash</span>
+                <code>/도움말</code>
+              </dt>
+              <dd>사용 가능한 명령어를 확인합니다.</dd>
+            </div>
+            <div class="command-row">
+              <dt>
+                <span class="cmd-pill">기능</span>
+                <code>채널 메시지</code>
+              </dt>
+              <dd>노래채널에서 검색어와 URL을 바로 처리합니다.</dd>
+            </div>
+            <div class="command-row">
+              <dt>
+                <span class="cmd-pill">기능</span>
+                <code>패널 버튼</code>
+              </dt>
+              <dd>정지·스킵·대기열·자동 재생을 Discord에서 조작합니다.</dd>
+            </div>
+            <div class="command-row">
+              <dt>
+                <span class="cmd-pill">웹</span>
+                <code>웹 리모컨</code>
+              </dt>
+              <dd>대기열과 볼륨을 브라우저에서 조작합니다.</dd>
+            </div>
+          </dl>
         </div>
       </section>
 
@@ -430,16 +480,22 @@ function renderHomePageHtml(
 
     <footer class="site-footer">
       <div class="container footer-inner">
-        <span class="footer-brand">MINE</span>
-        ${anchor(dashboardHref, "웹 리모컨")}
-        ${anchor(privacyHref, "개인정보처리방침")}
-        ${anchor(termsHref, "이용약관")}
-        ${externalAnchor(githubHref, "GitHub")}
-        ${externalAnchor(supportHref, "지원 서버")}
-        <p class="footer-note">
-          가상 코인·모의 주식은 실제 돈·환전·투자와 무관합니다.
-          상세 내용은 정책 페이지를 참고하세요.
-        </p>
+        <div class="footer-brand-col">
+          <p class="footer-brand">MINE</p>
+          <p class="footer-tagline">
+            가상 코인·모의 주식은 실제 돈·환전·투자와 무관합니다.
+            상세 내용은 정책 페이지를 참고하세요.
+          </p>
+        </div>
+        <nav class="footer-nav" aria-label="사이트 링크">
+          <div class="footer-links">
+            ${anchor(dashboardHref, "웹 리모컨")}
+            ${anchor(privacyHref, "개인정보처리방침")}
+            ${anchor(termsHref, "이용약관")}
+            ${externalAnchor(githubHref, "GitHub")}
+            ${externalAnchor(supportHref, "지원 서버")}
+          </div>
+        </nav>
       </div>
     </footer>
   `;
@@ -491,6 +547,16 @@ function renderHomeLayout(bodyHtml: string, config: WebDashboardConfig): string 
       --radius: 16px;
       --radius-sm: 10px;
       --max: 1160px;
+      --color-accent: #5865f2;
+      --color-accent-hover: #4752c4;
+      --color-accent-muted: rgba(88, 101, 242, 0.15);
+      --color-text-secondary: #8b929a;
+      --color-border: rgba(255, 255, 255, 0.08);
+      --color-surface: #0e1117;
+      --color-text-primary: #f0f0f0;
+      --color-text-muted: #4a5060;
+      --radius-lg: 16px;
+      --spacing-section: 5rem;
     }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
@@ -625,9 +691,25 @@ function renderHomeLayout(bodyHtml: string, config: WebDashboardConfig): string 
       backdrop-filter: blur(10px);
     }
     .hero {
+      position: relative;
       padding: 3.5rem 0 2rem;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(
+        ellipse 75% 55% at 50% 35%,
+        var(--color-accent-muted),
+        transparent 68%
+      );
+      pointer-events: none;
+      z-index: 0;
     }
     .hero-grid {
+      position: relative;
+      z-index: 1;
       display: grid;
       grid-template-columns: 1fr;
       gap: 2rem;
@@ -649,14 +731,15 @@ function renderHomeLayout(bodyHtml: string, config: WebDashboardConfig): string 
       border-radius: 999px;
       margin-bottom: 1rem;
     }
-    h1 {
-      font-size: clamp(2rem, 5vw, 2.85rem);
-      line-height: 1.15;
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 700;
+      line-height: 1.12;
       margin: 0 0 1rem;
       letter-spacing: -0.02em;
     }
-    .lead {
-      color: var(--text-muted);
+    .hero .lead {
+      color: var(--color-text-secondary);
       font-size: 1.0625rem;
       max-width: 32rem;
       margin: 0 0 1.5rem;
@@ -666,6 +749,28 @@ function renderHomeLayout(bodyHtml: string, config: WebDashboardConfig): string 
       flex-wrap: wrap;
       gap: 0.75rem;
       margin-bottom: 1rem;
+    }
+    .hero .btn-primary {
+      background: var(--color-accent);
+      color: #fff;
+      border: none;
+      box-shadow: 0 4px 24px rgba(88, 101, 242, 0.35);
+    }
+    .hero .btn-primary:hover {
+      background: var(--color-accent-hover);
+      filter: none;
+    }
+    .hero .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--color-border);
+      color: var(--color-text-secondary);
+      backdrop-filter: none;
+    }
+    .hero .btn-secondary:hover {
+      color: var(--text);
+      border-color: rgba(255, 255, 255, 0.14);
+      background: rgba(255, 255, 255, 0.04);
+      filter: none;
     }
     @media (max-width: 640px) {
       .hero-cta { flex-direction: column; align-items: stretch; }
@@ -766,7 +871,8 @@ function renderHomeLayout(bodyHtml: string, config: WebDashboardConfig): string 
       color: var(--text-muted);
     }
     .live-section {
-      padding: 2rem 0 2.5rem;
+      padding-top: var(--spacing-section);
+      padding-bottom: var(--spacing-section);
       border-top: 1px solid var(--border);
       border-bottom: 1px solid var(--border);
       background: rgba(8, 12, 18, 0.75);
@@ -776,7 +882,7 @@ function renderHomeLayout(bodyHtml: string, config: WebDashboardConfig): string 
       flex-wrap: wrap;
       justify-content: space-between;
       gap: 0.75rem 1.5rem;
-      margin-bottom: 1.25rem;
+      margin-bottom: 0;
       align-items: flex-end;
     }
     .pill-live {
@@ -784,11 +890,15 @@ function renderHomeLayout(bodyHtml: string, config: WebDashboardConfig): string 
       border-color: rgba(62, 207, 142, 0.4);
       color: #6ee7b7;
     }
-    .live-title { font-size: 1.35rem; margin: 0.35rem 0; }
+    .live-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin: 0.35rem 0 0.5rem;
+    }
     .live-desc {
-      margin: 0;
-      font-size: 0.875rem;
-      color: var(--text-muted);
+      margin: 0 0 2.5rem;
+      font-size: 0.9375rem;
+      color: var(--color-text-secondary);
       max-width: 36rem;
     }
     .live-updated {
@@ -796,42 +906,45 @@ function renderHomeLayout(bodyHtml: string, config: WebDashboardConfig): string 
       font-size: 0.75rem;
       color: #6f7d96;
     }
-    .metric-grid {
+    .live-section .metric-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 0.75rem;
+      gap: 1rem;
     }
-    @media (min-width: 640px) {
-      .metric-grid { grid-template-columns: repeat(3, 1fr); }
+    @media (min-width: 720px) {
+      .live-section .metric-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
     }
-    @media (min-width: 900px) {
-      .metric-grid { grid-template-columns: repeat(4, 1fr); }
+    .live-section .metric-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
     }
-    .metric-card {
-      border-radius: var(--radius-sm);
-      padding: 1rem 1.05rem;
-    }
-    .metric-card-live {
-      border-color: rgba(62, 207, 142, 0.22);
-      background: rgba(14, 22, 18, 0.55);
-    }
-    .metric-value {
-      margin: 0 0 0.2rem;
-      font-size: 1.5rem;
+    .live-section .metric-value {
+      margin: 0 0 0.4rem;
+      font-size: 2.5rem;
       font-weight: 700;
-      letter-spacing: -0.02em;
-      color: #e8fff4;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      color: var(--color-text-primary);
     }
-    .metric-card-live .metric-value { color: #7ef0b8; }
-    .metric-label {
-      margin: 0 0 0.25rem;
-      font-size: 0.875rem;
+    .live-section .metric-card-featured .metric-value {
+      color: var(--color-accent);
+    }
+    .live-section .metric-label {
+      margin: 0 0 0.35rem;
+      font-size: 0.8rem;
       font-weight: 600;
+      color: var(--color-text-muted);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
     }
-    .metric-hint {
+    .live-section .metric-hint {
       margin: 0;
       font-size: 0.75rem;
-      color: var(--text-muted);
+      color: var(--color-text-secondary);
       line-height: 1.45;
     }
     .hero-art {
@@ -852,17 +965,21 @@ function renderHomeLayout(bodyHtml: string, config: WebDashboardConfig): string 
       border: 1px solid rgba(62, 207, 142, 0.25);
     }
     .hero-card { position: relative; overflow: hidden; }
-    .section { padding: 3rem 0; }
+    .section {
+      padding-top: var(--spacing-section);
+      padding-bottom: var(--spacing-section);
+    }
     .section-alt { background: var(--bg-alt); }
-    .section-head { margin-bottom: 1.5rem; }
+    .section-head { margin-bottom: 0; }
     .section-title {
-      font-size: 1.35rem;
-      margin: 0 0 0.35rem;
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin: 0 0 0.5rem;
       letter-spacing: -0.01em;
     }
     .section-desc {
-      margin: 0;
-      color: var(--text-muted);
+      margin: 0 0 2.5rem;
+      color: var(--color-text-secondary);
       font-size: 0.9375rem;
       max-width: 40rem;
     }
@@ -877,43 +994,94 @@ function renderHomeLayout(bodyHtml: string, config: WebDashboardConfig): string 
     @media (min-width: 900px) {
       .feature-grid { grid-template-columns: repeat(3, 1fr); }
     }
-    .feature-card, .platform-card, .security-item {
-      border-radius: var(--radius);
-      padding: 1.15rem 1.2rem;
+    .feature-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem 1.3rem;
+      transition:
+        border-color 0.2s ease,
+        transform 0.2s ease;
     }
-    .feature-card h3, .platform-card h3, .security-item h3 {
+    .feature-card:hover {
+      border-color: var(--color-accent);
+      transform: translateY(-2px);
+    }
+    .feature-icon {
+      display: inline-flex;
+      margin-bottom: 0.75rem;
+      color: var(--color-accent);
+    }
+    .feature-icon svg {
+      display: block;
+    }
+    .feature-card h3 {
       margin: 0 0 0.4rem;
       font-size: 1rem;
     }
-    .feature-card p, .platform-card p, .security-item p {
+    .feature-card p {
       margin: 0;
       font-size: 0.875rem;
       color: var(--text-muted);
     }
-    .platform-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 1rem;
+    .source-list {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 1rem 1.25rem;
     }
-    @media (min-width: 768px) {
-      .platform-grid { grid-template-columns: repeat(3, 1fr); }
+    .source-item {
+      flex: 1 1 min(100%, 16rem);
+      min-width: 0;
     }
-    .command-list {
-      list-style: none;
+    .source-badge {
+      display: inline-block;
+      background: var(--color-accent-muted);
+      color: var(--color-accent);
+      border-radius: 99px;
+      padding: 0.4rem 1rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+    .source-desc {
+      margin: 0.5rem 0 0;
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .command-dl {
       margin: 0;
       padding: 0;
+    }
+    .command-row {
       display: grid;
-      gap: 0.65rem;
+      grid-template-columns: 1fr;
+      gap: 0.35rem 1rem;
+      padding: 0.85rem 0;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .command-row:last-child {
+      border-bottom: none;
     }
     @media (min-width: 640px) {
-      .command-list { grid-template-columns: repeat(2, 1fr); }
+      .command-row {
+        grid-template-columns: minmax(10rem, 1fr) 2fr;
+        align-items: baseline;
+        gap: 1rem 1.5rem;
+      }
     }
-    .command-item {
-      border-radius: var(--radius-sm);
-      padding: 0.85rem 1rem;
+    .command-row dt {
+      margin: 0;
       display: flex;
-      flex-direction: column;
-      gap: 0.35rem;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem 0.5rem;
+    }
+    .command-row dd {
+      margin: 0;
+      font-size: 0.875rem;
+      color: var(--color-text-secondary);
+      line-height: 1.5;
     }
     .cmd-pill {
       display: inline-block;
@@ -922,14 +1090,23 @@ function renderHomeLayout(bodyHtml: string, config: WebDashboardConfig): string 
       text-transform: uppercase;
       letter-spacing: 0.05em;
       color: #8a94a8;
-      margin-bottom: 0.35rem;
     }
-    .command-item code {
+    .command-dl code {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
       font-size: 0.9375rem;
-      color: #c8d4ff;
+      color: var(--color-accent);
     }
-    .command-item > span:last-child {
-      font-size: 0.8125rem;
+    .security-item {
+      border-radius: var(--radius);
+      padding: 1.15rem 1.2rem;
+    }
+    .security-item h3 {
+      margin: 0 0 0.4rem;
+      font-size: 1rem;
+    }
+    .security-item p {
+      margin: 0;
+      font-size: 0.875rem;
       color: var(--text-muted);
     }
     .security-grid {
@@ -950,28 +1127,53 @@ function renderHomeLayout(bodyHtml: string, config: WebDashboardConfig): string 
       max-width: 48rem;
     }
     .site-footer {
-      border-top: 1px solid var(--border);
-      padding: 1.75rem 0 2.5rem;
+      background: var(--color-surface);
+      border-top: 1px solid var(--color-border);
+      padding-top: var(--spacing-section);
+      padding-bottom: var(--spacing-section);
     }
     .footer-inner {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.5rem 1.1rem;
-      align-items: center;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1.5rem 2rem;
       font-size: 0.8125rem;
-      color: var(--text-muted);
+    }
+    .footer-brand-col {
+      flex: 1 1 16rem;
+      max-width: 28rem;
     }
     .footer-brand {
+      margin: 0 0 0.4rem;
+      font-size: 1.125rem;
       font-weight: 700;
-      color: #c5caff;
-      margin-right: 0.25rem;
+      color: var(--color-text-primary);
     }
-    .footer-note {
-      flex: 1 1 100%;
-      margin: 0.75rem 0 0;
-      font-size: 0.75rem;
+    .footer-tagline {
+      margin: 0;
+      font-size: 0.8125rem;
       line-height: 1.55;
-      color: #6b758a;
+      color: var(--color-text-muted);
+    }
+    .footer-nav {
+      flex: 0 1 auto;
+      align-self: center;
+    }
+    .footer-links {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem 1.25rem;
+    }
+    .footer-links a {
+      color: var(--color-text-muted);
+      text-decoration: none;
+    }
+    .footer-links a:hover {
+      color: var(--color-text-primary);
+      text-decoration: none;
     }
   </style>
 </head>
