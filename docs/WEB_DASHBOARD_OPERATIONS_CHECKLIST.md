@@ -201,6 +201,21 @@ reverse proxy가 **`X-CSRF-Token` 헤더를 제거하지 않는지** 확인한�
 
 ## 7. 주요 기능 수동 테스트
 
+### 공개 홈(`/`) — 71단계
+
+- [ ] `GET /` · `GET /index.html` → 공개 랜딩 HTML (homePage)
+- [ ] `GET /dashboard` → React 대시보드 (홈과 별도)
+- [ ] `GET /privacy` · `GET /terms` → 정책 페이지
+- [ ] `GET /health` → JSON
+- [ ] **웹 리모컨 열기** → `/dashboard` 이동
+- [ ] 초대 링크 env 없을 때 **초대 링크 준비 중** (깨진 링크 없음)
+- [ ] GitHub·지원 서버 링크는 env 없으면 미표시 또는 안전
+- [ ] 랜딩에 token·secret·DB 경로·env 전체·stack trace **미노출**
+- [ ] 모바일 **360·390·768px**, 데스크톱 **1024px** 이상 레이아웃 확인
+- [ ] 운영: `https://soundroom.minebot.org/` · `/dashboard` · `/privacy` · `/terms` · `/health`
+
+### 웹 리모컨
+
 Discord **음성 채널(노래채널)** 에 들어간 상태에서 조작이 필요한 항목이 있습니다.
 
 - [ ] Discord OAuth 로그인

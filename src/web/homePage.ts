@@ -234,7 +234,7 @@ function renderLiveStatusSection(
           <div>
             <span class="pill">Soundroom</span>
             <h2 class="live-title">운영 현황</h2>
-            <p class="live-desc">집계 수치 공개는 <code>WEB_DASHBOARD_HOME_STATS_ENABLED=true</code>일 때 표시됩니다.</p>
+            <p class="live-desc">봇이 실행 중이면 집계 수치가 표시됩니다. 운영 설정에 따라 비활성일 수 있습니다.</p>
           </div>
         </header>
         <div class="metric-grid">${staticCards.join("")}</div>
@@ -290,7 +290,7 @@ function renderHomePageHtml(
               ${inviteCta(inviteHref, "btn btn-secondary")}
             </div>
             <p class="trust-line">
-              Discord OAuth · 같은 노래채널 권한 검사 · CSRF 보호
+              Discord OAuth · 같은 노래채널 권한 검사 · CSRF · rate limit
             </p>
           </div>
 

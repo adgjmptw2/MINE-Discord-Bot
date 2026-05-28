@@ -13,6 +13,13 @@ export interface SoundroomPatchNote {
 /** 최신 항목이 위에 오도록 관리합니다. */
 export const SOUNDROOM_PATCH_NOTES: SoundroomPatchNote[] = [
   {
+    icon: "🏠",
+    timestamp: "5월 28일 18:00",
+    title: "공개 홈 페이지 정리",
+    detail:
+      "랜딩 페이지를 별도 정리하고 대시보드·정책 페이지 라우팅과 링크를 점검",
+  },
+  {
     icon: "✨",
     timestamp: "5월 28일 12:00",
     title: "웹 리모컨 레이아웃 마감",
