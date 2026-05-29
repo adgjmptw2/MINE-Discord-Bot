@@ -53,25 +53,31 @@ const command: SlashCommand = {
         title = "🎣 낚시 성공";
       }
 
-      const lines =
-        r.rarity === FISHING_RARITY_NONE
-          ? [
-              `<@${userId}>님이 낚싯대를 던졌지만 아무것도 잡지 못했습니다.`,
-              "",
-              `획득: ${rewardStr}`,
-              `현재 잔액: ${balStr}`,
-            ]
-          : [
-              `<@${userId}>님이 \`${r.fishName}\`를 낚았습니다!`,
-              "",
-              `획득: ${rewardStr}`,
-              `현재 잔액: ${balStr}`,
-            ];
+      let panel: { title: string; description?: string; lines?: string[] };
+      if (r.rarity === FISHING_RARITY_NONE) {
+        panel = {
+          title,
+          description: "이번엔 아무것도 걸리지 않았어요.",
+          lines: [`획득 ${rewardStr}  ·  잔액 ${balStr}`],
+        };
+      } else if (r.rarity === FISHING_RARITY_LEGENDARY) {
+        panel = {
+          title,
+          description: `\`${r.fishName}\`  ·  **${rewardStr}**`,
+          lines: [`잔액 ${balStr}`],
+        };
+      } else {
+        panel = {
+          title,
+          description: `\`${r.fishName}\`  ·  ${rewardStr}`,
+          lines: [`잔액 ${balStr}`],
+        };
+      }
 
       await interaction.reply(
         panelReply({
           ephemeral: false,
-          panel: { title, lines },
+          panel,
           allowedMentions: NO_MENTION,
         }),
       );

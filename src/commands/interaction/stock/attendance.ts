@@ -119,7 +119,6 @@ const command: SlashCommand = {
       DAILY_MISSION_KEY_ATTENDANCE,
     );
 
-    const cash = result.wallet.cashBalance.toLocaleString("ko-KR");
     const monthDates = listStockAttendanceDatesInMonth(guildId, userId, now);
     const attended = new Set(monthDates);
     const { year, month, firstYmd, lastYmd } = getKstMonthCalendarBounds(now);
@@ -132,42 +131,35 @@ const command: SlashCommand = {
     );
 
     if (result.alreadyClaimed) {
-      const lines: string[] = [
-        `연속 출석: **${result.streakDays}**일`,
-        `현금 잔고: **${cash}** 코인`,
-        "**이번 달 출석**",
-        calendarBlock,
-      ];
       await interaction.reply(
         panelReply({
           ephemeral: true,
           panel: {
-            title: "출석",
+            title: "📅 오늘 출석 완료",
             description: "오늘은 이미 출석했습니다.",
-            lines,
+            lines: [`${result.streakDays}일 연속`, calendarBlock],
           },
           allowedMentions: NO_MENTION,
         }),
       );
     } else {
-      const lines: string[] = [
-        `+${result.rewardAmount.toLocaleString("ko-KR")} 코인 지급`,
-        `연속 출석: **${result.streakDays}**일`,
-      ];
+      const reward = result.rewardAmount.toLocaleString("ko-KR");
+      const streak = result.streakDays;
+      const title =
+        streak > 1 ? `📅 출석 완료 — ${streak}일 연속 🔥` : "📅 출석 완료";
+      let description = `+${reward} 코인  ·  ${streak}일 연속`;
       if (result.streakBonusAmount > 0) {
-        lines.push(
-          `추가 보상: +${result.streakBonusAmount.toLocaleString("ko-KR")} 코인`,
-        );
+        const bonus = result.streakBonusAmount.toLocaleString("ko-KR");
+        description += ` (보너스 +${bonus} 코인)`;
       }
-      lines.push(`현금 잔고: **${cash}** 코인`, "**이번 달 출석**", calendarBlock);
 
       await interaction.reply(
         panelReply({
           ephemeral: true,
           panel: {
-            title: "출석",
-            description: "출석 완료",
-            lines,
+            title,
+            description,
+            lines: [calendarBlock],
           },
           allowedMentions: NO_MENTION,
         }),

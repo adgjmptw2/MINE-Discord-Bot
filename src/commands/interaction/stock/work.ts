@@ -57,12 +57,8 @@ const command: SlashCommand = {
           ephemeral: false,
           panel: {
             title: "🧹 알바 완료",
-            lines: [
-              `<@${userId}>님이 ${label}를 하고`,
-              `${rewardStr}을 벌었습니다.`,
-              "",
-              `현재 잔액: ${balStr}`,
-            ],
+            description: `${rewardStr}  ·  잔액 ${balStr}`,
+            lines: [`<@${userId}> · ${label}`],
           },
           allowedMentions: NO_MENTION,
         }),

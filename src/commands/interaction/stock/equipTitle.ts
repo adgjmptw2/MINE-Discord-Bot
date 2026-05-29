@@ -57,10 +57,9 @@ const command: SlashCommand = {
         panelReply({
           ephemeral: false,
           panel: {
-            title: "🏷️ 칭호 장착 완료",
-            lines: [
-              `<@${userId}>님이 \`${r.itemName}\` 칭호를 장착했습니다.`,
-            ],
+            title: "🏷️ 칭호 장착",
+            description: `\`${r.itemName}\``,
+            lines: [`<@${userId}>`],
           },
           allowedMentions: NO_MENTION,
         }),

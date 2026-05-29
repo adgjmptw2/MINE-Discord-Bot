@@ -64,40 +64,42 @@ const command: SlashCommand = {
     }
 
     const summary = p.assetSummary;
-    const total = summary?.totalAssets ?? p.wallet?.cashBalance ?? 0;
-    const cash = summary?.cashTotal ?? p.wallet?.cashBalance ?? 0;
-    const stockVal = summary?.stockValueTotal ?? 0;
+    const total = (summary?.totalAssets ?? p.wallet?.cashBalance ?? 0).toLocaleString(
+      "ko-KR",
+    );
+    const cash = (summary?.cashTotal ?? p.wallet?.cashBalance ?? 0).toLocaleString(
+      "ko-KR",
+    );
+    const stockVal = (summary?.stockValueTotal ?? 0).toLocaleString("ko-KR");
 
     const title = p.equippedTitle
       ? `👤 [${p.equippedTitle}] <@${userId}>님의 프로필`
       : `👤 <@${userId}>님의 프로필`;
 
     const lines: string[] = [
-      `총자산: \`${total.toLocaleString("ko-KR")} 코인\``,
-      `현금: \`${cash.toLocaleString("ko-KR")} 코인\``,
-      `주식 평가액: \`${stockVal.toLocaleString("ko-KR")} 코인\``,
-      `보유 아이템: \`${p.inventoryCount.toLocaleString("ko-KR")}개\``,
-      `업적: \`${ach.completedCount} / ${ach.totalCount}\``,
-      `최근 게임: \`${formatLatestGameLogForProfile(p.latestGameLog)}\``,
-      `현재 시즌: \`${p.activeSeason?.name ?? "없음"}\``,
-      "",
-      "서버 내 가상 코인 프로필입니다.",
+      `아이템 ${p.inventoryCount.toLocaleString("ko-KR")}개  ·  업적 ${ach.completedCount}/${ach.totalCount}`,
+      `최근 게임: ${formatLatestGameLogForProfile(p.latestGameLog)}`,
     ];
+    if (p.activeSeason) {
+      lines.push(`시즌: ${p.activeSeason.name}`);
+    }
 
     if (!market?.isReady() || (summary && summary.unavailableSymbols.length > 0)) {
-      lines.splice(
-        lines.length - 2,
-        0,
-        "_일부 시세는 준비 중일 수 있습니다._",
-        "",
-      );
+      lines.push("_일부 시세는 준비 중일 수 있습니다._");
     }
+
+    const description = [
+      `총 \`${total} 코인\` (현금 ${cash} · 주식 ${stockVal})`,
+      "",
+      "_서버 내 가상 코인 프로필입니다._",
+    ].join("\n");
 
     await interaction.reply(
       panelReply({
         ephemeral: false,
         panel: {
           title,
+          description,
           lines,
         },
         allowedMentions: NO_MENTION,

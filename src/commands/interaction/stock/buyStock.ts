@@ -55,19 +55,19 @@ const command: SlashCommand = {
     const symMeta = findStockSymbol(rawSymbol);
 
     if (!symMeta) {
-      const hint = getSupportedStockSymbols()
-        .map((s) => `${s.nameKo} (${s.code})`)
-        .join("\n");
+      const symbols = getSupportedStockSymbols();
+      const hintShown = symbols.slice(0, 5);
+      const hintLines = hintShown.map((s) => `${s.nameKo} (${s.code})`);
+      if (symbols.length > hintShown.length) {
+        hintLines.push(`외 ${symbols.length - hintShown.length}종목`);
+      }
       await interaction.reply(
         panelReply({
           ephemeral: true,
           panel: {
             title: "매수",
-            lines: [
-              "지원하지 않는 종목입니다. 아래에서 다시 선택해 주세요.",
-              "",
-              hint,
-            ],
+            description: "지원하지 않는 종목입니다.",
+            lines: hintLines,
           },
         }),
       );
@@ -140,26 +140,17 @@ const command: SlashCommand = {
         buyFeeRate: stockCfg.stockBuyFeeRate,
       });
 
-      const lines = [
-        `📌 **${symMeta.nameKo}** (${symMeta.code})`,
-        `💵 체결가: ${formatCoin(r.price)}`,
-        `🛒 매수금액: ${formatCoin(r.amount)}`,
-        `📎 매수 수수료: ${formatCoin(r.fee)}`,
-        `💸 총 차감액: ${formatCoin(r.netAmount)}`,
-        `📊 이번 매수 수량: ${formatStockQuantity(r.quantityMicro)}`,
-        `📈 총 보유 수량: ${formatStockQuantity(r.totalQuantityMicro)}`,
-        `📉 평균 매수가: ${formatCoin(r.averageBuyPrice)}`,
-        `💰 남은 현금: ${formatCoin(r.wallet.cashBalance)}`,
-        "",
-        "※ 모의투자 게임용 거래입니다. 실제 투자와 무관합니다.",
-      ];
-
       await interaction.reply(
         panelReply({
           ephemeral: false,
           panel: {
-            title: "✅ 매수 체결",
-            lines,
+            title: "📈 매수 완료",
+            description: `${symMeta.nameKo} (${symMeta.code})  ·  ${formatStockQuantity(r.quantityMicro)}  ·  ${formatCoin(r.netAmount)}`,
+            lines: [
+              `보유 ${formatStockQuantity(r.totalQuantityMicro)}  ·  현금 ${formatCoin(r.wallet.cashBalance)}`,
+              `평균단가 ${formatCoin(r.averageBuyPrice)}  ·  수수료 ${formatCoin(r.fee)}`,
+              "_모의투자용 거래입니다._",
+            ],
           },
         }),
       );

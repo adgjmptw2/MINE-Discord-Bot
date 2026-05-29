@@ -71,9 +71,7 @@ const command: SlashCommand = {
       return `${rank}위 ${titlePart}<@${e.userId}> ${formatCoin(e.totalAssets)}`;
     });
 
-    const rankBlock = rankLines.join("\n");
-
-    const lines: string[] = [rankBlock, "서버 코인 랭킹입니다."];
+    const lines: string[] = [...rankLines];
 
     if (anyUnavailable) {
       lines.push(
@@ -86,6 +84,7 @@ const command: SlashCommand = {
         ephemeral: false,
         panel: {
           title: "🏆 서버 코인 랭킹",
+          description: `상위 ${ranking.length}명 · 기준: 총 자산`,
           lines,
         },
         allowedMentions: NO_MENTION,

@@ -20,13 +20,10 @@ const ITEM_RPS_MIN = "가위바위보최소베팅";
 const ITEM_RPS_MAX = "가위바위보최대베팅";
 const ITEM_RPS_COOLDOWN = "가위바위보쿨다운";
 
-function formatSettingsLines(s: ReturnType<typeof getOrCreateCoinGuildSettings>) {
-  return [
-    `출석 보상: **${formatCoin(s.attendanceReward)}**`,
-    `가위바위보 최소 베팅: **${formatCoin(s.rpsMinBet)}**`,
-    `가위바위보 최대 베팅: **${formatCoin(s.rpsMaxBet)}**`,
-    `가위바위보 쿨다운: **${s.rpsCooldownSeconds}초**`,
-  ];
+function formatSettingsSummary(
+  s: ReturnType<typeof getOrCreateCoinGuildSettings>,
+): string {
+  return `출석 ${formatCoin(s.attendanceReward)}  ·  RPS ${formatCoin(s.rpsMinBet)}~${formatCoin(s.rpsMaxBet)}  ·  쿨다운 ${s.rpsCooldownSeconds}초`;
 }
 
 const command: SlashCommand = {
@@ -79,8 +76,8 @@ const command: SlashCommand = {
         panelReply({
           ephemeral: false,
           panel: {
-            title: "⚙️ 서버 코인 설정",
-            lines: formatSettingsLines(s),
+            title: "⚙️ 코인 설정",
+            description: formatSettingsSummary(s),
           },
           allowedMentions: NO_MENTION,
         }),
@@ -145,9 +142,9 @@ const command: SlashCommand = {
         panelReply({
           ephemeral: false,
           panel: {
-            title: "⚙️ 코인 설정 변경 완료",
-            description: `${label}: **${valueStr}** (저장 완료)`,
-            lines: formatSettingsLines(updated),
+            title: "⚙️ 코인 설정 완료",
+            description: `${label}  ·  ${valueStr}`,
+            lines: [formatSettingsSummary(updated)],
           },
           allowedMentions: NO_MENTION,
         }),

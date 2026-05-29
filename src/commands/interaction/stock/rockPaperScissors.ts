@@ -117,28 +117,24 @@ const command: SlashCommand = {
         DAILY_MISSION_KEY_RPS,
       );
 
-      const lines: string[] = [
-        `<@${userId}>님: ${r.playerChoice}`,
-        `봇: ${r.botChoice}`,
-        "",
-      ];
-
-      if (r.result === "WIN") {
-        lines.push("🎉 승리!", formatSignedCoin(r.balanceDelta), "");
-      } else if (r.result === "LOSE") {
-        lines.push("💸 패배!", formatSignedCoin(r.balanceDelta), "");
-      } else {
-        lines.push("🤝 무승부!", "변동 없음", "");
-      }
-
-      lines.push(`현재 잔액: ${formatCoin(r.balanceAfter)}`);
+      const resultText =
+        r.result === "WIN"
+          ? "승리"
+          : r.result === "LOSE"
+            ? "패배"
+            : "무승부";
+      const deltaText =
+        r.result === "DRAW" ? "변동 없음" : formatSignedCoin(r.balanceDelta);
 
       await interaction.reply(
         panelReply({
           ephemeral: false,
           panel: {
             title: "✊ 가위바위보 결과",
-            lines,
+            description: `${resultText}  ·  ${deltaText}`,
+            lines: [
+              `<@${userId}> ${r.playerChoice}  ·  봇 ${r.botChoice}  ·  잔액 ${formatCoin(r.balanceAfter)}`,
+            ],
           },
           allowedMentions: NO_MENTION,
         }),

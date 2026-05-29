@@ -5,14 +5,14 @@ import {
 import { listCoinGameLogs, type CoinGameLogEntry } from "@/storage/stock";
 import { panelReply, truncate } from "@/utils/discord";
 import { scheduleEphemeralReplyDelete } from "@/utils/ephemeralCleanup";
-import { formatCoin, formatSignedCoin } from "@/utils/stockFormat";
+import { formatSignedCoin } from "@/utils/stockFormat";
 import { canUseStockAdminCommand } from "@/utils/permissions";
 import type { MineClient, SlashCommand } from "@/types";
 
 const NO_MENTION = { parse: [] as const };
 
-/** Discord 텍스트 디스플레이 한도를 넘기지 않도록 표시 상한 */
-const MAX_DISPLAY_LINES = 15;
+/** 패널에 보여 줄 최대 건수 (조회 limit과 별도) */
+const MAX_DISPLAY_LINES = 7;
 
 function gameTypeLabel(gameType: string): string {
   if (gameType === "RPS") {
@@ -35,19 +35,18 @@ function resultLabel(result: string): string {
 }
 
 function buildGameLogLine(
-  index: number,
   e: CoinGameLogEntry,
   includeChoices: boolean,
 ): string {
   const game = gameTypeLabel(e.gameType);
   const rk = resultLabel(e.result);
-  let line = `${index}. ${game} ${rk} · 베팅 ${formatCoin(e.betAmount)} · ${formatSignedCoin(e.balanceDelta)} · 잔액 ${formatCoin(e.balanceAfter)}`;
+  let line = `${game} ${rk} · ${formatSignedCoin(e.balanceDelta)}`;
   if (
     includeChoices &&
     e.metadata?.playerChoice &&
     e.metadata?.botChoice
   ) {
-    line += ` · 선택: ${e.metadata.playerChoice} / 봇: ${e.metadata.botChoice}`;
+    line += ` · ${e.metadata.playerChoice} / ${e.metadata.botChoice}`;
   }
   return truncate(line, 400);
 }
@@ -114,7 +113,7 @@ const command: SlashCommand = {
         panelReply({
           ephemeral: true,
           panel: {
-            title: "🎮 최근 게임 기록",
+            title: "🎮 게임기록",
             description: "최근 게임 기록이 없습니다.",
           },
         }),
@@ -126,28 +125,26 @@ const command: SlashCommand = {
     const slice = entries.slice(0, MAX_DISPLAY_LINES);
     const lines = slice.map((e, i) =>
       buildGameLogLine(
-        i + 1,
         e,
-        i < 5 &&
+        i < 3 &&
           Boolean(e.metadata?.playerChoice && e.metadata?.botChoice),
       ),
     );
-    if (entries.length > MAX_DISPLAY_LINES) {
-      lines.push(
-        `… 이하 ${entries.length - MAX_DISPLAY_LINES}건은 길이 제한으로 생략`,
-      );
+    if (entries.length > slice.length) {
+      lines.push(`외 ${entries.length - slice.length}건`);
     }
 
+    const countLabel = `최근 ${entries.length}건`;
     const description =
       targetUserId !== interaction.user.id
-        ? `조회 대상: <@${targetUserId}>`
-        : undefined;
+        ? `${countLabel} · 조회: <@${targetUserId}>`
+        : countLabel;
 
     await interaction.reply(
       panelReply({
         ephemeral: true,
         panel: {
-          title: "🎮 최근 게임 기록",
+          title: "🎮 게임기록",
           description,
           lines,
         },

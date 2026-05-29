@@ -53,13 +53,16 @@ const command: SlashCommand = {
 
     const equipName = getEquippedTitleDisplayName(guildId, userId);
     const title = equipName
-      ? `[${equipName}] <@${userId}>님의 잔액`
-      : `<@${userId}>님의 잔액`;
+      ? `[${equipName}] <@${userId}>님의 자산`
+      : `💰 <@${userId}>님의 자산`;
+    const total = fmtPlain(summary.totalAssets);
+    const cash = fmtPlain(summary.cashTotal);
+    const stock = fmtPlain(summary.stockValueTotal);
+    const description = `총 \`${total} 코인\` (현금 ${cash} · 주식 ${stock})`;
 
-    const lines: string[] = [`${fmtPlain(summary.totalAssets)} 코인`];
-
+    const lines: string[] = [];
     if (cacheEmpty || summary.unavailableSymbols.length > 0) {
-      lines.push("", "_일부 시세는 준비 중입니다._");
+      lines.push("_일부 시세는 준비 중입니다._");
     }
 
     await interaction.reply(
@@ -67,7 +70,8 @@ const command: SlashCommand = {
         ephemeral: false,
         panel: {
           title,
-          lines,
+          description,
+          lines: lines.length > 0 ? lines : undefined,
         },
         allowedMentions: NO_MENTION,
       }),

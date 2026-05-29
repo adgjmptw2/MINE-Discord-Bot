@@ -102,8 +102,9 @@ export function buildPanel(options: PanelOptions): ContainerBuilder {
     container.setAccentColor(options.accentColor);
   }
   const bodyLines = options.lines?.filter(Boolean) ?? [];
-  const eyebrow = options.eyebrow ? `### ${options.eyebrow}\n` : "";
-  const header = `${eyebrow}## ${options.title}`;
+  const header = options.eyebrow
+    ? `## **${options.eyebrow}**  ${options.title}`
+    : `## ${options.title}`;
 
   container.addTextDisplayComponents(
     new TextDisplayBuilder().setContent(header),

@@ -15,8 +15,15 @@ import {
 import { buildPanel, isSendableChannel, panelReply } from "@/utils/discord";
 import { scheduleEphemeralReplyDelete } from "@/utils/ephemeralCleanup";
 import { getKstDateString } from "@/utils/date";
-import { computeFortune, fortuneResultPanelFields } from "@/utils/fortuneGenerate";
-import { parseBirthDateInput, parseGenderInput } from "@/utils/fortuneInput";
+import {
+  computeFortune,
+  type FortuneComputed,
+} from "@/utils/fortuneGenerate";
+import {
+  getZodiacSignFromBirthDate,
+  parseBirthDateInput,
+  parseGenderInput,
+} from "@/utils/fortuneInput";
 import {
   deleteFortuneProfile,
   getFortuneProfile,
@@ -41,6 +48,33 @@ function replyToEditOptions(
 
 const FIELD_BIRTH = "fortune_field_birth";
 const FIELD_GENDER = "fortune_field_gender";
+
+function fortuneGradeLabel(luckyNum: number): string {
+  if (luckyNum >= 77) {
+    return "대길";
+  }
+  if (luckyNum >= 55) {
+    return "길";
+  }
+  if (luckyNum >= 33) {
+    return "소길";
+  }
+  return "흉";
+}
+
+function compactFortunePanelFields(
+  f: FortuneComputed,
+  normalizedBirthDate: string,
+): { title: string; description: string; lines: string[] } {
+  const zodiac = getZodiacSignFromBirthDate(normalizedBirthDate);
+  const grade = fortuneGradeLabel(f.luckyNum);
+  const gradeSuffix = grade === "대길" ? " ✦" : "";
+  return {
+    title: `오늘의 운세 — ${grade}${gradeSuffix}`,
+    description: `${zodiac} · ${f.todayKst}\n\n${f.overall}\n\n${f.relation}  ·  ${f.coin}  ·  ${f.game}`,
+    lines: [`행운의 색 ${f.color}  ·  행운의 숫자 ${f.luckyNum}`],
+  };
+}
 
 function buildFortuneModal(customId: string, title: string): ModalBuilder {
   const birth = new TextInputBuilder()
@@ -91,11 +125,9 @@ export function buildFortuneIntroReply() {
     ephemeral: true,
     panel: {
       title: "🔮 오늘의 운세",
+      description: "아직 운세 설정이 없습니다.",
       lines: [
-        "아직 운세 설정이 없습니다.",
-        "",
-        "설정하기 — 생년월일을 저장해 바로 불러옵니다.",
-        "일회용 — 저장하지 않고 한 번만 확인합니다.",
+        "**설정하기** — 생년월일 저장 후 조회  ·  **일회용** — 저장 없이 1회",
       ],
     },
     components: [
@@ -148,14 +180,10 @@ export function buildStoredProfileFortuneReply(
     profile.gender,
     getKstDateString(),
   );
-  const { description, lines } = fortuneResultPanelFields(f, profile.birthDate);
+  const fortunePanel = compactFortunePanelFields(f, profile.birthDate);
   return panelReply({
     ephemeral: true,
-    panel: {
-      title: "🔮 오늘의 운세",
-      description,
-      lines,
-    },
+    panel: fortunePanel,
     components: [profileActionRow()],
     allowedMentions: NO_MENTION,
   });
@@ -238,17 +266,11 @@ async function sendPublicFortune(
     profile.gender,
     getKstDateString(),
   );
-  const { description, lines } = fortuneResultPanelFields(f, profile.birthDate);
+  const fortunePanel = compactFortunePanelFields(f, profile.birthDate);
 
   await ch.send({
     flags: MessageFlags.IsComponentsV2,
-    components: [
-      buildPanel({
-        title: "🔮 오늘의 운세",
-        description,
-        lines,
-      }),
-    ],
+    components: [buildPanel(fortunePanel)],
     allowedMentions: NO_MENTION,
   });
 }
@@ -508,13 +530,8 @@ export async function handleFortuneInteraction(
       profile.gender,
       getKstDateString(),
     );
-    const { description, lines: fortuneLines } = fortuneResultPanelFields(
-      f,
-      profile.birthDate,
-    );
-    const linesBlock = genderNote
-      ? [genderNote, "", ...fortuneLines]
-      : [...fortuneLines];
+    const fortunePanel = compactFortunePanelFields(f, profile.birthDate);
+    const linesBlock = genderNote ? [genderNote] : undefined;
 
     if (isOnce) {
       if (isPublic) {
@@ -539,9 +556,8 @@ export async function handleFortuneInteraction(
           panelReply({
             ephemeral: true,
             panel: {
-              title: "🔮 오늘의 운세",
-              description,
-              lines: linesBlock,
+              ...fortunePanel,
+              lines: linesBlock ?? fortunePanel.lines,
             },
             allowedMentions: NO_MENTION,
           }),
@@ -583,9 +599,8 @@ export async function handleFortuneInteraction(
           panelReply({
             ephemeral: true,
             panel: {
-              title: "🔮 오늘의 운세",
-              description,
-              lines: linesBlock,
+              ...fortunePanel,
+              lines: linesBlock ?? fortunePanel.lines,
             },
             components: [profileActionRow()],
             allowedMentions: NO_MENTION,

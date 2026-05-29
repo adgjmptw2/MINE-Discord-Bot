@@ -35,31 +35,16 @@ function buildShopPageLines(page: number): string[] {
   const start = p * PAGE_SIZE;
   const slice = catalog.slice(start, start + PAGE_SIZE);
 
-  const lines: string[] = [];
-  let prevType: CoinShopItem["itemType"] | null = null;
-
-  for (let i = 0; i < slice.length; i++) {
-    const it = slice[i]!;
-    const globalN = start + i + 1;
-    if (it.itemType !== prevType) {
-      lines.push(it.itemType === "TITLE" ? "**칭호**" : "**소비 아이템**");
-      prevType = it.itemType;
-    }
+  const lines: string[] = slice.map((it) => {
+    const price = `\`${it.price.toLocaleString("ko-KR")} 코인\``;
     if (it.itemType === "TITLE") {
-      lines.push(
-        `${globalN}. **${it.name}** — \`${it.price.toLocaleString("ko-KR")} 코인\``,
-      );
-      lines.push(it.description);
-    } else {
-      lines.push(
-        `${globalN}. ${it.name} — \`${it.price.toLocaleString("ko-KR")} 코인\``,
-      );
-      lines.push(`  ${shortConsumableDescription(it.description)}`);
+      return `**${it.name}** — ${price}`;
     }
-    lines.push("");
-  }
+    const hint = shortConsumableDescription(it.description);
+    return `${it.name} — ${price} · ${hint}`;
+  });
 
-  lines.push("구매:", "`/구매 아이템:초보 투자자`", "`/구매 아이템:하락 방지권`");
+  lines.push("구매: `/구매` 아이템명");
   return lines;
 }
 
@@ -87,12 +72,13 @@ export function buildCoinShopPanelOptions(page: number): PanelMessageOptions {
   const catalog = flatCatalog();
   const totalPages = Math.max(1, Math.ceil(catalog.length / PAGE_SIZE));
   const p = Math.max(0, Math.min(totalPages - 1, page));
+  const pageNote =
+    totalPages > 1 ? ` · ${p + 1}/${totalPages}페이지` : "";
   return {
     ephemeral: false,
     panel: {
-      title: "🛒 코인 상점",
-      description:
-        totalPages > 1 ? `페이지 **${p + 1}** / **${totalPages}**` : undefined,
+      title: "🛒 상점",
+      description: `구매 가능 ${catalog.length}종${pageNote}`,
       lines: buildShopPageLines(p),
     },
     components: totalPages > 1 ? [shopNavRow(p)] : [],

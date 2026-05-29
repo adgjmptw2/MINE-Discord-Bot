@@ -59,22 +59,23 @@ const command: SlashCommand = {
       const balStr = `\`${r.balanceAfter.toLocaleString("ko-KR")} 코인\``;
 
       const isTitle = r.item.itemType === "TITLE";
-      const purchaseLine = isTitle
-        ? `<@${userId}>님이 \`${r.item.name}\` 칭호를 구매했습니다.`
-        : `<@${userId}>님이 \`${r.item.name}\` 소비 아이템을 구매했습니다.`;
-      const lines: string[] = [purchaseLine, "", `가격: ${priceStr}`];
+      const lines: string[] = [
+        `<@${userId}>  ·  ${isTitle ? "칭호" : "소비"} \`${r.item.name}\``,
+      ];
       if (!isTitle && r.consumableQuantityAfter !== undefined) {
         lines.push(
-          `보유 수량: \`${r.consumableQuantityAfter.toLocaleString("ko-KR")}개\``,
+          `보유 ${r.consumableQuantityAfter.toLocaleString("ko-KR")}개  ·  잔액 ${balStr}`,
         );
+      } else {
+        lines.push(`잔액 ${balStr}`);
       }
-      lines.push(`남은 잔액: ${balStr}`);
 
       await interaction.reply(
         panelReply({
           ephemeral: false,
           panel: {
             title: "🛒 구매 완료",
+            description: `${r.item.name}  ·  ${priceStr}`,
             lines,
           },
           allowedMentions: NO_MENTION,

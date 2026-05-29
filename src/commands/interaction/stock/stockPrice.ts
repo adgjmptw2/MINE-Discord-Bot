@@ -14,8 +14,9 @@ import { panelEdit, panelReply } from "@/utils/discord";
 import { scheduleEphemeralReplyDelete } from "@/utils/ephemeralCleanup";
 import {
   classifyStockTrend,
-  formatQuoteCurrentPriceLine,
-  formatQuoteDayChangeLine,
+  estimateChangeAmount,
+  formatKrwPrice,
+  formatPercent,
   formatQuoteLowLine,
   formatQuoteOhlcLine,
   quoteAccentRgb,
@@ -27,6 +28,22 @@ import type { MineClient, SlashCommand } from "@/types";
 const NO_MENTION = { parse: [] as const };
 
 const YAHOO_EXTRAS_MS = 2000;
+
+function formatStockPriceDescription(
+  price: number,
+  changePercent: number | null,
+): string {
+  const priceLabel = formatKrwPrice(price);
+  if (changePercent === null || !Number.isFinite(changePercent)) {
+    return `**${priceLabel} 코인**`;
+  }
+  const delta = estimateChangeAmount(price, changePercent);
+  if (delta === 0) {
+    return `**${priceLabel} 코인** (0)`;
+  }
+  const sign = delta > 0 ? "+" : "-";
+  return `**${priceLabel} 코인** (${sign}${formatKrwPrice(Math.abs(delta))})`;
+}
 
 function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
   return new Promise((resolve) => {
@@ -144,12 +161,17 @@ const command: SlashCommand = {
       }
 
       const trend = classifyStockTrend(p.changePercent);
-      const title = `${quoteTrendTitleEmoji(trend)} ${p.nameKo} (${p.code})`;
-      const lines: string[] = [
-        formatQuoteCurrentPriceLine(p.price),
-        formatQuoteDayChangeLine(p.price, p.changePercent),
-        "",
-      ];
+      const pctStr = formatPercent(p.changePercent);
+      const trendArrow =
+        trend === "UP" ? "▲" : trend === "DOWN" ? "▼" : "";
+      const titleSuffix =
+        pctStr !== "—" && trendArrow
+          ? `  ${trendArrow} ${pctStr}`
+          : pctStr !== "—"
+            ? `  ${pctStr}`
+            : "";
+      const title = `${quoteTrendTitleEmoji(trend)} ${p.nameKo} (${p.code})${titleSuffix}`;
+      const lines: string[] = [];
 
       let open: number | null = null;
       let high: number | null = null;
@@ -199,6 +221,7 @@ const command: SlashCommand = {
         panelEdit({
           panel: {
             title,
+            description: formatStockPriceDescription(p.price, p.changePercent),
             lines,
             accentColor: quoteAccentRgb(trend),
           },

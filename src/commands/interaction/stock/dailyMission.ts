@@ -50,12 +50,9 @@ const command: SlashCommand = {
           panelReply({
             ephemeral: false,
             panel: {
-              title: "🎯 오늘의 미션 완료!",
-              lines: [
-                `<@${userId}>님이 일일 미션 보상 ${rewardStr}을 받았습니다.`,
-                "",
-                `현재 잔액: ${balStr}`,
-              ],
+              title: "🗓️ 일일미션 완료",
+              description: `보상 ${rewardStr}  ·  잔액 ${balStr}`,
+              lines: [`<@${userId}>`],
             },
             allowedMentions: NO_MENTION,
           }),
@@ -88,32 +85,36 @@ const command: SlashCommand = {
     }
 
     const s = getDailyMissionSummary(guildId, userId, today);
-    const lines: string[] = [
-      ...s.missions.map((m) =>
-        m.completed ? `✅ ${m.label}` : `⬜ ${m.label}`,
-      ),
-      "",
-      `진행도: ${s.completedCount} / ${s.totalCount}`,
-      `완료 보상: ${s.rewardAmount.toLocaleString("ko-KR")} 코인`,
-      "",
-    ];
+    const MISSION_PREVIEW_MAX = 5;
+    const shown = s.missions.slice(0, MISSION_PREVIEW_MAX);
+    const lines = shown.map((m) =>
+      m.completed ? `✅ ${m.label}` : `⬜ ${m.label}`,
+    );
+    const rest = s.missions.length - shown.length;
+    if (rest > 0) {
+      lines.push(`외 ${rest}개`);
+    }
+
+    const rewardPending =
+      !s.rewardClaimed && s.completedCount >= s.totalCount;
+    const description = rewardPending
+      ? `완료 ${s.completedCount}/${s.totalCount}  ·  보상 대기 ${s.rewardAmount.toLocaleString("ko-KR")} 코인`
+      : `완료 ${s.completedCount}/${s.totalCount}  ·  보상 ${s.rewardAmount.toLocaleString("ko-KR")} 코인`;
+
     if (s.rewardClaimed) {
-      lines.push("오늘의 보상은 이미 수령했습니다.");
+      lines.push("오늘 보상 수령 완료");
     } else if (s.completedCount >= s.totalCount) {
-      lines.push(
-        "모든 미션을 완료했습니다. **`/미션`**에서 **보상받기** 옵션을 켜고 다시 실행하면 보상을 받을 수 있습니다.",
-      );
+      lines.push("보상: `/미션 보상받기:true`");
     } else {
-      lines.push(
-        "모든 미션을 완료하면 **`/미션`**에서 **보상받기** 옵션을 켜고 다시 실행해 보상을 받을 수 있습니다.",
-      );
+      lines.push("완료 시 `/미션 보상받기:true`");
     }
 
     await interaction.reply(
       panelReply({
         ephemeral: false,
         panel: {
-          title: "🎯 오늘의 미션",
+          title: "🗓️ 일일미션",
+          description,
           lines,
         },
         allowedMentions: NO_MENTION,

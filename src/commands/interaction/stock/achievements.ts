@@ -11,6 +11,8 @@ import { panelReply } from "@/utils/discord";
 import { scheduleEphemeralReplyDelete } from "@/utils/ephemeralCleanup";
 import type { SlashCommand } from "@/types";
 
+const ACHIEVEMENT_PREVIEW_MAX = 5;
+
 function formatAchievementLine(a: {
   name: string;
   completed: boolean;
@@ -18,13 +20,13 @@ function formatAchievementLine(a: {
   rewardAmount: number;
 }): string {
   if (!a.completed) {
-    return `⬜ ${a.name} — 미달성`;
+    return `⬜ ${a.name}`;
   }
   if (a.claimed) {
-    return `✅ ${a.name} — 수령 완료`;
+    return `✅ ${a.name}`;
   }
   const coin = a.rewardAmount.toLocaleString("ko-KR");
-  return `✅ ${a.name} — 보상 가능 \`${coin} 코인\``;
+  return `✅ ${a.name} · 보상 ${coin} 코인`;
 }
 
 const command: SlashCommand = {
@@ -65,10 +67,9 @@ const command: SlashCommand = {
             ephemeral: true,
             panel: {
               title: "🏅 업적 보상 수령 완료",
+              description: `+${got} 코인  ·  잔액 ${bal} 코인`,
               lines: [
-                `수령한 업적: **${result.claimedAchievementKeys.length.toLocaleString("ko-KR")}**개`,
-                `획득 코인: \`${got} 코인\``,
-                `현재 잔액: \`${bal} 코인\``,
+                `수령 ${result.claimedAchievementKeys.length.toLocaleString("ko-KR")}개`,
               ],
             },
           }),
@@ -96,20 +97,21 @@ const command: SlashCommand = {
     }
 
     const summary = getCoinAchievementSummary(guildId, userId);
-    const lines = summary.achievements.map((a) => formatAchievementLine(a));
+    const shown = summary.achievements.slice(0, ACHIEVEMENT_PREVIEW_MAX);
+    const lines = shown.map((a) => formatAchievementLine(a));
+    const rest = summary.achievements.length - shown.length;
+    if (rest > 0) {
+      lines.push(`외 ${rest}개`);
+    }
+    lines.push("보상: `/업적 보상받기:true`");
+
     await interaction.reply(
       panelReply({
         ephemeral: true,
         panel: {
-          title: "🏅 내 업적",
-          lines: [
-            `진행도: **${summary.completedCount}** / ${summary.totalCount}`,
-            `보상 수령: **${summary.claimedCount}** / ${summary.totalCount}`,
-            "",
-            ...lines,
-            "",
-            "완료된 업적 보상은 `/업적 보상받기:true`로 받을 수 있습니다.",
-          ],
+          title: "🏅 업적",
+          description: `완료 ${summary.completedCount}/${summary.totalCount}  ·  수령 ${summary.claimedCount}/${summary.totalCount}`,
+          lines,
         },
       }),
     );

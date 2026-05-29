@@ -29,8 +29,9 @@ const command: SlashCommand = {
       panelReply({
         ephemeral: false,
         panel: {
-          title: "🏷️ 칭호 해제 완료",
-          lines: [`<@${userId}>님의 장착 칭호를 해제했습니다.`],
+          title: "🏷️ 칭호 해제",
+          description: "장착 칭호를 해제했습니다.",
+          lines: [`<@${userId}>`],
         },
         allowedMentions: NO_MENTION,
       }),
