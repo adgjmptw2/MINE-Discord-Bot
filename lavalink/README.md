@@ -8,14 +8,18 @@
 2. 파일 이름을 **`Lavalink.jar`** 로 두고, 이 디렉터리(`lavalink/`)에 넣습니다.  
    → 최종 경로 예: `…/MINE-Discord-main/lavalink/Lavalink.jar`
 
-## 2. 비밀번호 맞추기
+## 2. application.yml
+
+`lavalink/application.yml.example` 을 **`application.yml`** 로 복사합니다. (Git에는 `application.yml` 이 없습니다.)
+
+## 3. 비밀번호 맞추기
 
 - **`lavalink/application.yml`** 안의 `lavalink.server.password`  
 - 봇 **`.env`** 의 `LAVALINK_PASSWORD`  
 
-기본값은 둘 다 **`youshallnotpass`** 로 맞춰 두었습니다. 바꿀 경우 **반드시 동일한 문자열**로 맞추세요.
+기본 예시는 **`youshallnotpass`** 입니다. 바꿀 경우 **반드시 동일한 문자열**로 맞추세요.
 
-## 3. 봇 `.env`
+## 4. 봇 `.env`
 
 `LAVALINK_JAR_DIR` 에 **이 폴더의 절대 경로**를 넣습니다.
 
@@ -27,7 +31,22 @@ LAVALINK_JAR_DIR=C:\Users\MINE\Desktop\Study\MINE-Discord-main\lavalink
 
 `LAVALINK_HOST=localhost`, `LAVALINK_PORT=2333` 은 기본과 같으면 그대로 두면 됩니다.
 
-## 4. 실행
+## 5. YouTube 플러그인 (수동 설치)
+
+`application.yml`에 Maven **자동 다운로드**를 넣으면, Lavalink 4.2.x가 시작할 때 **Java**로 `maven.lavalink.dev`에 접속합니다.  
+Windows에서 브라우저·PowerShell은 되는데 **Java만 `SSLHandshakeException`** 이 나는 경우가 있습니다(보안 프로그램·TLS 스택 차이).
+
+이 프로젝트는 **자동 다운로드를 쓰지 않고** `plugins/` 폴더에 JAR을 둡니다.
+
+프로젝트 루트에서:
+
+```powershell
+npm run lavalink:download-plugin
+```
+
+또는 `scripts/download-lavalink-youtube-plugin.ps1` 실행 → `lavalink/plugins/youtube-plugin-1.18.1.jar` 생성.
+
+## 6. 실행
 
 이 폴더에서:
 
@@ -37,7 +56,7 @@ java -Xms512m -Xmx1536m -jar Lavalink.jar
 
 또는 프로젝트 루트에서 `npm run start:lavalink` / `npm run start:all` (`.env`에 `LAVALINK_JAR_DIR` 설정 후).
 
-## 요구 사항
+## 7. 요구 사항
 
 - **Java 17+** (배포하는 Lavalink 버전 README 기준)
 - YouTube 재생이 막히면 [youtube-source](https://github.com/lavalink-devs/youtube-source) 문서를 보고 `application.yml`의 `plugins.youtube` 설정을 조정하세요.

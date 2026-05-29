@@ -1,0 +1,92 @@
+# MINE 봇 Lavalink — application.yml 로 복사 후 .env 의 LAVALINK_PASSWORD 와 맞출 것
+
+server:
+  port: 2333
+  address: 0.0.0.0
+
+plugins:
+  youtube:
+    enabled: true
+    allowSearch: true
+    allowDirectVideoIds: true
+    allowDirectPlaylistIds: true
+    remoteCipher:
+      url: "https://cipher.kikkia.dev"
+      userAgent: "MINE-Soundroom"
+    clients:
+      - MUSIC
+      - ANDROID_VR
+      - WEB
+      - WEBEMBEDDED
+      - MWEB
+    oauth:
+      enabled: false
+
+lavalink:
+  pluginsDir: "./plugins"
+  server:
+    password: "youshallnotpass"
+    sources:
+      youtube: false
+      bandcamp: true
+      soundcloud: true
+      twitch: true
+      vimeo: true
+      nico: true
+      http: true
+      local: false
+    filters:
+      volume: true
+      equalizer: true
+      karaoke: true
+      timescale: true
+      tremolo: true
+      vibrato: true
+      distortion: true
+      rotation: true
+      channelMix: true
+      lowPass: true
+    bufferDurationMs: 400
+    frameBufferDurationMs: 5000
+    opusEncodingQuality: 10
+    resamplingQuality: LOW
+    trackStuckThresholdMs: 10000
+    useSeekGhosting: true
+    youtubePlaylistLoadLimit: 6
+    playerUpdateInterval: 5
+    youtubeSearchEnabled: true
+    soundcloudSearchEnabled: true
+    gc-warnings: true
+    timeouts:
+      connectTimeoutMs: 5000
+      connectionRequestTimeoutMs: 5000
+      socketTimeoutMs: 12000
+
+metrics:
+  prometheus:
+    enabled: false
+    endpoint: /metrics
+
+sentry:
+  dsn: ""
+  environment: ""
+
+logging:
+  file:
+    path: ./logs/
+  level:
+    root: WARN
+    lavalink: WARN
+    lavalink.server.io.RequestLoggingFilter: WARN
+    lavalink.server.player.AudioLoaderRestHandler: WARN
+  request:
+    enabled: false
+    includeClientInfo: false
+    includeHeaders: false
+    includeQueryString: false
+    includePayload: false
+    maxPayloadLength: 1000
+  logback:
+    rollingpolicy:
+      max-file-size: 100MB
+      max-history: 14
