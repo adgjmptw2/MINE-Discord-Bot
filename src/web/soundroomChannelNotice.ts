@@ -22,6 +22,17 @@ export function buildWebRemoteNoticeContent(
   return `<@${userId}>님이 웹 리모컨으로 **${actionText}**하였습니다.`;
 }
 
+export function buildSoundroomPlaylistAddNoticeContent(
+  userId: string,
+  playlistTitle: string,
+  addedCount: number,
+  truncated: boolean,
+): string {
+  const title = truncateTitle(playlistTitle);
+  const suffix = truncated ? " (최대 50곡까지만 추가)" : "";
+  return `<@${userId}>님이 플레이리스트 **${title}** ${addedCount}곡을 대기열에 추가하였습니다.${suffix}`;
+}
+
 function scheduleNoticeDelete(
   message: { delete: () => Promise<unknown> },
 ): void {
@@ -56,6 +67,42 @@ export async function sendWebRemoteNotice(
     scheduleNoticeDelete(message);
   } catch {
     /* 전송·삭제 실패는 API 성공과 분리 */
+  }
+}
+
+/** 패널 플레이리스트 추가 — API 성공과 분리된 best-effort */
+export async function sendSoundroomPlaylistAddNotice(
+  client: MineClient,
+  guildId: string,
+  userId: string,
+  playlistTitle: string,
+  addedCount: number,
+  truncated: boolean,
+): Promise<void> {
+  try {
+    const room = getSoundroom(guildId);
+    if (!room?.channelId) {
+      return;
+    }
+
+    const channel = await client.channels.fetch(room.channelId).catch(() => null);
+    if (!channel?.isTextBased() || channel.isDMBased()) {
+      return;
+    }
+
+    const content = buildSoundroomPlaylistAddNoticeContent(
+      userId,
+      playlistTitle,
+      addedCount,
+      truncated,
+    );
+    const message = await channel.send({
+      content,
+      allowedMentions: MENTION_NONE,
+    });
+    scheduleNoticeDelete(message);
+  } catch {
+    /* 전송·삭제 실패는 대기열 추가 성공과 분리 */
   }
 }
 

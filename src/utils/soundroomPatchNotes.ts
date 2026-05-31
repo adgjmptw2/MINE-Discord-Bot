@@ -13,6 +13,13 @@ export interface SoundroomPatchNote {
 /** 최신 항목이 위에 오도록 관리합니다. */
 export const SOUNDROOM_PATCH_NOTES: SoundroomPatchNote[] = [
   {
+    icon: "📚",
+    timestamp: "5월 27일 22:00",
+    title: "Discord 패널 플레이리스트 추가",
+    detail:
+      "Soundroom 패널에서 내/공개/즐겨찾기 플레이리스트를 선택해 대기열에 추가할 수 있게 개선",
+  },
+  {
     icon: "🏠",
     timestamp: "5월 28일 18:00",
     title: "공개 홈 페이지 정리",

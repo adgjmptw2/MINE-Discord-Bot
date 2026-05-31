@@ -29,6 +29,7 @@ import {
   getSoundroomPanelRevision,
   isSoundroomPanelRevisionCurrent,
 } from "@/utils/soundroomPanelRevision";
+import { SR_PLAYLIST_OPEN_CUSTOM_ID } from "@/utils/soundroomPlaylistDiscord";
 import { SR_PATCH_NOTES_CUSTOM_ID } from "@/utils/soundroomPatchNotes";
 import { getWebDashboardConfig, getWebDashboardUrl } from "@/web/config";
 import type { ExtendedPlayer, ExtendedTrack, MineClient } from "@/types";
@@ -177,7 +178,15 @@ export function buildSoundroomIdlePayload(
       .setStyle(ButtonStyle.Secondary),
   );
 
-  const rows = [row1];
+  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(SR_PLAYLIST_OPEN_CUSTOM_ID)
+      .setLabel("플레이리스트")
+      .setEmoji("📚")
+      .setStyle(ButtonStyle.Secondary),
+  );
+
+  const rows = [row1, row2];
   appendWebRemoteLinkButton(rows);
 
   return {
@@ -284,6 +293,11 @@ export function buildSoundroomPlayingPayload(
       .setCustomId("sr_autoplay_toggle")
       .setLabel(ap.enabled ? "자동 재생 ON" : "자동 재생 OFF")
       .setStyle(ap.enabled ? ButtonStyle.Success : ButtonStyle.Danger),
+    new ButtonBuilder()
+      .setCustomId(SR_PLAYLIST_OPEN_CUSTOM_ID)
+      .setLabel("플레이리스트")
+      .setEmoji("📚")
+      .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(SR_PATCH_NOTES_CUSTOM_ID)
       .setLabel("패치노트")

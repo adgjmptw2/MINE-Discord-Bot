@@ -11,6 +11,7 @@ import {
 } from "@/handlers/soundroomQueuePanel";
 import { handleCoinShopButton } from "@/handlers/coinShopInteractions";
 import { handleFortuneInteraction } from "@/handlers/fortuneInteractions";
+import { handleSoundroomPlaylistInteraction } from "@/handlers/soundroomPlaylistInteractions";
 import {
   handleSoundroomButton,
   handleSoundroomModal,
@@ -121,6 +122,20 @@ export default function registerInteractionCreate(client: MineClient): void {
         interaction,
       );
       if (handled) {
+        return;
+      }
+    }
+
+    if (
+      (interaction.isButton() || interaction.isStringSelectMenu()) &&
+      (interaction.customId === "sr_pl:open" ||
+        interaction.customId.startsWith("sr_pl:"))
+    ) {
+      const playlistHandled = await handleSoundroomPlaylistInteraction(
+        client,
+        interaction,
+      );
+      if (playlistHandled) {
         return;
       }
     }
