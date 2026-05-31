@@ -38,6 +38,41 @@ type FavoritesListProps = BaseListProps & {
 
 export type PlaylistListProps = MineListProps | PublicListProps | FavoritesListProps;
 
+function playlistQueueAddCount(item: {
+  queueAddCount?: number;
+}): number {
+  return Math.max(0, item.queueAddCount ?? 0);
+}
+
+function playlistFavoriteCount(item: {
+  favoriteCount?: number;
+  visibility?: "public" | "private";
+}): number {
+  if (item.visibility === "private") {
+    return 0;
+  }
+  return Math.max(0, item.favoriteCount ?? 0);
+}
+
+function PlaylistStatsChips({
+  queueAddCount,
+  favoriteCount,
+  showFavorite = true,
+}: {
+  queueAddCount: number;
+  favoriteCount: number;
+  showFavorite?: boolean;
+}) {
+  return (
+    <>
+      <span className="playlist-meta-chip">재생 {queueAddCount}회</span>
+      {showFavorite ? (
+        <span className="playlist-meta-chip">즐겨찾기 {favoriteCount}명</span>
+      ) : null}
+    </>
+  );
+}
+
 function VisibilityBadge({
   visibility,
   hidden,
@@ -107,6 +142,11 @@ export function PlaylistList(props: PlaylistListProps) {
                   ) : null}
                   <div className="playlist-card-meta-chips">
                     <span className="playlist-meta-chip">{mine.trackCount}곡</span>
+                    <PlaylistStatsChips
+                      queueAddCount={playlistQueueAddCount(mine)}
+                      favoriteCount={playlistFavoriteCount(mine)}
+                      showFavorite={mine.visibility === "public"}
+                    />
                     {formatPlaylistDate(mine.createdAt) ? (
                       <span className="playlist-meta-chip">
                         생성 {formatPlaylistDate(mine.createdAt)}
@@ -159,6 +199,10 @@ export function PlaylistList(props: PlaylistListProps) {
                 ) : null}
                 <div className="playlist-card-meta-chips">
                   <span className="playlist-meta-chip">{item.trackCount}곡</span>
+                  <PlaylistStatsChips
+                    queueAddCount={playlistQueueAddCount(item)}
+                    favoriteCount={playlistFavoriteCount(item)}
+                  />
                   <span className="playlist-meta-chip">{ownerName}</span>
                   {formatPlaylistDate(item.updatedAt) ? (
                     <span className="playlist-meta-chip">

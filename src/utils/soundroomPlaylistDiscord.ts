@@ -9,6 +9,8 @@ import {
 } from "discord.js";
 import { truncate } from "@/utils/discord";
 import {
+  getFavoriteCountsForPlaylists,
+  getPlaylistFavoriteCount,
   listFavoriteWebPlaylists,
   listMyWebPlaylists,
   listPublicWebPlaylists,
@@ -123,11 +125,15 @@ function formatListLine(
   index: number,
   playlist: PlaylistListRow,
   tab: PlaylistDiscordTab,
+  favoriteCount: number,
 ): string {
   const n = index + 1;
   const title = truncate(playlist.title.trim() || "제목 없음", 48);
-  const vis = formatVisibilityLabel(playlist);
-  let line = `${n}. **${title}** · ${playlist.track_count}곡 · ${vis}`;
+  const plays = Math.max(0, playlist.queue_add_count);
+  let line = `${n}. **${title}** · ${playlist.track_count}곡 · 재생 ${plays}회`;
+  if (tab === "public" || tab === "favorites") {
+    line += ` · 즐겨찾기 ${favoriteCount}명`;
+  }
   if (
     (tab === "public" || tab === "favorites") &&
     playlist.owner_name_snapshot?.trim()
@@ -194,10 +200,15 @@ export function buildPlaylistBrowserPayload(params: {
     tab,
     params.page,
   );
+  const favCounts = getFavoriteCountsForPlaylists(
+    listed.items.map((p) => p.id),
+  );
 
   const lines =
     listed.items.length > 0
-      ? listed.items.map((p, i) => formatListLine(i, p, tab))
+      ? listed.items.map((p, i) =>
+          formatListLine(i, p, tab, favCounts.get(p.id) ?? 0),
+        )
       : ["표시할 플레이리스트가 없습니다."];
 
   const embed = new EmbedBuilder()
@@ -223,10 +234,11 @@ export function buildPlaylistBrowserPayload(params: {
       .addOptions(
         listed.items.map((p) => ({
           label: truncate(p.title.trim() || "제목 없음", 100),
-          description: `${p.track_count}곡 · ${formatVisibilityLabel(p)}`.slice(
-            0,
-            100,
-          ),
+          description:
+            `${p.track_count}곡 · 재생 ${Math.max(0, p.queue_add_count)}회`.slice(
+              0,
+              100,
+            ),
           value: p.id,
         })),
       );
@@ -260,7 +272,15 @@ export function buildPlaylistDetailPayload(params: {
 }): { embeds: APIEmbed[]; components: ActionRowBuilder<MessageActionRowComponentBuilder>[] } {
   const { ownerUserId, tab, page, playlist, trackCount, tracks } = params;
   const vis = formatVisibilityLabel(playlist);
-  const descLines = [`${trackCount}곡 · ${vis}`];
+  const plays = Math.max(0, playlist.queue_add_count);
+  const favoriteCount =
+    playlist.visibility === "public"
+      ? getPlaylistFavoriteCount(playlist.id)
+      : 0;
+  const descLines = [
+    `${trackCount}곡 · ${vis}`,
+    `재생 ${plays}회 · 즐겨찾기 ${favoriteCount}명`,
+  ];
   if (
     (tab === "public" || tab === "favorites") &&
     playlist.owner_name_snapshot?.trim()

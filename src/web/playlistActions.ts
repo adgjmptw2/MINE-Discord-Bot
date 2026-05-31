@@ -21,6 +21,7 @@ import {
   createPlaylistReport,
   getWebPlaylistById,
   getWebPlaylistTracks,
+  incrementWebPlaylistQueueAddCount,
   isWebPlaylistFavoritedByUser,
   listFavoritePlaylistIds,
   listFavoriteWebPlaylists,
@@ -477,6 +478,9 @@ export async function addWebPlaylistTracksToSoundroomQueue(
   }
 
   refreshSoundroomPanelBestEffort(client, guildId, player);
+
+  // 대기열 추가 성공 1회 = queue_add_count +1 (곡 수와 무관)
+  incrementWebPlaylistQueueAddCount(playlist.id);
 
   return {
     addedCount: extended.length,

@@ -12,6 +12,8 @@ import {
   addWebPlaylistTrack,
   countWebPlaylistTracks,
   createWebPlaylist,
+  getFavoriteCountsForPlaylists,
+  getPlaylistFavoriteCount,
   getWebPlaylistById,
   getWebPlaylistTrackById,
   getWebPlaylistTracks,
@@ -108,8 +110,28 @@ function requireSession(
   return session;
 }
 
+type PlaylistRowWithStats = {
+  queue_add_count: number;
+  last_queued_at: string | null;
+};
+
+function statsFields(
+  row: PlaylistRowWithStats,
+  favoriteCount: number,
+): Pick<
+  WebPlaylistSummaryDto,
+  "queueAddCount" | "favoriteCount" | "lastQueuedAt"
+> {
+  return {
+    queueAddCount: Math.max(0, row.queue_add_count),
+    favoriteCount: Math.max(0, favoriteCount),
+    lastQueuedAt: row.last_queued_at,
+  };
+}
+
 function toSummaryDto(
   row: Awaited<ReturnType<typeof listMyWebPlaylists>>[number],
+  favoriteCount: number,
 ): WebPlaylistSummaryDto {
   return {
     id: row.id,
@@ -117,6 +139,7 @@ function toSummaryDto(
     description: row.description,
     visibility: row.visibility,
     trackCount: row.track_count,
+    ...statsFields(row, favoriteCount),
     isHiddenByAdmin: row.is_hidden_by_admin === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -125,6 +148,7 @@ function toSummaryDto(
 
 function toAdminSummaryDto(
   row: Awaited<ReturnType<typeof listAdminPublicWebPlaylists>>[number],
+  favoriteCount: number,
 ): WebPlaylistAdminSummaryDto {
   return {
     id: row.id,
@@ -132,6 +156,7 @@ function toAdminSummaryDto(
     description: row.description,
     ownerNameSnapshot: row.owner_name_snapshot,
     trackCount: row.track_count,
+    ...statsFields(row, favoriteCount),
     isHiddenByAdmin: row.is_hidden_by_admin === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -163,6 +188,7 @@ function toAdminReportDto(row: AdminPlaylistReportRow): WebPlaylistAdminReportSu
 
 function toPublicSummaryDto(
   row: Awaited<ReturnType<typeof listPublicWebPlaylists>>[number],
+  favoriteCount: number,
   isFavorited?: boolean,
 ): WebPlaylistPublicSummaryDto {
   return {
@@ -171,6 +197,7 @@ function toPublicSummaryDto(
     description: row.description,
     ownerNameSnapshot: row.owner_name_snapshot,
     trackCount: row.track_count,
+    ...statsFields(row, favoriteCount),
     isFavorited,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -179,6 +206,7 @@ function toPublicSummaryDto(
 
 function toFavoriteSummaryDto(
   row: WebPlaylistFavoriteListRow,
+  favoriteCount: number,
 ): WebPlaylistFavoriteSummaryDto {
   return {
     id: row.id,
@@ -186,6 +214,7 @@ function toFavoriteSummaryDto(
     description: row.description,
     ownerNameSnapshot: row.owner_name_snapshot,
     trackCount: row.track_count,
+    ...statsFields(row, favoriteCount),
     isFavorited: true,
     favoritedAt: row.favorited_at,
     createdAt: row.created_at,
@@ -200,6 +229,10 @@ function toDetailDto(
   tracks: ReturnType<typeof getWebPlaylistTracks>,
 ): WebPlaylistDetailDto {
   const owner = isPlaylistOwner(session, playlist);
+  const favoriteCount =
+    playlist.visibility === "public" && playlist.is_deleted === 0
+      ? getPlaylistFavoriteCount(playlist.id)
+      : 0;
   const dto: WebPlaylistDetailDto = {
     id: playlist.id,
     title: playlist.title,
@@ -209,6 +242,9 @@ function toDetailDto(
     isOwner: owner,
     canManage: canManageWebPlaylist(session, playlist, client),
     isHiddenByAdmin: playlist.is_hidden_by_admin === 1,
+    queueAddCount: Math.max(0, playlist.queue_add_count),
+    favoriteCount,
+    lastQueuedAt: playlist.last_queued_at,
     createdAt: playlist.created_at,
     updatedAt: playlist.updated_at,
     tracks: tracks.map(trackRecordToDto),
@@ -458,9 +494,12 @@ export async function handleWebPlaylistRoutes(
       return true;
     }
     const rows = listMyWebPlaylists(session.user.id);
+    const favCounts = getFavoriteCountsForPlaylists(rows.map((r) => r.id));
     sendJson(res, 200, {
       ok: true,
-      playlists: rows.map(toSummaryDto),
+      playlists: rows.map((row) =>
+        toSummaryDto(row, favCounts.get(row.id) ?? 0),
+      ),
     });
     return true;
   }
@@ -489,10 +528,17 @@ export async function handleWebPlaylistRoutes(
     }
     const rows = listPublicWebPlaylists({ q, limit, offset });
     const withFavorites = attachFavoriteStateToPublicPlaylists(session, rows);
+    const favCounts = getFavoriteCountsForPlaylists(
+      withFavorites.map((r) => r.id),
+    );
     sendJson(res, 200, {
       ok: true,
       playlists: withFavorites.map((row) =>
-        toPublicSummaryDto(row, row.isFavorited),
+        toPublicSummaryDto(
+          row,
+          favCounts.get(row.id) ?? 0,
+          row.isFavorited,
+        ),
       ),
       limit,
       offset,
@@ -522,9 +568,12 @@ export async function handleWebPlaylistRoutes(
       offset = 0;
     }
     const rows = listFavoritePlaylists(session, { limit, offset });
+    const favCounts = getFavoriteCountsForPlaylists(rows.map((r) => r.id));
     sendJson(res, 200, {
       ok: true,
-      playlists: rows.map(toFavoriteSummaryDto),
+      playlists: rows.map((row) =>
+        toFavoriteSummaryDto(row, favCounts.get(row.id) ?? 0),
+      ),
       limit,
       offset,
     });
@@ -567,9 +616,12 @@ export async function handleWebPlaylistRoutes(
       offset = 0;
     }
     const rows = listAdminPublicWebPlaylists({ q, hidden, limit, offset });
+    const favCounts = getFavoriteCountsForPlaylists(rows.map((r) => r.id));
     sendJson(res, 200, {
       ok: true,
-      playlists: rows.map(toAdminSummaryDto),
+      playlists: rows.map((row) =>
+        toAdminSummaryDto(row, favCounts.get(row.id) ?? 0),
+      ),
       hidden,
       limit,
       offset,

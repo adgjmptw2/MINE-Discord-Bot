@@ -15,7 +15,19 @@ export type WebPlaylistRecord = {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  queue_add_count: number;
+  last_queued_at: string | null;
 };
+
+const WEB_PLAYLIST_DATA_COLUMNS = `
+  id, owner_user_id, owner_name_snapshot, title, description,
+  visibility, is_deleted, is_hidden_by_admin, created_at, updated_at, deleted_at,
+  queue_add_count, last_queued_at`;
+
+const WEB_PLAYLIST_P_SELECT = `
+  p.id, p.owner_user_id, p.owner_name_snapshot, p.title, p.description,
+  p.visibility, p.is_deleted, p.is_hidden_by_admin, p.created_at, p.updated_at, p.deleted_at,
+  p.queue_add_count, p.last_queued_at`;
 
 export type WebPlaylistTrackRecord = {
   id: string;
@@ -52,7 +64,9 @@ export function ensureWebPlaylistTables(): void {
       is_hidden_by_admin INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
-      deleted_at TEXT NULL
+      deleted_at TEXT NULL,
+      queue_add_count INTEGER NOT NULL DEFAULT 0,
+      last_queued_at TEXT NULL
     );
 
     CREATE INDEX IF NOT EXISTS idx_web_playlists_owner_user_id
@@ -86,7 +100,26 @@ export function ensureWebPlaylistTables(): void {
   `);
   ensureWebPlaylistReportTable();
   ensureWebPlaylistFavoriteTable();
+  ensureWebPlaylistStatsColumns();
   tablesReady = true;
+}
+
+function getTableColumnNames(tableName: string): Set<string> {
+  const rows = db.all<{ name: string }>(`PRAGMA table_info(${tableName})`);
+  return new Set(rows.map((row) => row.name));
+}
+
+/** 기존 DB에는 컬럼이 없을 수 있어 ensure 시 보강한다. */
+function ensureWebPlaylistStatsColumns(): void {
+  const cols = getTableColumnNames("web_playlists");
+  if (!cols.has("queue_add_count")) {
+    db.exec(
+      `ALTER TABLE web_playlists ADD COLUMN queue_add_count INTEGER NOT NULL DEFAULT 0`,
+    );
+  }
+  if (!cols.has("last_queued_at")) {
+    db.exec(`ALTER TABLE web_playlists ADD COLUMN last_queued_at TEXT NULL`);
+  }
 }
 
 let favoriteTablesReady = false;
@@ -184,7 +217,11 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-type PlaylistRow = WebPlaylistRecord & { track_count?: number };
+type PlaylistRow = Omit<WebPlaylistRecord, "queue_add_count" | "last_queued_at"> & {
+  track_count?: number;
+  queue_add_count?: number;
+  last_queued_at?: string | null;
+};
 
 function mapPlaylistRow(row: PlaylistRow): WebPlaylistRecord {
   return {
@@ -199,6 +236,8 @@ function mapPlaylistRow(row: PlaylistRow): WebPlaylistRecord {
     created_at: row.created_at,
     updated_at: row.updated_at,
     deleted_at: row.deleted_at,
+    queue_add_count: Math.max(0, Number(row.queue_add_count ?? 0)),
+    last_queued_at: row.last_queued_at ?? null,
   };
 }
 
@@ -207,12 +246,49 @@ export function getWebPlaylistById(
 ): WebPlaylistRecord | null {
   ensureWebPlaylistTables();
   const row = db.get<PlaylistRow>(
-    `SELECT id, owner_user_id, owner_name_snapshot, title, description,
-            visibility, is_deleted, is_hidden_by_admin, created_at, updated_at, deleted_at
-     FROM web_playlists WHERE id = ?`,
+    `SELECT ${WEB_PLAYLIST_DATA_COLUMNS} FROM web_playlists WHERE id = ?`,
     [playlistId],
   );
   return row ? mapPlaylistRow(row) : null;
+}
+
+/** 대기열 추가 성공 1회당 1 증가(곡 수와 무관). */
+export function incrementWebPlaylistQueueAddCount(playlistId: string): void {
+  ensureWebPlaylistTables();
+  const queuedAt = nowIso();
+  db.run(
+    `UPDATE web_playlists
+     SET queue_add_count = queue_add_count + 1, last_queued_at = ?
+     WHERE id = ?`,
+    [queuedAt, playlistId],
+  );
+}
+
+/** 즐겨찾기 사용자 목록은 반환하지 않고 count만 집계한다. */
+export function getFavoriteCountsForPlaylists(
+  playlistIds: string[],
+): Map<string, number> {
+  const map = new Map<string, number>();
+  if (playlistIds.length === 0) {
+    return map;
+  }
+  ensureWebPlaylistFavoriteTable();
+  const placeholders = playlistIds.map(() => "?").join(", ");
+  const rows = db.all<{ playlist_id: string; c: number }>(
+    `SELECT playlist_id, COUNT(*) AS c
+     FROM web_playlist_favorites
+     WHERE playlist_id IN (${placeholders})
+     GROUP BY playlist_id`,
+    playlistIds,
+  );
+  for (const row of rows) {
+    map.set(row.playlist_id, Math.max(0, Number(row.c ?? 0)));
+  }
+  return map;
+}
+
+export function getPlaylistFavoriteCount(playlistId: string): number {
+  return getFavoriteCountsForPlaylists([playlistId]).get(playlistId) ?? 0;
 }
 
 export function countUserWebPlaylists(ownerUserId: string): number {
@@ -261,8 +337,7 @@ export function listMyWebPlaylists(ownerUserId: string): Array<
 > {
   ensureWebPlaylistTables();
   const rows = db.all<PlaylistRow>(
-    `SELECT p.id, p.owner_user_id, p.owner_name_snapshot, p.title, p.description,
-            p.visibility, p.is_deleted, p.is_hidden_by_admin, p.created_at, p.updated_at, p.deleted_at,
+    `SELECT ${WEB_PLAYLIST_P_SELECT},
             COUNT(t.id) AS track_count
      FROM web_playlists p
      LEFT JOIN web_playlist_tracks t ON t.playlist_id = p.id
@@ -293,8 +368,7 @@ export function listAdminPublicWebPlaylists(params: {
         ? " AND p.is_hidden_by_admin = 1"
         : "";
   const q = params.q?.trim();
-  const baseSelect = `SELECT p.id, p.owner_user_id, p.owner_name_snapshot, p.title, p.description,
-            p.visibility, p.is_deleted, p.is_hidden_by_admin, p.created_at, p.updated_at, p.deleted_at,
+  const baseSelect = `SELECT ${WEB_PLAYLIST_P_SELECT},
             COUNT(t.id) AS track_count
      FROM web_playlists p
      LEFT JOIN web_playlist_tracks t ON t.playlist_id = p.id
@@ -335,8 +409,7 @@ export function listPublicWebPlaylists(params: {
   if (q) {
     const like = `%${q.replace(/%/g, "").replace(/_/g, "")}%`;
     const rows = db.all<PlaylistRow>(
-      `SELECT p.id, p.owner_user_id, p.owner_name_snapshot, p.title, p.description,
-              p.visibility, p.is_deleted, p.is_hidden_by_admin, p.created_at, p.updated_at, p.deleted_at,
+      `SELECT ${WEB_PLAYLIST_P_SELECT},
               COUNT(t.id) AS track_count
        FROM web_playlists p
        LEFT JOIN web_playlist_tracks t ON t.playlist_id = p.id
@@ -354,8 +427,7 @@ export function listPublicWebPlaylists(params: {
   }
 
   const rows = db.all<PlaylistRow>(
-    `SELECT p.id, p.owner_user_id, p.owner_name_snapshot, p.title, p.description,
-            p.visibility, p.is_deleted, p.is_hidden_by_admin, p.created_at, p.updated_at, p.deleted_at,
+    `SELECT ${WEB_PLAYLIST_P_SELECT},
             COUNT(t.id) AS track_count
      FROM web_playlists p
      LEFT JOIN web_playlist_tracks t ON t.playlist_id = p.id
@@ -821,8 +893,7 @@ export function listFavoriteWebPlaylists(
 ): WebPlaylistFavoriteListRow[] {
   ensureWebPlaylistFavoriteTable();
   const rows = db.all<PlaylistRow & { favorited_at: string }>(
-    `SELECT p.id, p.owner_user_id, p.owner_name_snapshot, p.title, p.description,
-            p.visibility, p.is_deleted, p.is_hidden_by_admin, p.created_at, p.updated_at, p.deleted_at,
+    `SELECT ${WEB_PLAYLIST_P_SELECT},
             COUNT(t.id) AS track_count, f.created_at AS favorited_at
      FROM web_playlist_favorites f
      INNER JOIN web_playlists p ON p.id = f.playlist_id

@@ -15,7 +15,9 @@ import {
 } from "@/web/soundroomControlAuth";
 import { sendSoundroomPlaylistAddNotice } from "@/web/soundroomChannelNotice";
 import type { DiscordOAuthUserDto } from "@/web/types";
-import { scheduleEphemeralReplyDelete } from "@/utils/ephemeralCleanup";
+import {
+  scheduleEphemeralReplyDelete,
+} from "@/utils/ephemeralCleanup";
 import {
   SR_PLAYLIST_OPEN_CUSTOM_ID,
   buildPlaylistBrowserPayload,
@@ -267,7 +269,7 @@ async function handleQueueAdd(
   await interaction.deferUpdate();
 
   try {
-    const result = await addWebPlaylistTracksToSoundroomQueue(
+    await addWebPlaylistTracksToSoundroomQueue(
       client,
       guildId,
       access.soundroomChannelId,
@@ -278,24 +280,19 @@ async function handleQueueAdd(
     );
 
     const title = playlist.title.trim() || "제목 없음";
-    let successText = `플레이리스트 **${title}**에서 ${result.addedCount}곡을 대기열에 추가했습니다.`;
-    if (result.truncated) {
-      successText += "\n최대 50곡까지만 추가했습니다.";
-    }
 
     await interaction.editReply({
-      content: successText,
+      content: "대기열에 추가했습니다.",
       embeds: [],
       components: [],
     });
+    scheduleEphemeralReplyDelete(interaction);
 
     void sendSoundroomPlaylistAddNotice(
       client,
       guildId,
       ownerUserId,
       title,
-      result.addedCount,
-      result.truncated,
     );
   } catch (error) {
     await interaction.editReply({

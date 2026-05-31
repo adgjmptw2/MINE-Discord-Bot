@@ -25,12 +25,9 @@ export function buildWebRemoteNoticeContent(
 export function buildSoundroomPlaylistAddNoticeContent(
   userId: string,
   playlistTitle: string,
-  addedCount: number,
-  truncated: boolean,
 ): string {
   const title = truncateTitle(playlistTitle);
-  const suffix = truncated ? " (최대 50곡까지만 추가)" : "";
-  return `<@${userId}>님이 플레이리스트 **${title}** ${addedCount}곡을 대기열에 추가하였습니다.${suffix}`;
+  return `<@${userId}>님이 플레이리스트 **${title}**를 추가하였습니다.`;
 }
 
 function scheduleNoticeDelete(
@@ -76,8 +73,6 @@ export async function sendSoundroomPlaylistAddNotice(
   guildId: string,
   userId: string,
   playlistTitle: string,
-  addedCount: number,
-  truncated: boolean,
 ): Promise<void> {
   try {
     const room = getSoundroom(guildId);
@@ -93,8 +88,6 @@ export async function sendSoundroomPlaylistAddNotice(
     const content = buildSoundroomPlaylistAddNoticeContent(
       userId,
       playlistTitle,
-      addedCount,
-      truncated,
     );
     const message = await channel.send({
       content,

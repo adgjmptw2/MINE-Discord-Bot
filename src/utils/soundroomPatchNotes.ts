@@ -13,6 +13,13 @@ export interface SoundroomPatchNote {
 /** 최신 항목이 위에 오도록 관리합니다. */
 export const SOUNDROOM_PATCH_NOTES: SoundroomPatchNote[] = [
   {
+    icon: "📊",
+    timestamp: "5월 28일 06:00",
+    title: "플레이리스트 통계 표시 추가",
+    detail:
+      "플레이리스트 재생횟수와 즐겨찾기 수를 웹·Discord 목록에서 확인할 수 있게 개선",
+  },
+  {
     icon: "📚",
     timestamp: "5월 27일 22:00",
     title: "Discord 패널 플레이리스트 추가",

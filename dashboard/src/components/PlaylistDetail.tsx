@@ -290,6 +290,14 @@ export function PlaylistDetail({
                 {playlist.ownerNameSnapshot}
                 {" · "}
                 {playlist.tracks.length}곡
+                {" · "}
+                재생 {Math.max(0, playlist.queueAddCount ?? 0)}회
+                {playlist.visibility === "public" ? (
+                  <>
+                    {" · "}
+                    즐겨찾기 {Math.max(0, playlist.favoriteCount ?? 0)}명
+                  </>
+                ) : null}
                 {playlist.isHiddenByAdmin ? " · 운영자 숨김" : ""}
               </p>
             </div>

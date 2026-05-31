@@ -173,11 +173,6 @@ export class StockMarketService {
 
     if (successCount > 0) {
       this.lastRefreshAt = new Date();
-      const detail =
-        successCount === symbols.length
-          ? `${successCount} symbols`
-          : `${successCount}/${symbols.length} symbols`;
-      log("debug", "stock", `Stock quotes refreshed: ${detail}`);
     }
 
     if (failures.length > 0) {

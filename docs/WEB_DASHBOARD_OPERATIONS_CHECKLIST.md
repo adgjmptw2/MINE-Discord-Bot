@@ -238,6 +238,7 @@ Discord **음성 채널(노래채널)** 에 들어간 상태에서 조작이 필
 - [ ] **URL 재생목록 추가** (최대 50곡; `watch?v=…&list=PL…` 허용, `list=RD…` Mix는 거절)
 - [ ] 예시: `https://www.youtube.com/watch?v=pYD9J0PsA6g&list=PLRlPVY9e8wsBNFvXxH8m-gSWpWOM7z8fk` → 재생목록으로 추가
 - [ ] **플레이리스트** 섹션: 내/공개/즐겨찾기 **검색·정렬**, 공개·즐겨찾기 **목록에서 바로 대기열 추가**, 생성·수정·soft delete·곡 관리
+- [ ] 플레이리스트 카드·상세에 **재생 N회**(대기열 추가 성공 횟수, 곡 수와 무관)·**즐겨찾기 N명**(COUNT만, 사용자 목록 미노출) 표시 · **조회수는 미지원**
 - [ ] 공개 플레이리스트 **즐겨찾기/해제** (`POST`/`DELETE …/:id/favorite`, CSRF 필수) · 중복 즐겨찾기 없음
 - [ ] 즐겨찾기 목록(`GET …/favorites`)에 숨김·삭제된 공개 플레이리스트 미표시
 - [ ] 즐겨찾기/해제 시 Discord 채널 안내 없음 · 해제는 **삭제 아님** · 즐겨찾기는 **canManage 아님**

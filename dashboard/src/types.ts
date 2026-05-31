@@ -223,6 +223,9 @@ export interface WebPlaylistSummaryDto {
   description: string;
   visibility: WebPlaylistVisibility;
   trackCount: number;
+  queueAddCount?: number;
+  favoriteCount?: number;
+  lastQueuedAt?: string | null;
   isHiddenByAdmin: boolean;
   createdAt: string;
   updatedAt: string;
@@ -234,6 +237,9 @@ export interface WebPlaylistPublicSummaryDto {
   description: string;
   ownerNameSnapshot: string;
   trackCount: number;
+  queueAddCount?: number;
+  favoriteCount?: number;
+  lastQueuedAt?: string | null;
   isFavorited?: boolean;
   createdAt: string;
   updatedAt: string;
@@ -245,6 +251,9 @@ export interface WebPlaylistFavoriteSummaryDto {
   description: string;
   ownerNameSnapshot: string;
   trackCount: number;
+  queueAddCount?: number;
+  favoriteCount?: number;
+  lastQueuedAt?: string | null;
   isFavorited: true;
   favoritedAt: string;
   createdAt: string;
@@ -285,6 +294,9 @@ export interface WebPlaylistDetailDto {
   canManage: boolean;
   isHiddenByAdmin: boolean;
   isFavorited?: boolean;
+  queueAddCount?: number;
+  favoriteCount?: number;
+  lastQueuedAt?: string | null;
   createdAt: string;
   updatedAt: string;
   tracks: WebPlaylistTrackDto[];
