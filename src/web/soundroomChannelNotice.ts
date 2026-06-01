@@ -30,9 +30,37 @@ export function buildSoundroomPlaylistAddNoticeContent(
   return `<@${userId}>님이 플레이리스트 **${title}**를 추가하였습니다.`;
 }
 
-function scheduleNoticeDelete(
-  message: { delete: () => Promise<unknown> },
+/** 타이머만으로 삭제가 실패할 수 있어 id로 다시 fetch 후 삭제한다. */
+export function scheduleGuildChannelMessageDelete(
+  client: MineClient,
+  channelId: string,
+  messageId: string,
+  delayMs: number = WEB_REMOTE_NOTICE_DELETE_MS,
 ): void {
+  setTimeout(() => {
+    void (async () => {
+      try {
+        const channel = await client.channels.fetch(channelId);
+        if (!channel?.isTextBased() || channel.isDMBased()) {
+          return;
+        }
+        const msg = await channel.messages.fetch(messageId);
+        if (msg.deletable) {
+          await msg.delete();
+        }
+      } catch {
+        /* API 성공과 분리된 best-effort */
+      }
+    })();
+  }, delayMs);
+}
+
+function scheduleNoticeDelete(
+  client: MineClient,
+  channelId: string,
+  message: { id: string; delete: () => Promise<unknown> },
+): void {
+  scheduleGuildChannelMessageDelete(client, channelId, message.id);
   setTimeout(() => {
     void message.delete().catch(() => undefined);
   }, WEB_REMOTE_NOTICE_DELETE_MS);
@@ -61,7 +89,7 @@ export async function sendWebRemoteNotice(
       content,
       allowedMentions: MENTION_NONE,
     });
-    scheduleNoticeDelete(message);
+    scheduleNoticeDelete(client, room.channelId, message);
   } catch {
     /* 전송·삭제 실패는 API 성공과 분리 */
   }
@@ -93,7 +121,7 @@ export async function sendSoundroomPlaylistAddNotice(
       content,
       allowedMentions: MENTION_NONE,
     });
-    scheduleNoticeDelete(message);
+    scheduleNoticeDelete(client, room.channelId, message);
   } catch {
     /* 전송·삭제 실패는 대기열 추가 성공과 분리 */
   }

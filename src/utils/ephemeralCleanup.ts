@@ -1,37 +1,56 @@
-import { InteractionWebhook, type Client } from "discord.js";
+import { InteractionWebhook, type Message } from "discord.js";
+import { WEB_REMOTE_NOTICE_DELETE_MS } from "@/web/soundroomChannelNotice";
 
-export const SOUNDROOM_TOAST_DELETE_MS = 12_000;
+export const SOUNDROOM_TOAST_DELETE_MS = WEB_REMOTE_NOTICE_DELETE_MS;
 
 export function scheduleEphemeralFollowUpDelete(
   interaction: { webhook: InteractionWebhook },
-  messageId: string,
+  messageOrId: Message | string,
   delayMs: number = SOUNDROOM_TOAST_DELETE_MS,
 ): void {
-  const { webhook } = interaction;
+  const messageId =
+    typeof messageOrId === "string" ? messageOrId : messageOrId.id;
+  const message = typeof messageOrId === "string" ? null : messageOrId;
+
   setTimeout(() => {
-    void webhook.deleteMessage(messageId).catch(() => undefined);
+    if (message?.deletable) {
+      void message.delete().catch(() => {
+        void interaction.webhook.deleteMessage(messageId).catch(() => undefined);
+      });
+      return;
+    }
+    void interaction.webhook.deleteMessage(messageId).catch(() => undefined);
   }, delayMs);
 }
 
 export const SOUNDROOM_QUEUE_PANEL_DELETE_MS = 60_000;
 
+/** deferReply/deferUpdate ephemeral — deleteReply 실패 시 message 삭제로 보완 */
 export function scheduleEphemeralReplyDelete(
-  interaction: { deleteReply(): Promise<unknown> },
+  interaction: {
+    deleteReply(): Promise<unknown>;
+    message?: Message | null;
+  },
   delayMs: number = SOUNDROOM_TOAST_DELETE_MS,
 ): void {
   setTimeout(() => {
-    void interaction.deleteReply().catch(() => undefined);
+    void interaction.deleteReply().catch(() => {
+      const msg = interaction.message;
+      if (msg?.deletable) {
+        void msg.delete().catch(() => undefined);
+      }
+    });
   }, delayMs);
 }
 
 const queuePanelDeleteTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const queuePanelWebhookCtx = new Map<
   string,
-  { client: Client<true>; applicationId: string; token: string }
+  { client: import("discord.js").Client<true>; applicationId: string; token: string }
 >();
 
 type InteractionWithWebhook = {
-  client: Client<true>;
+  client: import("discord.js").Client<true>;
   webhook: InteractionWebhook;
 };
 

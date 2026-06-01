@@ -11,7 +11,6 @@ import {
   isYouTubeMixPlaylistId,
   isYouTubeRadioLikeUrl,
 } from "@/utils/soundroomAutoplaySimilarity";
-import { log } from "@/utils/logger";
 
 export { recordSoundroomPlaybackHistory } from "@/utils/soundroomAutoplayHistory";
 
@@ -368,13 +367,6 @@ async function resolveAutoplayCandidates(
     }
     resolveAttempts += 1;
     const raw = await resolveRawTracks(client, requester, query);
-    if (
-      s.mixPlaylistId &&
-      query.includes(s.mixPlaylistId) &&
-      raw.length === 0
-    ) {
-      log("debug", "autoplay", `Mix resolve failed guild=${guildId}`);
-    }
 
     for (const t of raw) {
       if (pool.length >= MAX_TOTAL_POOL) {
@@ -396,15 +388,6 @@ async function resolveAutoplayCandidates(
   }
 
   const picked = pickBestAutoplayCandidate(guildId, pool, excludeUri);
-  if (!picked && pool.length > 0) {
-    log(
-      "debug",
-      "autoplay",
-      `Autoplay candidates filtered out guild=${guildId}`,
-    );
-  } else if (!picked) {
-    log("debug", "autoplay", `No autoplay candidate guild=${guildId}`);
-  }
   return picked ? [picked] : [];
 }
 

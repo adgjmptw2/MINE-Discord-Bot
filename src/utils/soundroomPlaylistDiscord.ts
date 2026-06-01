@@ -164,7 +164,7 @@ function buildNavRows(
       new ButtonBuilder()
         .setCustomId(plButtonId("tab", ownerUserId, t, "0"))
         .setLabel(
-          t === "mine" ? "내" : t === "public" ? "공개" : "즐겨찾기",
+          t === "mine" ? "My" : t === "public" ? "Public" : "즐겨찾기",
         )
         .setStyle(t === tab ? ButtonStyle.Primary : ButtonStyle.Secondary)
         .setDisabled(t === tab),
