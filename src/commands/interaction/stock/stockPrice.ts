@@ -213,7 +213,6 @@ const command: SlashCommand = {
             }),
           );
         } catch {
-          /* 그래프 생략 */
         }
       }
 

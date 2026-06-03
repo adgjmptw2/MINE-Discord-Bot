@@ -114,7 +114,6 @@ export function markAutoplayTrack(track: ExtendedTrack): void {
   (track as unknown as { __mineAutoplay?: boolean }).__mineAutoplay = true;
 }
 
-/** Mix/Radio URL 힌트 — Lavalink resolve는 best-effort */
 function syncAutoplayUriHints(
   guildId: string,
   uri: string | null | undefined,
@@ -166,6 +165,7 @@ export function ensureSeedTrack(guildId: string, track: ExtendedTrack): void {
   syncAutoplayUriHints(guildId, track.info.uri);
 }
 
+// 사용자 대기열과 자동재생 예약 분리
 export function splitSoundroomQueue(player: ExtendedPlayer): {
   user: ExtendedTrack[];
   autoplay: ExtendedTrack[];
@@ -336,7 +336,6 @@ async function resolveRawTracks(
   }
 }
 
-/** 자동재생 후보만 필터 — 사용자 직접 추가곡·대기열에는 적용하지 않음 */
 async function resolveAutoplayCandidates(
   client: MineClient,
   requester: GuildMember,

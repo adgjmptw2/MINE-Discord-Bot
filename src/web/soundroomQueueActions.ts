@@ -81,7 +81,6 @@ function refreshSoundroomPanelBestEffort(
         await editSoundroomIdlePanel(client, guildId);
       }
     } catch {
-      /* 패널 갱신 실패는 API 성공과 분리 */
     }
   })();
 }

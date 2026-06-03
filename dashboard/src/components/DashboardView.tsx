@@ -36,7 +36,6 @@ type DashboardViewProps = {
 
 type RefreshOpts = {
   silent?: boolean;
-  /** 조작 중에도 강제 갱신(수동 새로고침·충돌 복구) */
   force?: boolean;
 };
 
@@ -418,7 +417,6 @@ export function DashboardView({ user, onLogout }: DashboardViewProps) {
     try {
       await logout();
     } catch {
-      /* 세션 삭제 실패해도 로컬 UI는 로그아웃 처리 */
     }
     onLogout();
   };

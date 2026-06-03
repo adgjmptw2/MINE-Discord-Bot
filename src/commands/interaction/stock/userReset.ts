@@ -6,7 +6,6 @@ import type { MineClient, SlashCommand } from "@/types";
 
 const NO_MENTION = { parse: [] as const };
 
-/** 확인 입력값과 정확히 일치해야 실행 */
 const CONFIRM_PHRASE = "초기화";
 
 const command: SlashCommand = {

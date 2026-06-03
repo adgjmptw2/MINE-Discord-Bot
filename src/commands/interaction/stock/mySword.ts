@@ -1,6 +1,10 @@
 import { MessageFlags } from "discord.js";
 import { getOrCreateCoinSword } from "@/storage/stock";
-import { formatMySwordPanelDescription, getSwordTier } from "@/utils/swordDisplay";
+import {
+  formatMySwordPanelDescription,
+  formatSwordProgress,
+  getSwordTier,
+} from "@/utils/swordDisplay";
 import { panelReply } from "@/utils/discord";
 import { scheduleEphemeralReplyDelete } from "@/utils/ephemeralCleanup";
 import type { MineClient, SlashCommand } from "@/types";
@@ -30,9 +34,15 @@ const command: SlashCommand = {
     const sword = getOrCreateCoinSword(guildId, userId);
     const tier = getSwordTier(sword.level);
 
+    const successRate =
+      sword.totalAttempts > 0
+        ? Math.round((sword.successCount / sword.totalAttempts) * 100)
+        : 0;
+
     const lines: string[] = [
+      formatSwordProgress(sword.level),
       `현재 **+${sword.level}** · 최고 **+${sword.highestLevel}**`,
-      `시도 **${sword.totalAttempts}회** · 성공 **${sword.successCount}회** · 실패 **${sword.failCount}회**`,
+      `시도 **${sword.totalAttempts}회** · 승률 **${successRate}%**`,
       `하락 **${sword.downgradeCount}회** · 파괴 **${sword.destroyCount}회**`,
       "",
       "`/강화` `/강화정보` `/던전`",

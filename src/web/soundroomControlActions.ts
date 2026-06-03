@@ -64,7 +64,6 @@ export async function executeSoundroomTogglePause(
   refreshSoundroomPanelBestEffort(client, guildId);
 }
 
-/** skip 직후 패널 즉시 edit 없음 — trackStart/idle 흐름에 맡김 */
 export async function executeSoundroomSkip(
   _client: MineClient,
   _guildId: string,

@@ -2,14 +2,9 @@ import type { ExtendedTrack } from "@/types";
 
 export interface ParsedYoutubePlaylistInput {
   playlistUrl: string;
-  /** `watch?v=` 또는 `youtu.be/` 에서 넣은 곡을 먼저 재생 */
   priorityVideoId?: string;
 }
 
-/**
- * 재생목록 URL 또는 `watch?v=…&list=…` / `youtu.be/…?list=…` 형태에서
- * 정규화된 playlist URL과 우선 재생할 영상 ID를 뽑습니다.
- */
 export function parseYoutubePlaylistInput(
   raw: string,
 ): ParsedYoutubePlaylistInput | null {
@@ -35,7 +30,6 @@ export function parseYoutubePlaylistInput(
   return { playlistUrl, priorityVideoId };
 }
 
-/** `priorityVideoId`에 해당하는 트랙을 맨 앞으로 옮깁니다. */
 export function prioritizeYoutubeTracks(
   tracks: ExtendedTrack[],
   priorityVideoId: string | undefined,

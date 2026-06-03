@@ -16,10 +16,8 @@ import { log } from "@/utils/logger";
 
 export const STOCK_QUANTITY_SCALE = 1_000_000;
 
-/** 최소 매수 금액 (코인) */
 export const MIN_STOCK_BUY_AMOUNT = 1_000;
 
-/** 최소 매도 금액 기준(코인, 금액 방식일 때) */
 export const MIN_STOCK_SELL_AMOUNT = 1_000;
 
 export const DEFAULT_ATTENDANCE_REWARD = 10_000;
@@ -27,7 +25,6 @@ export const DEFAULT_RPS_MIN_BET = 100;
 export const DEFAULT_RPS_MAX_BET = 100_000;
 export const DEFAULT_RPS_COOLDOWN_SECONDS = 5;
 
-/** 호환·폴백용 — 서버별 출석액은 `getOrCreateCoinGuildSettings` */
 export const DAILY_ATTENDANCE_REWARD = DEFAULT_ATTENDANCE_REWARD;
 
 export interface StockWallet {
@@ -59,7 +56,6 @@ export interface StockAssetSummary {
   unavailableSymbols: string[];
 }
 
-/** 길드 모의투자 랭킹 한 줄 (캐시 시세 기준) */
 export interface StockRankingEntry {
   guildId: string;
   userId: string;
@@ -72,7 +68,6 @@ export interface StockRankingEntry {
   unavailableSymbols: string[];
 }
 
-/** 관리자 초기화 결과 건수 */
 export interface StockResetCounts {
   deletedWallets: number;
   deletedHoldings: number;
@@ -109,7 +104,6 @@ export interface StockSeasonResult {
   createdAt: string;
 }
 
-/** createStockSeason 반환용 (생성된 시즌과 동일). */
 export type CreateStockSeasonResult = StockSeason;
 
 export interface EndStockSeasonResult {
@@ -140,7 +134,6 @@ export interface PlayRockPaperScissorsResult {
   logId: number;
 }
 
-/** `coin_game_logs.metadata` JSON 파싱 결과 */
 export interface CoinGameLogMetadataParsed {
   playerChoice?: string;
   botChoice?: string;
@@ -182,11 +175,9 @@ export interface UpdateCoinGuildSettingsPatch {
   rpsCooldownSeconds?: number;
 }
 
-/** 호환·폴백용 — 서버별 베팅 한도는 `getOrCreateCoinGuildSettings` */
 export const MIN_RPS_BET = DEFAULT_RPS_MIN_BET;
 export const MAX_RPS_BET = DEFAULT_RPS_MAX_BET;
 
-/** /알바 쿨다운(초) — 서버 설정 없음(고정 30분) */
 export const DEFAULT_WORK_COOLDOWN_SECONDS = 1800;
 
 export const MIN_WORK_REWARD = 500;
@@ -205,7 +196,6 @@ export interface CoinWorkCooldownResult {
   latestWorkedAt: string | null;
 }
 
-/** `/낚시` 쿨다운(초) — 고정 20분 */
 export const DEFAULT_FISHING_COOLDOWN_SECONDS = 1200;
 
 export type FishingRarity =
@@ -246,7 +236,6 @@ export interface CoinFishingCooldownResult {
   latestFishedAt: string | null;
 }
 
-/** 일일 미션 전부 완료 시 1회 지급 (코인) */
 export const DAILY_MISSION_REWARD = 3000;
 
 export const DAILY_MISSION_KEY_ATTENDANCE = "ATTENDANCE" as const;
@@ -425,7 +414,6 @@ export interface SellStockResult {
   soldQuantityMicro: number;
   remainingQuantityMicro: number;
   grossAmount: number;
-  /** 매도 수수료 + 거래세 합 (DB `stock_trades.fee`와 동일) */
   fee: number;
   sellFee: number;
   sellTax: number;
@@ -743,7 +731,6 @@ export function updateCoinGuildSettings(
   };
 }
 
-/** 7·14·30일 연속 출석 달성 시 추가 지급 (코인) */
 const ATTENDANCE_STREAK_BONUS_7 = 3_000;
 const ATTENDANCE_STREAK_BONUS_14 = 5_000;
 const ATTENDANCE_STREAK_BONUS_30 = 10_000;
@@ -767,7 +754,6 @@ function hasStockAttendance(
   return Number(r?.n ?? 0) > 0;
 }
 
-/** KST `asOfDate` 기준 연속 출석 일수(오늘 미출석이면 어제까지의 연속). */
 export function computeAttendanceStreak(
   guildId: string,
   userId: string,
@@ -791,7 +777,6 @@ export function computeAttendanceStreak(
   return count;
 }
 
-/** KST `kstNow`가 속한 달에 출석한 날짜 `YYYY-MM-DD` 목록(오름차순). */
 export function listStockAttendanceDatesInMonth(
   guildId: string,
   userId: string,
@@ -810,7 +795,6 @@ export function listStockAttendanceDatesInMonth(
 export interface RecordStockAttendanceResult {
   alreadyClaimed: boolean;
   wallet: StockWallet;
-  /** 기본 출석 보상(서버 설정). 이미 출석한 날에도 설정값을 돌려 UI 호환용으로 둔다. */
   rewardAmount: number;
   streakDays: number;
   streakBonusAmount: number;
@@ -934,11 +918,7 @@ export function getStockAssetSummary(
   };
 }
 
-/**
- * 길드 내 모든 지갑·보유를 읽어 총자산 순으로 정렬한다.
- * 총자산이 정확히 0인 행은 제외한다(미참여·빈 지갑 노이즈 감소).
- * 클라이언트에서 지갑만 있고 입금·매수 전인 경우도 cash 0이면 제외됨.
- */
+// 랭킹: 총자산 0 제외
 export function getStockRanking(
   guildId: string,
   prices: StockPrice[],
@@ -1318,7 +1298,7 @@ export function sellStock(params: SellStockParams): SellStockResult {
   }
 }
 
-/** 관리자 코인 지급/차감 상한 (코인) */
+// 관리자 지급·차감 상한
 export const MAX_ADMIN_COIN_ADJUSTMENT = 1_000_000_000;
 
 function validateAdminCoinAmount(amount: number): void {
@@ -1331,9 +1311,6 @@ function validateAdminCoinAmount(amount: number): void {
   }
 }
 
-/**
- * 관리자 지급: 지갑이 없으면 생성 후 cash·total_deposit 증가.
- */
 export function addCoinsToWallet(
   guildId: string,
   userId: string,
@@ -1361,9 +1338,6 @@ export function addCoinsToWallet(
   }
 }
 
-/**
- * 관리자 차감: 지갑 필수. cash만 감소, total_deposit 불변.
- */
 export function removeCoinsFromWallet(
   guildId: string,
   userId: string,
@@ -1673,7 +1647,6 @@ function mapCoinGameLogRow(row: CoinGameLogRow): CoinGameLogEntry {
   };
 }
 
-/** `coin_game_logs` 최근 기록 (기본 10건, 최대 20건). */
 export function listCoinGameLogs(
   params: ListCoinGameLogsParams,
 ): CoinGameLogEntry[] {
@@ -2709,7 +2682,6 @@ function mapCoinWorkLatest(row: CoinWorkLogDbRow): CoinWorkLogLatest {
   };
 }
 
-/** 최근 `/알바` 기록 1건 */
 export interface CoinWorkLogLatest {
   id: number;
   guildId: string;
@@ -2760,7 +2732,7 @@ export function canWorkNow(
   };
 }
 
-/** `/알바` — cash·total_deposit 증가, `coin_work_logs` 기록. */
+// 알바·낚시: cash만, total_deposit 정책
 export function performCoinWork(
   guildId: string,
   userId: string,
@@ -2847,7 +2819,6 @@ function mapCoinFishingLog(row: CoinFishingLogDbRow): CoinFishingLog {
   };
 }
 
-/** 최근 `/낚시` 기록 1건 */
 export function getLatestCoinFishingLog(
   guildId: string,
   userId: string,
@@ -2929,7 +2900,6 @@ function rollFishingReward(): {
   };
 }
 
-/** `/낚시` — `coin_fishing_logs` 기록. 꽝은 잔액·total_deposit 불변. */
 export function performCoinFishing(
   guildId: string,
   userId: string,
@@ -3093,7 +3063,6 @@ function isDailyMissionKeyComplete(
   }
 }
 
-/** `coin_daily_missions`에 기록. 실패해도 예외를 밖으로 던지지 않는다. */
 export function recordDailyMissionProgress(
   guildId: string,
   userId: string,
@@ -3291,7 +3260,6 @@ export function listCoinConsumableItems(
   return rows.map(mapCoinConsumableItemRow);
 }
 
-/** 트랜잭션 외부에서도 사용 가능. 내부에서 `BEGIN`을 호출하지 않는다. */
 export function addCoinConsumableItem(
   guildId: string,
   userId: string,
@@ -3338,10 +3306,7 @@ export function addCoinConsumableItem(
   return mapCoinConsumableItemRow(row);
 }
 
-/**
- * 수량 차감. `BEGIN` 없음 — 호출부 트랜잭션 안에서 사용할 수 있다.
- * 수량이 0이 되면 row를 삭제하고 `null`을 반환한다.
- */
+// 보유 수량 0이면 row 삭제
 export function consumeCoinConsumableItem(
   guildId: string,
   userId: string,
@@ -3379,7 +3344,6 @@ export function consumeCoinConsumableItem(
   return mapCoinConsumableItemRow(row);
 }
 
-/** 상점 구매 — `cash_balance`만 차감, `total_deposit`는 변경하지 않는다. */
 export function purchaseCoinShopItem(params: {
   guildId: string;
   userId: string;
@@ -3620,7 +3584,6 @@ function compareRps(player: RpsChoice, bot: RpsChoice): RpsResult {
   return "LOSE";
 }
 
-/** 가상 코인 가위바위보 — total_deposit은 변경하지 않는다. */
 export function playRockPaperScissors(
   params: PlayRockPaperScissorsParams,
 ): PlayRockPaperScissorsResult {

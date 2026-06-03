@@ -13,7 +13,6 @@ export interface WebDashboardConfig {
   host: string;
   port: number;
   allowedOrigin: string;
-  /** 공개 웹 origin (패널 링크·랜딩 CTA). CORS/OAuth는 allowedOrigin 사용. */
   publicUrl?: string;
   staticEnabled: boolean;
   staticRoot: string;
@@ -47,7 +46,6 @@ export function getWebDashboardAllowedOrigin(): string {
   return origin && origin.length > 0 ? origin : "http://127.0.0.1:3000";
 }
 
-/** http(s)만 허용. trailing slash 제거. invalid면 undefined. */
 export function normalizePublicWebUrl(
   value: string | undefined,
 ): string | undefined {

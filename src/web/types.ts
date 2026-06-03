@@ -1,4 +1,3 @@
-/** 공개 랜딩 운영 현황 집계 (서버명·유저명·ID 없음). */
 export interface HomePagePublicStats {
   guildCount: number;
   estimatedMemberCount: number;
@@ -10,7 +9,6 @@ export interface HomePagePublicStats {
   updatedAt: string;
 }
 
-/** 공개 랜딩·패널 링크용 URL 묶음 (secret 아님). */
 export interface WebDashboardPublicLinks {
   origin: string;
   dashboardUrl: string;

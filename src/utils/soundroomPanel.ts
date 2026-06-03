@@ -95,7 +95,6 @@ export function getSoundroomMaintenanceNotice(): string | null {
   return "-# 현재 점검중이라 음악 기능이 불안정할 수 있습니다.";
 }
 
-/** Link 버튼은 customId 없음. row당 최대 5개 제한을 지킨다. */
 function appendWebRemoteLinkButton(
   rows: ActionRowBuilder<ButtonBuilder>[],
 ): void {

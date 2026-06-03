@@ -5,7 +5,6 @@ const HTTP_URL_RE = /^https?:\/\//i;
 const SEARCH_PREFIX_RE = /^[a-z][a-z0-9]*:/i;
 const SPOTIFY_TRACK_RE = /open\.spotify\.com\/track\//i;
 
-/** Riffy가 붙인 검색 접두사(ytsearch: 등)를 제거해 순수 검색어로 만듭니다. */
 export function stripSearchEnginePrefix(query: string): string {
   const q = query.trim();
   const m = q.match(/^([a-z][a-z0-9]*):(.*)$/i);
@@ -31,7 +30,6 @@ async function fetchSpotifyOembedTitle(url: string): Promise<string | null> {
   }
 }
 
-/** resolve에 넘기기 전 쿼리 정규화 (Spotify 단일 곡 → 제목 검색, 이중 접두사 제거). */
 export async function normalizeRiffyResolveQuery(
   raw: string,
   _engine: string,
@@ -52,10 +50,6 @@ export async function normalizeRiffyResolveQuery(
   return q;
 }
 
-/**
- * Riffy resolve 전에 Spotify 단일 곡·이중 검색 접두사를 정리합니다.
- * (잘못된 Spotify fallback은 patches/riffy+1.0.12.patch 에서 제거)
- */
 export function patchRiffyResolve(client: MineClient): void {
   const riffy = client.riffy;
   const original = riffy.resolve.bind(riffy);

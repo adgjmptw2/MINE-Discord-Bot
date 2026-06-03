@@ -320,6 +320,7 @@ async function handleRequest(
       }
     }
 
+    // add-to-queue: /api/auth/guilds 라우트보다 선매칭
     const playlistAddToQueueEarly = pathname.match(
       /^\/api\/auth\/guilds\/(\d{17,20})\/soundroom\/playlists\/[^/]+\/add-to-queue\/?$/,
     );
@@ -345,7 +346,6 @@ async function handleRequest(
       return;
     }
 
-    // /privacy, /terms: /api 가드(rate limit·SESSION_SECRET_WEAK) 밖 — 공개 HTML
     if (handleLegalPageRequest(req, res, pathname, webConfig)) {
       return;
     }

@@ -29,7 +29,6 @@ function iteratePlayers(client: MineClient): ExtendedPlayer[] {
   return [...map.values()];
 }
 
-/** Discord fetch 없이 cache·메모리 player만 사용. 식별 정보는 집계하지 않는다. */
 function computeHomePagePublicStats(client: MineClient): HomePagePublicStats {
   try {
     const guildCount = client.guilds.cache.size;

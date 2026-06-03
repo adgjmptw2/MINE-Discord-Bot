@@ -93,7 +93,6 @@ function isWeakAutoplayAuthorKey(authorKey: string): boolean {
 
 export type AutoplayAuthorOveruse = "none" | "deprioritize" | "exclude";
 
-/** 자동재생 후보만 — 사용자가 직접 넣은 곡에는 적용하지 않음 */
 export function getAutoplayAuthorOveruse(
   guildId: string,
   author: string,

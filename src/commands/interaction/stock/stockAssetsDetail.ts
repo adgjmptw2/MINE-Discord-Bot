@@ -15,7 +15,6 @@ import {
 } from "@/utils/stockFormat";
 import type { MineClient, SlashCommand } from "@/types";
 
-/** 상세 자산(ephemeral) 자동 삭제까지 — 너무 짧지 않게 */
 const STOCK_ASSET_DETAIL_DELETE_MS = 60_000;
 
 const NO_MENTION = { parse: [] as const };

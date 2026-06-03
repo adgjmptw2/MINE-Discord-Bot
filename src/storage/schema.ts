@@ -72,7 +72,7 @@ export const guildRecentPlays = sqliteTable(
   }),
 );
 
-/** 전역 인기차트는 `guild_id`에 `__bot_global_melon__`를 넣은 한 줄만 사용합니다. */
+// 전역 인기차트: guild_id = __bot_global_melon__
 export const soundroomChartSource = sqliteTable("soundroom_chart_source", {
   guildId: text("guild_id").primaryKey(),
   playlistUrl: text("playlist_url").notNull(),
@@ -116,7 +116,6 @@ export const stockHoldings = sqliteTable(
   }),
 );
 
-/** side는 DB에서 CHECK(BUY|SELL). Drizzle 스키마에는 제약 미표현(원시 DDL에만 둠). */
 export const stockTrades = sqliteTable(
   "stock_trades",
   {
@@ -168,7 +167,6 @@ export const stockDailyAttendance = sqliteTable(
   }),
 );
 
-/** 모의투자 시즌 — ACTIVE는 길드당 하나(unique partial index는 db.ts DDL 참고). */
 export const stockSeasons = sqliteTable("stock_seasons", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   guildId: text("guild_id").notNull(),

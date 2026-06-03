@@ -10,7 +10,6 @@ import type { SlashCommand } from "@/types";
 
 const COMMAND_NAME = "세팅";
 
-/** Discord 길드 텍스트 채널 이름에 공백·과도한 길이가 있으면 생성이 실패할 수 있어 정리합니다. */
 function sanitizeGuildTextChannelName(raw: string): string {
   const trimmed = raw.trim().replace(/\s+/g, "-").slice(0, 100);
   const noEdgeHyphen = trimmed.replace(/^-+|-+$/g, "");

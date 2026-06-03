@@ -170,3 +170,46 @@ export function fortuneResultPanelFields(
   ];
   return { description, lines };
 }
+
+function fortuneGradeLabel(luckyNum: number): string {
+  if (luckyNum >= 77) {
+    return "대길";
+  }
+  if (luckyNum >= 55) {
+    return "길";
+  }
+  if (luckyNum >= 33) {
+    return "소길";
+  }
+  return "흉";
+}
+
+export function compactFortunePanelFields(
+  f: FortuneComputed,
+  normalizedBirthDate: string,
+): { title: string; description: string; lines: string[] } {
+  const zodiac = getZodiacSignFromBirthDate(normalizedBirthDate);
+  const grade = fortuneGradeLabel(f.luckyNum);
+  const gradeSuffix = grade === "대길" ? " ✦" : "";
+  const luckyLine = `${f.keyword} · ${f.color} · ${f.luckyNum}`;
+  return {
+    title: `오늘의 운세 — ${grade}${gradeSuffix}`,
+    description: `${zodiac} · ${f.todayKst}`,
+    lines: [
+      "☀️ 오늘의 흐름",
+      f.overall,
+      "",
+      "💬 대인운",
+      f.relation,
+      "",
+      "💰 코인운",
+      f.coin,
+      "",
+      "🎮 게임운",
+      f.game,
+      "",
+      "🍀 행운 포인트",
+      luckyLine,
+    ],
+  };
+}

@@ -25,7 +25,6 @@ export interface PanelOptions {
   lines?: string[];
   imageUrl?: string;
   subtle?: boolean;
-  /** Components V2 컨테이너 왼쪽 액센트 색(RGB 정수). 미지정 시 기존과 동일. */
   accentColor?: number;
 }
 
@@ -33,7 +32,7 @@ export interface PanelMessageOptions {
   panel: PanelOptions;
   components?: ActionRowBuilder<MessageActionRowComponentBuilder>[];
   ephemeral?: boolean;
-  /** Reply 시 멘션 파싱 제어 (예: `{ parse: [] }`로 본문의 `<@id>` 알림 방지) */
+  // Reply 멘션: parse [] 로 알림 차단
   allowedMentions?: MessageMentionOptions;
   files?: readonly AttachmentBuilder[];
 }
@@ -41,7 +40,6 @@ export interface PanelMessageOptions {
 export interface PanelEditOptions {
   panel: PanelOptions;
   components?: ActionRowBuilder<MessageActionRowComponentBuilder>[];
-  /** editReply/update 시 멘션 파싱 제어 */
   allowedMentions?: MessageMentionOptions;
   files?: readonly AttachmentBuilder[];
 }

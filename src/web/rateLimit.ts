@@ -81,7 +81,6 @@ function getClientIp(req: IncomingMessage): string {
   return req.socket.remoteAddress ?? "unknown";
 }
 
-/** X-Forwarded-For는 신뢰하지 않고 소켓 IP만 사용한다. */
 export function getRateLimitKey(
   req: IncomingMessage,
   session: WebSession | null,
@@ -183,7 +182,6 @@ export function resolveRateLimitBucket(
   return null;
 }
 
-/** 만료된 window 항목을 주기적으로 정리한다. */
 export function cleanupRateLimitBuckets(): void {
   const now = Date.now();
   const maxRetentionMs = 120_000;

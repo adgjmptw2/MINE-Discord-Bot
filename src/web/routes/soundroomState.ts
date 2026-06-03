@@ -11,7 +11,6 @@ export function handleSoundroomGuildState(
   client: MineClient,
   guildId: string,
 ): void {
-  // 운영 기본: 비인증 상태 조회 비활성(404로 경로를 숨김)
   if (!isWebDashboardPublicStateEnabled()) {
     sendError(res, 404, "NOT_FOUND", "요청한 경로를 찾을 수 없습니다.");
     return;

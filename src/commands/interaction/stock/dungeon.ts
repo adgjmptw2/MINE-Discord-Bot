@@ -9,7 +9,7 @@ import {
   getKstDayUtcIsoBounds,
 } from "@/utils/date";
 import {
-  formatDungeonMoodLine,
+  formatDungeonNarrative,
   formatSwordName,
   SWORD_VIRTUAL_GAME_FOOTER,
 } from "@/utils/swordDisplay";
@@ -39,12 +39,10 @@ function buildSuccessPanel(r: RunCoinDungeonResult) {
   const level = r.sword.level;
   return {
     title: "⚔️ 던전 완료",
-    description: `**+${reward.toLocaleString("ko-KR")} 코인** 획득`,
+    description: formatDungeonNarrative(level),
     lines: [
-      `검: ${formatSwordName(level)}`,
-      `잔고: **${r.wallet.cashBalance.toLocaleString("ko-KR")} 코인**`,
-      "",
-      formatDungeonMoodLine(level),
+      formatSwordName(level),
+      `**+${reward.toLocaleString("ko-KR")} 코인** 획득  ·  잔고 ${r.wallet.cashBalance.toLocaleString("ko-KR")}코인`,
       "",
       ...SWORD_VIRTUAL_GAME_FOOTER,
     ],
@@ -54,13 +52,12 @@ function buildSuccessPanel(r: RunCoinDungeonResult) {
 function buildAlreadyDonePanel(r: RunCoinDungeonResult, now: Date) {
   const left = formatRoughTimeUntilNextKstDay(now);
   return {
-    title: "⚔️ 던전 완료됨",
+    title: "⚔️ 오늘 던전 완료",
     lines: [
-      "오늘 던전을 이미 완료했습니다.",
-      `최근 보상: **${r.run.rewardAmount.toLocaleString("ko-KR")} 코인**`,
-      `당시: **+${r.run.swordLevel}**`,
-      `지금 검: ${formatSwordName(r.sword.level)}`,
-      `다음: 약 **${left}** 후 (KST)`,
+      `오늘 **+${r.run.rewardAmount.toLocaleString("ko-KR")} 코인** 수령 완료`,
+      `당시 검: ${formatSwordName(r.run.swordLevel)}`,
+      `현재 검: ${formatSwordName(r.sword.level)}`,
+      `다음 던전까지 약 **${left}**`,
       "",
       ...SWORD_VIRTUAL_GAME_FOOTER,
     ],

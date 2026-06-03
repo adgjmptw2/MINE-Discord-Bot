@@ -32,7 +32,6 @@ const command: SlashCommand = {
     const market = client.stockMarket;
     const symbols = getSupportedStockSymbols();
 
-    // 종목마다 제목 1줄 + (시세 있음) ANSI 블록 1개 | (없음) "시세 준비 중" 텍스트만
     const stockSection = symbols
       .map((s, index) => {
         const i = index + 1;

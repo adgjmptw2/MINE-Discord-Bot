@@ -9,7 +9,6 @@ import {
 import type { ExtendedTrack, MineClient } from "@/types";
 import { sanitizeYoutubeQueryForLavalink } from "@/utils/youtubeLavalinkQuery";
 
-/** 일반 검색어는 그대로 넘겨 Riffy의 기본 검색 설정을 타게 둡니다. */
 export function buildSoundroomResolveQuery(raw: string): string {
   const trimmed = raw.trim();
   if (!trimmed) {
@@ -24,7 +23,6 @@ export function buildSoundroomResolveQuery(raw: string): string {
   return trimmed;
 }
 
-/** 재생목록 주소만 여러 곡으로 받고, watch+list 믹스는 첫 곡만 씁니다. */
 export function isExplicitFullPlaylistIntentUrl(raw: string): boolean {
   const q = raw.trim().toLowerCase();
   if (/youtube\.com\/playlist\?list=[^&\s#]+/i.test(q)) {
@@ -67,9 +65,7 @@ export async function tryHandleSoundroomMessage(
 
   try {
     await message.delete();
-  } catch {
-    /* 안내 메시지 삭제 실패는 무시 */
-  }
+  } catch {}
 
   const member = message.member;
   const guildId = message.guildId;

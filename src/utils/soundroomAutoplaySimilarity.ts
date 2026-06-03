@@ -8,7 +8,6 @@ const YT_HOSTS = new Set([
   "youtu.be",
 ]);
 
-/** 반복 방지용 heuristic — 완벽한 동일곡 판별이 아님 */
 const TITLE_TAG_PATTERNS: RegExp[] = [
   /\s*[\[(（【][^\])）】]*(?:official|mv|audio|lyrics?|live|remaster(?:ed)?|nightcore|cover|topic|visualizer|sped\s*up|slowed|full\s*version|한글?자막|가사|자막|라이브|커버)[^\])）】]*[\])）】]\s*/gi,
   /\s*[-–—|]\s*(official\s*(?:video|mv|audio)?|lyrics?(?:\s*video)?|audio|mv|music\s*video|live|remaster(?:ed)?|nightcore|cover|topic|visualizer|sped\s*up|slowed|full\s*version)\s*$/gi,
@@ -108,7 +107,6 @@ export function extractYouTubePlaylistId(
   return null;
 }
 
-/** YouTube Mix / Radio 계열 playlist id (RD...) */
 export function isYouTubeMixPlaylistId(listId: string | null): boolean {
   if (!listId) {
     return false;

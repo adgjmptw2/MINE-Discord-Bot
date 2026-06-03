@@ -28,7 +28,6 @@ export function useLocalStorageBoolean(
     setValue(readBooleanPreference(key) ?? defaultValue);
   }, [key]);
 
-  // 저장값 없을 때만 defaultOpen(예: 대기열 곡 수) 정책 반영
   useEffect(() => {
     if (!key) {
       return;

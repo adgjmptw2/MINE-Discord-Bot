@@ -3,7 +3,6 @@ import { isSoundroomTextChannel } from "@/storage/soundroom";
 import { panelMessage, truncate } from "@/utils/discord";
 import type { ExtendedPlayer, ExtendedTrack, MineClient } from "@/types";
 
-/** Riffy/Lavalink `TrackExceptionEvent` 전체가 넘어오므로, 사람이 읽을 수 있는 문자열로 만듭니다. */
 function formatTrackErrorPayload(errorPayload: unknown): string {
   if (errorPayload instanceof Error) {
     return errorPayload.message;

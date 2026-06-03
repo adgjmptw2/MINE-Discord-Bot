@@ -1,8 +1,3 @@
-/**
- * Yahoo Finance `chart` 응답 기반의 demo/delayed 시세 Provider입니다.
- * 공식 투자용 API가 아니며, 국내주식 MVP·검증용으로만 사용하세요.
- * 운영에서 정식 라이선스 Provider로 바꾸려면 `StockQuoteProvider` 구현을 교체하면 됩니다.
- */
 import { getSupportedStockSymbols } from "@/settings/stockSymbols";
 import type { StockSymbol } from "@/settings/stockSymbols";
 import type { StockChartPoint, StockQuoteDisplayExtras } from "./chartTypes";

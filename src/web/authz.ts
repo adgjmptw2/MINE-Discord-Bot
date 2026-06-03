@@ -14,7 +14,7 @@ export function getAuthenticatedSession(
   return readSessionFromRequest(req);
 }
 
-/** POST 변경: 세션 확인 후 CSRF 검증(본문 파싱 전). */
+// POST 변경: 세션+CSRF(본문 파싱 전)
 export function requireAuthenticatedSessionWithCsrf(
   req: IncomingMessage,
   res: ServerResponse,
@@ -48,7 +48,6 @@ export function isBotInGuild(client: MineClient, guildId: string): boolean {
   return client.guilds.cache.has(guildId);
 }
 
-/** 로그인 시점 session.guilds 외에 현재 서버 멤버 여부를 확인한다. */
 export async function isSessionUserCurrentGuildMember(
   guild: Guild,
   userId: string,

@@ -34,7 +34,7 @@ export function isCsrfTokenValid(
   }
 }
 
-/** CSRF는 세션에만 보관하며 쿠키·OAuth token과 분리한다. */
+// CSRF는 세션 전용(쿠키·OAuth와 분리)
 export function requireCsrfToken(
   req: IncomingMessage,
   res: ServerResponse,

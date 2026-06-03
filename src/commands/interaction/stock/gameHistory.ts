@@ -11,7 +11,6 @@ import type { MineClient, SlashCommand } from "@/types";
 
 const NO_MENTION = { parse: [] as const };
 
-/** 패널에 보여 줄 최대 건수 (조회 limit과 별도) */
 const MAX_DISPLAY_LINES = 7;
 
 function gameTypeLabel(gameType: string): string {

@@ -29,7 +29,7 @@ import {
 } from "@/utils/soundroomAutoplay";
 import type { ExtendedPlayer, ExtendedTrack, MineClient } from "@/types";
 
-/** 한 페이지에 보여줄 신청 곡 수. 자동재생 예약 곡은 숨깁니다. */
+// 패널: 신청 곡만(자동재생 예약 숨김)
 export const SOUNDROOM_QUEUE_PAGE_SIZE = 5;
 
 function userQueueLength(player: ExtendedPlayer): number {
@@ -390,7 +390,6 @@ export async function handleSoundroomQueuePanelInteraction(
     } else if (kind === "sh") {
       shuffleUserSoundroomQueue(player);
     } else if (kind === "rf") {
-      /* 현재 페이지 새로고침 */
     } else {
       return false;
     }
@@ -572,9 +571,7 @@ export async function handleSoundroomQueueMoveModalSubmit(
           await msg.edit(payload);
           panelRefreshed = true;
           scheduleQueuePanelEphemeralDelete(null, msg);
-        } catch {
-          /* 이미 닫힌 응답이면 넘어감 */
-        }
+        } catch {}
       }
     }
   }

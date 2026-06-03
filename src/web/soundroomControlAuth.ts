@@ -241,7 +241,7 @@ export interface WebSoundroomQueueContext {
   soundroomChannelId: string;
 }
 
-/** 검색·대기열 추가: 음성 입장·같은 채널(봇 연결 시). 봇 미연결 시에도 추가 시 ensurePlayerConnection 허용. */
+// 웹 대기열: 봇 미연결 시에도 추가 허용
 export async function requireWebSoundroomQueueAccess(
   client: MineClient,
   req: IncomingMessage,

@@ -70,7 +70,7 @@ function tryConnectOnce(host, port) {
   });
 }
 
-/** Resolves when TCP connects; rejects if lavalink child exits first or timeout. */
+// Lavalink TCP 준비 대기
 async function waitForLocalLavalinkReady(lavalinkChild, host, port, opts = {}) {
   const timeoutMs = opts.timeoutMs ?? 120_000;
   const intervalMs = opts.intervalMs ?? 400;

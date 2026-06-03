@@ -6,7 +6,7 @@ import {
 } from "@/web/config";
 import { sendError } from "@/web/http";
 
-/** AUTH_DISABLED 다음, OAuth 이전에 검사한다. */
+// 운영: 세션 시크릿 강도(AUTH API)
 export function isWebDashboardAuthSecurityReady(
   config: WebDashboardConfig,
 ): boolean {

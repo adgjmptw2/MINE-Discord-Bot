@@ -343,7 +343,6 @@ export function PlaylistPanel({
     refreshListForTab();
   };
 
-  /** 목록에서의 대기열 추가는 백엔드 권한·노래채널 검사 결과를 최종 신뢰한다. */
   const handleAddToQueueFromList = async (playlistId: string) => {
     if (!guildId || queueAddDisabled) {
       return;

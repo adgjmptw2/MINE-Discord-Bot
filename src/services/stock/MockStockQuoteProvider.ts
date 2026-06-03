@@ -3,7 +3,6 @@ import type { StockSymbol } from "@/settings/stockSymbols";
 import type { StockQuoteProvider } from "./StockQuoteProvider";
 import type { StockPrice } from "./types";
 
-/** 종목코드(심볼)당 기준가 — Mock에서만 ±2% 흔듦 */
 const BASE_PRICE_WON: Readonly<Record<string, number>> = {
   "005930": 80_000,
   "000660": 200_000,

@@ -1,19 +1,14 @@
 export type StockSymbol = {
-  /** 우리 쪽에서 쓰는 키 — 지금은 종목코드랑 같음 */
   symbol: string;
-  /** 6자리 종목코드 */
   code: string;
   nameKo: string;
   nameEn: string;
   exchange: "KRX";
-  /** Twelve Data 넘길 때 쓸 문자열. 아직은 코드 그대로 씀 */
   twelveDataSymbol: string;
-  /** Yahoo Finance chart API용 티커 (예: 005930.KS) */
   yahooSymbol: string;
 };
 
 const SUPPORTED: readonly StockSymbol[] = [
-  // 그냥 잘 나가는 국장 대형주 5개 — 늘리면 이 배열만
   {
     symbol: "005930",
     code: "005930",
@@ -65,7 +60,6 @@ export function getSupportedStockSymbols(): readonly StockSymbol[] {
   return SUPPORTED;
 }
 
-// 슬래시 명령 붙이기 전에 미리 만들어 둔 검색 — 코드/한글/영문 섞여 들어와도 찾게
 export function findStockSymbol(input: string): StockSymbol | undefined {
   const q = input.trim();
   if (!q) {

@@ -106,7 +106,6 @@ function getCacheControl(filePath: string, isIndex: boolean): string {
   return "no-cache";
 }
 
-/** staticRoot 밖으로 나가는 경로·위험 확장자 차단 */
 export function resolveDashboardStaticPath(
   staticRoot: string,
   pathname: string,

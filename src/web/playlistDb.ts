@@ -109,7 +109,7 @@ function getTableColumnNames(tableName: string): Set<string> {
   return new Set(rows.map((row) => row.name));
 }
 
-/** 기존 DB에는 컬럼이 없을 수 있어 ensure 시 보강한다. */
+// 기존 DB: queue_add_count·last_queued_at migrate
 function ensureWebPlaylistStatsColumns(): void {
   const cols = getTableColumnNames("web_playlists");
   if (!cols.has("queue_add_count")) {
@@ -252,7 +252,7 @@ export function getWebPlaylistById(
   return row ? mapPlaylistRow(row) : null;
 }
 
-/** 대기열 추가 성공 1회당 1 증가(곡 수와 무관). */
+// queue_add_count: 대기열 추가 성공 1회당 +1
 export function incrementWebPlaylistQueueAddCount(playlistId: string): void {
   ensureWebPlaylistTables();
   const queuedAt = nowIso();
@@ -264,7 +264,6 @@ export function incrementWebPlaylistQueueAddCount(playlistId: string): void {
   );
 }
 
-/** 즐겨찾기 사용자 목록은 반환하지 않고 count만 집계한다. */
 export function getFavoriteCountsForPlaylists(
   playlistIds: string[],
 ): Map<string, number> {
@@ -886,7 +885,6 @@ export type WebPlaylistFavoriteListRow = WebPlaylistRecord & {
   favorited_at: string;
 };
 
-/** 즐겨찾기 목록은 숨김·삭제·비공개 플레이리스트를 제외한다(개인 북마크용). */
 export function listFavoriteWebPlaylists(
   userId: string,
   params: { limit: number; offset: number },

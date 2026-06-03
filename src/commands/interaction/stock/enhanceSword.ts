@@ -14,6 +14,10 @@ import {
   formatSwordName,
   formatSwordNameBoldNoPlus,
   formatSwordNameBoldWithPlus,
+  formatSwordProgress,
+  getEnhanceDestroyFlavor,
+  getEnhanceDowngradeFlavor,
+  getEnhanceFailFlavor,
   getEnhanceSuccessFlavor,
   SWORD_VIRTUAL_GAME_FOOTER,
 } from "@/utils/swordDisplay";
@@ -60,19 +64,18 @@ function buildPanelFromResult(r: EnhanceCoinSwordResult): {
   const title = outcomeTitle(r.outcome);
   const cost = r.cost.toLocaleString("ko-KR");
   const bal = r.wallet.cashBalance.toLocaleString("ko-KR");
-  const useLines = [`사용 **${cost} 코인**`, `잔고 **${bal} 코인**`];
+  const coinLine = `사용 \`${cost}코인\`  ·  잔고 \`${bal}코인\``;
 
   switch (r.outcome) {
     case "SUCCESS": {
       const lines: string[] = [
         formatSwordNameBoldWithPlus(r.afterLevel),
+        formatSwordProgress(r.afterLevel),
         formatEnhanceArrowCode(r.beforeLevel, r.afterLevel),
         getEnhanceSuccessFlavor(r.afterLevel),
         "",
-        ...useLines,
-        "",
-        `성공률 **${r.successPercent}%**`,
-        `최고 기록 **+${r.highestLevel}**`,
+        coinLine,
+        `성공률 **${r.successPercent}%**  ·  최고 **+${r.highestLevel}**`,
       ];
       const u = unusedProtectionLine(r);
       if (u) {
@@ -83,11 +86,11 @@ function buildPanelFromResult(r: EnhanceCoinSwordResult): {
     case "FAIL_KEEP": {
       const lines: string[] = [
         formatSwordNameBoldWithPlus(r.beforeLevel),
+        formatSwordProgress(r.beforeLevel),
         formatEnhanceKeepCode(r.beforeLevel),
-        "강화에는 실패했지만 검은 손상되지 않았습니다.",
+        getEnhanceFailFlavor(r.beforeLevel),
         "",
-        ...useLines,
-        "",
+        coinLine,
         `성공률 **${r.successPercent}%**`,
       ];
       const u = unusedProtectionLine(r);
@@ -101,13 +104,12 @@ function buildPanelFromResult(r: EnhanceCoinSwordResult): {
         title,
         lines: [
           formatSwordNameBoldNoPlus(r.beforeLevel),
+          formatSwordProgress(r.afterLevel),
           formatEnhanceArrowCode(r.beforeLevel, r.afterLevel),
-          "강화 실패로 검의 힘이 약해졌습니다.",
+          getEnhanceDowngradeFlavor(r.beforeLevel),
           "",
-          ...useLines,
-          "",
-          `성공률 **${r.successPercent}%**`,
-          `하락률 **${r.downgradePercent}%**`,
+          coinLine,
+          `성공률 **${r.successPercent}%**  ·  하락률 **${r.downgradePercent}%**`,
           "",
           ...SWORD_VIRTUAL_GAME_FOOTER,
         ],
@@ -119,10 +121,9 @@ function buildPanelFromResult(r: EnhanceCoinSwordResult): {
         lines: [
           formatSwordNameBoldNoPlus(r.beforeLevel),
           formatEnhanceArrowCode(r.beforeLevel, r.afterLevel),
-          "검이 파괴되어 +10으로 복구되었습니다.",
+          getEnhanceDestroyFlavor(r.beforeLevel),
           "",
-          ...useLines,
-          "",
+          coinLine,
           `파괴율 **${r.destroyPercent}%**`,
           "",
           ...SWORD_VIRTUAL_GAME_FOOTER,
@@ -134,12 +135,11 @@ function buildPanelFromResult(r: EnhanceCoinSwordResult): {
         title,
         lines: [
           formatSwordNameBoldWithPlus(r.beforeLevel),
+          formatSwordProgress(r.beforeLevel),
           formatEnhanceKeepCode(r.beforeLevel),
-          "하락 방지권이 발동했습니다.",
-          "단계가 내려가지 않았습니다.",
+          "🛡️ 하락 방지권이 발동해 단계를 지켰습니다.",
           "",
-          ...useLines,
-          "",
+          coinLine,
           "하락 방지권 **1개 소비**",
           "",
           ...SWORD_VIRTUAL_GAME_FOOTER,
@@ -151,12 +151,11 @@ function buildPanelFromResult(r: EnhanceCoinSwordResult): {
         title,
         lines: [
           formatSwordNameBoldWithPlus(r.beforeLevel),
+          formatSwordProgress(r.beforeLevel),
           formatEnhanceKeepCode(r.beforeLevel),
-          "파괴 방지권이 발동했습니다.",
-          "검이 파괴되지 않았습니다.",
+          "🛡️ 파괴 방지권이 발동해 검을 지켰습니다.",
           "",
-          ...useLines,
-          "",
+          coinLine,
           "파괴 방지권 **1개 소비**",
           "",
           ...SWORD_VIRTUAL_GAME_FOOTER,
@@ -169,7 +168,7 @@ function buildPanelFromResult(r: EnhanceCoinSwordResult): {
         lines: [
           formatSwordNameBoldWithPlus(r.beforeLevel),
           formatEnhanceKeepCode(r.beforeLevel),
-          ...useLines,
+          coinLine,
           "",
           ...SWORD_VIRTUAL_GAME_FOOTER,
         ],

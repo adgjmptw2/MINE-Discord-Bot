@@ -96,7 +96,6 @@ export function parseGenderInput(raw: string): {
   return { gender: "private", unknownAsPrivate: true };
 }
 
-/** 생년월일 `YYYY-MM-DD`의 월·일만으로 별자리(한글)를 반환합니다. 연도는 사용하지 않습니다. */
 export function getZodiacSignFromBirthDate(normalizedBirthDate: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(normalizedBirthDate.trim());
   if (!m) {

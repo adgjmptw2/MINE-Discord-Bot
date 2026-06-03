@@ -1,6 +1,5 @@
 import { truncate } from "@/utils/discord";
 
-/** 프로세스 업타임을 짧은 한국어 문자열로 */
 export function formatUptime(ms: number): string {
   const totalSec = Math.max(0, Math.floor(ms / 1000));
   const days = Math.floor(totalSec / 86_400);
@@ -15,7 +14,6 @@ export function formatUptime(ms: number): string {
   return `${mins}분`;
 }
 
-/** RSS 등 바이트 → 읽기 쉬운 MB */
 export function formatMemory(bytes: number): string {
   const mb = bytes / (1024 * 1024);
   return `${mb < 10 ? mb.toFixed(1) : mb.toFixed(0)} MB`;
@@ -25,7 +23,6 @@ export function truncateText(text: string, max: number): string {
   return truncate(text, max);
 }
 
-/** 남은 대기 시간 표시 (예: 18분 20초, 1시간 5분, 30초) */
 export function formatRemainingCooldown(ms: number): string {
   const sec = Math.max(0, Math.ceil(ms / 1000));
   const h = Math.floor(sec / 3600);

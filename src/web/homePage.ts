@@ -9,7 +9,6 @@ function isHomePath(pathname: string): boolean {
   return pathname === "/" || pathname === "/index.html";
 }
 
-/** 외부 링크는 http(s)만 허용한다. */
 function safeHttpUrl(raw: string | undefined): string | undefined {
   const trimmed = raw?.trim();
   if (!trimmed) {
@@ -111,7 +110,6 @@ type FeatureIconKind =
   | "message-circle"
   | "lock";
 
-/** 랜딩 전용 — 외부 아이콘 라이브러리 없이 Lucide 스타일 stroke SVG */
 function featureIconSvg(kind: FeatureIconKind): string {
   const base =
     'xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
@@ -1196,7 +1194,6 @@ function sendHomeHtml(res: ServerResponse, html: string, headOnly: boolean): voi
   res.end(html);
 }
 
-/** 로그인·rate limit·SESSION_SECRET_WEAK 없이 공개 HTML */
 export function handleHomePageRequest(
   req: IncomingMessage,
   res: ServerResponse,

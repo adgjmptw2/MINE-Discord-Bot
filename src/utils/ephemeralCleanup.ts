@@ -25,7 +25,6 @@ export function scheduleEphemeralFollowUpDelete(
 
 export const SOUNDROOM_QUEUE_PANEL_DELETE_MS = 60_000;
 
-/** deferReply/deferUpdate ephemeral — deleteReply 실패 시 message 삭제로 보완 */
 export function scheduleEphemeralReplyDelete(
   interaction: {
     deleteReply(): Promise<unknown>;

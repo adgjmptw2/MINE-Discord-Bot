@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const DEFAULT_MS = 4000;
 
-/** 몇 초 뒤 사라지는 안내 문구 */
 export function useTransientNotice(ms = DEFAULT_MS) {
   const [message, setMessage] = useState<string | null>(null);
   const timerRef = useRef<number | null>(null);

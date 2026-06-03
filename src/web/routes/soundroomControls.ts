@@ -122,7 +122,6 @@ export async function handleSoundroomControl(
     if (action === "togglePause") {
       await executeSoundroomTogglePause(client, guildId, player);
     } else if (action === "skip") {
-      // skip 직후 state.current가 null일 수 있음(trackStart 전). 패널은 이벤트 흐름이 갱신함.
       await executeSoundroomSkip(client, guildId, player);
     } else if (action === "stop") {
       await executeSoundroomStop(client, guildId, player);

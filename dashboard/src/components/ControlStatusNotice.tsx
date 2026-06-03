@@ -46,12 +46,18 @@ export function ControlStatusNotice({
       <p className="control-status-headline">{headline}</p>
       {status.userVoiceChannelName ? (
         <p className="control-status-voice muted">
-          현재 내 채널: {status.userVoiceChannelName}
+          현재 내 채널:{" "}
+          <span className="control-status-channel-name">
+            {status.userVoiceChannelName}
+          </span>
         </p>
       ) : null}
       {status.botVoiceChannelName ? (
         <p className="control-status-voice muted">
-          봇 채널: {status.botVoiceChannelName}
+          봇 채널:{" "}
+          <span className="control-status-channel-name">
+            {status.botVoiceChannelName}
+          </span>
         </p>
       ) : null}
       {status.code === "NOT_SAME_VOICE_CHANNEL" &&

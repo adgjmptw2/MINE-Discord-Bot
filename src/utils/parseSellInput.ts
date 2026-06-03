@@ -3,7 +3,6 @@ export type ParsedSellInput =
   | { mode: "percent"; percent: number }
   | { mode: "amount"; amount: number };
 
-/** `/매도` 두 번째 인자: `전부`, `5000`, `50%` 등 */
 export function parseSellInput(raw: string): ParsedSellInput | null {
   const s = raw.trim();
   if (!s) {

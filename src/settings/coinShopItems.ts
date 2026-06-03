@@ -162,7 +162,6 @@ export function getCoinShopItems(): readonly CoinShopItem[] {
   return COIN_SHOP_ITEMS;
 }
 
-/** `item_key` 정확 일치, 전체 이름 일치, 이름 부분 일치, 1-based 번호 */
 export function findCoinShopItem(input: string): CoinShopItem | undefined {
   const raw = input.trim();
   if (!raw) {

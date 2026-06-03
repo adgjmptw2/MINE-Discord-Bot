@@ -10,7 +10,6 @@ export interface SoundroomPatchNote {
   detail?: string;
 }
 
-/** 최신 항목이 위에 오도록 관리합니다. */
 export const SOUNDROOM_PATCH_NOTES: SoundroomPatchNote[] = [
   {
     icon: "📊",

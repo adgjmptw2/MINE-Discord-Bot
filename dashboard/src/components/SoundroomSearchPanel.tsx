@@ -19,7 +19,6 @@ import type {
 
 type SoundroomSearchPanelProps = {
   guildId: string;
-  /** CollapsibleSection 안에 넣을 때 중복 제목·구분선 제거 */
   embedded?: boolean;
   disabled?: boolean;
   disabledReason?: string | null;

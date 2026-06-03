@@ -4,7 +4,6 @@ import {
   parseYoutubePlaylistInput,
 } from "@/utils/youtubePlaylist";
 
-/** `soundroom_chart_source.guild_id`에 넣는 단일 행 키 — 모든 서버의 [인기차트]가 이 URL을 씀 */
 export const BOT_GLOBAL_MELON_CHART_KEY = "__bot_global_melon__";
 
 export interface MelonChartStoredSource {

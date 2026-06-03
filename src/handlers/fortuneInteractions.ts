@@ -16,11 +16,10 @@ import { buildPanel, isSendableChannel, panelReply } from "@/utils/discord";
 import { scheduleEphemeralReplyDelete } from "@/utils/ephemeralCleanup";
 import { getKstDateString } from "@/utils/date";
 import {
+  compactFortunePanelFields,
   computeFortune,
-  type FortuneComputed,
 } from "@/utils/fortuneGenerate";
 import {
-  getZodiacSignFromBirthDate,
   parseBirthDateInput,
   parseGenderInput,
 } from "@/utils/fortuneInput";
@@ -48,33 +47,6 @@ function replyToEditOptions(
 
 const FIELD_BIRTH = "fortune_field_birth";
 const FIELD_GENDER = "fortune_field_gender";
-
-function fortuneGradeLabel(luckyNum: number): string {
-  if (luckyNum >= 77) {
-    return "대길";
-  }
-  if (luckyNum >= 55) {
-    return "길";
-  }
-  if (luckyNum >= 33) {
-    return "소길";
-  }
-  return "흉";
-}
-
-function compactFortunePanelFields(
-  f: FortuneComputed,
-  normalizedBirthDate: string,
-): { title: string; description: string; lines: string[] } {
-  const zodiac = getZodiacSignFromBirthDate(normalizedBirthDate);
-  const grade = fortuneGradeLabel(f.luckyNum);
-  const gradeSuffix = grade === "대길" ? " ✦" : "";
-  return {
-    title: `오늘의 운세 — ${grade}${gradeSuffix}`,
-    description: `${zodiac} · ${f.todayKst}\n\n${f.overall}\n\n${f.relation}  ·  ${f.coin}  ·  ${f.game}`,
-    lines: [`행운의 색 ${f.color}  ·  행운의 숫자 ${f.luckyNum}`],
-  };
-}
 
 function buildFortuneModal(customId: string, title: string): ModalBuilder {
   const birth = new TextInputBuilder()

@@ -14,10 +14,6 @@ export interface StockTradingAllowedResult {
   endLabel: string;
 }
 
-/**
- * 모의 주식 매수·매도 가능 여부 (KST 평일 + 장중 창).
- * `stockTradingHoursEnabled === false` 이면 항상 허용.
- */
 export function isStockTradingAllowed(
   stock: StockConfig,
   now = new Date(),

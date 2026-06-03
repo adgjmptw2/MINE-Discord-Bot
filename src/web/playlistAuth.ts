@@ -59,7 +59,6 @@ export function canAdminWebPlaylist(
   return isWebDashboardBotOwner(session.user.id, client);
 }
 
-/** Discord 서버 관리자가 아닌 DISCORD_OWNER_IDS(developers)만 플레이리스트 운영 관리 가능 */
 export function requirePlaylistAdminAccess(
   session: WebSession,
   client: MineClient,

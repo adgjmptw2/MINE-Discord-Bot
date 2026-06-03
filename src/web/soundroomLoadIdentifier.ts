@@ -7,7 +7,6 @@ import {
 } from "@/utils/soundroomAutoplaySimilarity";
 import { sanitizeYoutubeQueryForLavalink } from "@/utils/youtubeLavalinkQuery";
 
-/** 검색어·URL 입력 최대 길이 */
 export const SOUNDROOM_QUERY_MAX_LENGTH = 300;
 
 const HTTP_URL_RE = /^https?:\/\//i;
@@ -99,10 +98,6 @@ export function validateSoundroomQueryInput(input: string): string {
   return q;
 }
 
-/**
- * Lavalink/Riffy resolve에 넘길 identifier를 만듭니다.
- * 검색어는 ytsearch: 접두사만 사용하고 Spotify URL prefix와 결합하지 않습니다.
- */
 export function buildSoundroomLoadIdentifier(input: string): string {
   const q = validateSoundroomQueryInput(input);
 
@@ -114,7 +109,6 @@ export function buildSoundroomLoadIdentifier(input: string): string {
       );
     }
     if (isSpotifyTrackUrl(q)) {
-      // patchRiffyResolve가 oEmbed 제목 검색으로 변환 — URL에 ytsearch를 붙이지 않음
       return q;
     }
     if (isYoutubeSoundroomUrl(q)) {
@@ -142,7 +136,6 @@ const UNSAFE_URL_PROTOCOL_RE = /^(javascript|data|file):/i;
 export const SOUNDROOM_PLAYLIST_MAX_TRACKS = 50;
 export const SOUNDROOM_PLAYLIST_DEFAULT_LIMIT = 50;
 
-/** 재생목록 import limit: 기본 50, 1~50으로 clamp */
 export function clampSoundroomPlaylistLimit(limit: unknown): number {
   if (typeof limit !== "number" || !Number.isFinite(limit)) {
     return SOUNDROOM_PLAYLIST_DEFAULT_LIMIT;
@@ -159,12 +152,10 @@ export function extractYoutubePlaylistIdFromUrl(uri: string): string | null {
   return extractYouTubePlaylistId(uri);
 }
 
-/** add-playlist에서 허용하는 일반 YouTube 재생목록 id (PL…) */
 export function isYoutubeStandardPlaylistId(listId: string): boolean {
   return /^PL[\w-]+$/i.test(listId.trim());
 }
 
-/** watch+list=PL… → playlist?list=… (add-playlist 전용, 단일 /add 동작은 유지) */
 export function normalizeYoutubePlaylistUrlForLavalink(
   uri: string,
 ): string | null {
@@ -175,9 +166,6 @@ export function normalizeYoutubePlaylistUrlForLavalink(
   return `https://www.youtube.com/playlist?list=${encodeURIComponent(listId)}`;
 }
 
-/**
- * /add-playlist 전용 URI 검증. 단일 곡·검색어·지원 불가 Spotify 재생목록은 거절.
- */
 export function assertSafeHttpPlaylistUri(uri: string): string {
   const q = validateSoundroomQueryInput(uri);
 

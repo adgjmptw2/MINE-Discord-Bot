@@ -65,7 +65,6 @@ export class ApiClientError extends Error {
   }
 }
 
-/** 메모리만 사용. localStorage/sessionStorage에 저장하지 않는다. */
 let csrfTokenCache: string | null = null;
 
 export function getApiBaseUrl(): string {
@@ -154,7 +153,6 @@ async function apiFetch<T>(
   return data as T;
 }
 
-/** CSRF 실패 시 캐시 비우고 1회만 재시도한다. */
 async function apiPost<T>(
   path: string,
   body: unknown | undefined,

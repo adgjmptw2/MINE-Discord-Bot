@@ -23,7 +23,6 @@ import { scheduleEphemeralReplyDelete } from "@/utils/ephemeralCleanup";
 import type { MineClient, SlashCommand } from "@/types";
 
 const SOUNDROOM_SLASH_NAME = "세팅";
-/** 슬래시 등록명 별칭 → `세팅`과 동일 핸들러 */
 const SOUNDROOM_SLASH_ALIASES = new Set([
   "노래채널",
   "music_lounge",

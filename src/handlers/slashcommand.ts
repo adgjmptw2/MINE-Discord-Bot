@@ -40,7 +40,6 @@ function applicationCommandDeleteRoute(
     : Routes.applicationCommand(clientId, commandId);
 }
 
-/** REST body is JSON.stringify'd; PermissionFlagsBits etc. are bigint in d.js v14. */
 function applicationCommandsJsonBody(commands: SlashCommand[]): SlashCommand[] {
   return JSON.parse(
     JSON.stringify(commands, (_key, value: unknown) =>
@@ -87,7 +86,7 @@ async function resetCommandsIfRequested(
       : "Reset all global application commands before registration",
   );
 
-  /** 길드 명령만 비우면 글로벌 명령이 남아 `/` 메뉴에 중복으로 표시될 수 있음 */
+  // 길드만 비우면 글로벌 슬래시가 / 메뉴에 중복될 수 있음
   if (guildId) {
     await rest.put(Routes.applicationCommands(clientId), { body: [] });
     log(
@@ -98,7 +97,6 @@ async function resetCommandsIfRequested(
   }
 }
 
-/** Discord returns 403 / code 20012 if CLIENT_ID does not match the application that issued TOKEN. */
 async function assertTokenMatchesClientId(
   rest: REST,
   clientId: string,
@@ -157,7 +155,7 @@ export default async function loadSlashCommands(
     }
   }
 
-  /** 같은 `name`이 두 번 들어가면 Discord가 50035 DUPLICATE_NAME — 빌드 산출물(dist) 중복 등 */
+  // 동일 name 중복 시 Discord 50035
   const byName = new Map<string, SlashCommand>();
   for (const command of slashCommands) {
     if (byName.has(command.name)) {
@@ -227,7 +225,6 @@ export default async function loadSlashCommands(
     );
   }
 
-  // 글로벌 명령 전체 덮어쓰기(등록 해제된 이름 제거). DEV_GUILD_ID가 있어도 글로벌은 비우지 않음.
   await cleanupOldCommands(rest, client.config.clientid, undefined, validNames);
   await rest.put(Routes.applicationCommands(client.config.clientid), {
     body: commandJson,

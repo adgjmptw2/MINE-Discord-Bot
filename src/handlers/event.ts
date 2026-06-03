@@ -3,7 +3,6 @@ import path from "node:path";
 import type { BotEventHandler, MineClient } from "@/types";
 import { log } from "@/utils/logger";
 
-/** Helper-only modules under `events/bot/client` (no `default` event handler). */
 const SKIP_BOT_EVENT_FILES = new Set([
   "soundroomMessages.js",
   "musicLoungeMessages.js",

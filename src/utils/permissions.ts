@@ -2,7 +2,6 @@ import { PermissionFlagsBits } from "discord.js";
 import type { ChatInputCommandInteraction } from "discord.js";
 import type { MineClient } from "@/types";
 
-/** Administrator 또는 ManageGuild */
 export function canManageGuild(
   interaction: ChatInputCommandInteraction,
 ): boolean {
@@ -19,7 +18,6 @@ export function canManageGuild(
   );
 }
 
-/** 관리자 권한 또는 .env DISCORD_OWNER_IDS 봇 오너 */
 export function canUseStockAdminCommand(
   client: MineClient,
   interaction: ChatInputCommandInteraction,

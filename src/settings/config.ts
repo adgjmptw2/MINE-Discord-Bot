@@ -29,7 +29,6 @@ function envList(name: string): string[] {
     .filter(Boolean);
 }
 
-// 시세 갱신 주기 기본 5분 / 최소 1분 (더 짧게 두면 Twelve Data만 거덜남)
 const STOCK_REFRESH_MS_DEFAULT = 300_000;
 const STOCK_REFRESH_MS_MIN = 60_000;
 
@@ -182,11 +181,9 @@ function parseStockFeeOrTaxRate(name: string, fallback: number): number {
 }
 
 function envTwelveDataApiKey(): string {
-  // 나중에 twelvedata 모드일 때 없으면 그때 에러 내면 됨
   return envValue("TWELVE_DATA_API_KEY");
 }
 
-/** 디스코드 앱 Client ID — 숫자만, 플레이스홀더 넣으면 여기서 터짐 */
 function requireDiscordApplicationId(raw: string): string {
   const value = raw.trim();
   if (!value) {
@@ -225,10 +222,8 @@ const config: BotConfig = {
   ],
   soundroom: {
     brandName: "마인",
-    /** 공백은 Discord 채널 이름에서 거부되는 경우가 많아 하이픈만 사용 */
     channelName: "🎵-마인-노래채널",
   },
-  // 모의주식 — 지금은 설정만 씀
   stock: {
     stockPriceProvider: parseStockPriceProvider(
       envValue("STOCK_PRICE_PROVIDER"),

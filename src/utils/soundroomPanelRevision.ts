@@ -1,4 +1,4 @@
-/** 길드별 Soundroom 패널 edit 세대. 오래된 비동기 edit가 최신 패널을 덮지 않게 합니다. */
+// 패널 edit 세대 — stale 비동기 edit 방지
 const revisions = new Map<string, number>();
 
 export function getSoundroomPanelRevision(guildId: string): number {

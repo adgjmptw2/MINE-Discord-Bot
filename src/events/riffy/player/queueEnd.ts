@@ -41,7 +41,7 @@ export default function registerQueueEnd(client: MineClient): void {
     const lounge = getSoundroom(guildId);
 
     if (lounge && isSoundroomTextChannel(guildId, player.textChannel)) {
-      /** 큐가 비며 끝난 경우도 마지막 곡 기준으로 자동재생을 이어 갑니다. */
+      // 큐 비어도 마지막 곡 기준 자동재생 이어감
       const ended = player.previous;
       if (ended) {
         setLastEndedTrack(guildId, ended);
@@ -81,9 +81,7 @@ export default function registerQueueEnd(client: MineClient): void {
           }
           try {
             await Promise.resolve(p.destroy());
-          } catch {
-            /* 이미 끊긴 플레이어면 넘어감 */
-          }
+          } catch {}
           resetAutoplaySession(guildId);
         })();
       });

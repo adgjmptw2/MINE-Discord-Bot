@@ -232,7 +232,7 @@ function sendLegalHtml(res: ServerResponse, html: string, headOnly: boolean): vo
   res.end(html);
 }
 
-/** 로그인·SESSION_SECRET_WEAK·rate limit 없이 공개. API 처리 후, /dashboard 정적 전에 연결한다. */
+// 공개 HTML — rate limit·세션 가드 밖
 export function handleLegalPageRequest(
   req: IncomingMessage,
   res: ServerResponse,

@@ -10,7 +10,6 @@ const WEAK_AUTHOR_KEYS = new Set([
   "",
 ]);
 
-/** 제목만 검색하면 official/audio 변형이 반복되므로 아티스트 radio/similar를 우선한다. */
 export function isWeakAutoplayAuthor(author: string): boolean {
   const key = buildAutoplayAuthorKey(author);
   if (!key) {

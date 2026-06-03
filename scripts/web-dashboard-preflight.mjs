@@ -1,7 +1,4 @@
-/**
- * 웹 대시보드 운영 전 점검용 간단 .env 파서 (dotenv 전체 문법 미지원).
- * secret 값은 절대 출력하지 않는다.
- */
+// 웹 대시보드 배포 전 .env 점검(시크릿 미출력)
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -10,7 +7,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
 const ENV_PATH = path.join(ROOT, ".env");
 
-/** @type {boolean} */
 let hasFail = false;
 
 function parseEnvFile(filePath) {

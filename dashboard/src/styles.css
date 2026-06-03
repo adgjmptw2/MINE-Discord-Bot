@@ -1948,7 +1948,6 @@ img {
   }
 }
 
-/* 저장형 플레이리스트 (웹 리모컨) */
 .playlist-panel {
   display: flex;
   flex-direction: column;
@@ -2723,20 +2722,53 @@ img {
 
 .controls-status-block--compact {
   display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 0.5rem 0.75rem;
-  margin-bottom: 0.65rem;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  margin-bottom: 0.5rem;
 }
 
 .controls-status-block--compact .control-status {
-  flex: 1 1 12rem;
-  min-width: 0;
+  flex: 0 1 auto;
+  width: max-content;
+  max-width: 100%;
   margin-bottom: 0;
-  padding: 0.5rem 0.875rem;
-  font-size: 0.8rem;
-  height: auto;
-  min-height: 0;
+  padding: 0.28rem 0.6rem;
+  font-size: 0.78rem;
+  line-height: 1.25;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+}
+
+.controls-status-block--compact .control-status--blocked,
+.controls-status-block--compact .control-status--ready,
+.controls-status-block--compact .control-status--loading,
+.controls-status-block--compact .control-status--error {
+  padding: 0.28rem 0.6rem;
+}
+
+.controls-status-block--compact .control-status > p {
+  margin: 0;
+}
+
+.controls-status-block--compact .control-status-headline {
+  font-weight: 500;
+  font-size: inherit;
+}
+
+.controls-status-block--compact .control-status-voice {
+  margin: 0.15rem 0 0;
+  font-size: 0.75rem;
+}
+
+.controls-status-block--compact .control-status:has(.control-status-voice) {
+  display: block;
+  width: 100%;
+  flex: 1 1 100%;
+  border-radius: var(--radius-md);
+  padding: 0.4rem 0.65rem;
 }
 
 .controls-status-block--compact .autoplay-badge {

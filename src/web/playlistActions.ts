@@ -344,9 +344,7 @@ function refreshSoundroomPanelBestEffort(
       } else {
         await editSoundroomIdlePanel(client, guildId);
       }
-    } catch {
-      /* 패널 갱신 실패는 API 성공과 분리 */
-    }
+    } catch {}
   })();
 }
 
@@ -371,7 +369,6 @@ async function fetchRequesterMember(
   return member;
 }
 
-/** 대기열 추가 시 requester는 실행한 사용자(원본 owner 아님). */
 export async function addWebPlaylistTracksToSoundroomQueue(
   client: MineClient,
   guildId: string,
@@ -479,7 +476,6 @@ export async function addWebPlaylistTracksToSoundroomQueue(
 
   refreshSoundroomPanelBestEffort(client, guildId, player);
 
-  // 대기열 추가 성공 1회 = queue_add_count +1 (곡 수와 무관)
   incrementWebPlaylistQueueAddCount(playlist.id);
 
   return {
@@ -558,7 +554,6 @@ export function validatePlaylistResolutionNote(note: unknown): string {
   return n;
 }
 
-/** 신고는 운영자 확인용이며 자동 제재·숨김은 하지 않는다. */
 export function submitWebPlaylistReport(
   session: WebSession,
   client: MineClient,
@@ -633,7 +628,6 @@ export function completeWebPlaylistReport(
   }
 }
 
-/** 즐겨찾기는 개인 저장용이며 수정·삭제 권한을 주지 않는다. */
 function assertPublicFavoriteable(
   playlist: WebPlaylistRecord | null,
 ): WebPlaylistRecord {

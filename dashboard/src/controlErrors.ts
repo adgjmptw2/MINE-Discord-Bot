@@ -262,7 +262,6 @@ export function isPlaylistAdminRequired(err: unknown): boolean {
   return err instanceof ApiClientError && err.code === "PLAYLIST_ADMIN_REQUIRED";
 }
 
-/** 대기열 삭제: 음성·같은 채널·플레이어 연결 필요 (search/add보다 보수적). */
 export function getCanModifyQueue(
   soundroomConfigured: boolean,
   controlStatusLoading: boolean,

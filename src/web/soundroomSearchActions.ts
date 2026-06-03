@@ -98,9 +98,7 @@ function refreshSoundroomPanelBestEffort(
       } else {
         await editSoundroomIdlePanel(client, guildId);
       }
-    } catch {
-      /* 패널 갱신 실패는 API 성공과 분리 */
-    }
+    } catch {}
   };
   void run();
 }
@@ -204,7 +202,6 @@ async function fetchRequesterMember(
   return member;
 }
 
-/** Discord Soundroom 메시지 추가와 동일한 대기열·재생 정책 (채널 알림 없음). */
 async function enqueueSoundroomTrackForMember(
   client: MineClient,
   guildId: string,
@@ -339,7 +336,6 @@ export async function addSoundroomTrackFromWeb(
   return trackToAddedDto(addedTrack, user);
 }
 
-/** 저장형 플레이리스트 곡 추가용 단일 트랙 resolve (음성 채널 불필요). */
 export async function resolveSingleSoundroomTrackForWeb(
   client: MineClient,
   rawInput: string,

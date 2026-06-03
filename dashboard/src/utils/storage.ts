@@ -23,7 +23,6 @@ export function writeBooleanPreference(key: string, value: boolean): void {
   try {
     window.localStorage.setItem(key, value ? "true" : "false");
   } catch {
-    /* private 모드·용량 초과 등 */
   }
 }
 
@@ -45,7 +44,6 @@ export function writeStringPreference(key: string, value: string): void {
   try {
     window.localStorage.setItem(key, value);
   } catch {
-    /* private 모드·용량 초과 등 */
   }
 }
 

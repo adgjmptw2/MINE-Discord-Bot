@@ -154,6 +154,93 @@ export function getEnhanceSuccessFlavor(newLevel: number): string {
   return ENHANCE_SUCCESS_FLAVOR[L] ?? ENHANCE_SUCCESS_FLAVOR[1]!;
 }
 
+export const ENHANCE_FAIL_FLAVOR: readonly string[] = [
+  "검이 반응하지 않습니다.",
+  "아직 날이 설 준비가 안 됐습니다.",
+  "강화석이 튕겨 나갑니다.",
+  "미세한 균열이 생겼다가 아물었습니다.",
+  "검이 잠시 흔들렸지만 버텼습니다.",
+  "손에 전해지는 진동이 심상치 않습니다.",
+  "기운이 흩어졌습니다.",
+  "집중력이 흔들리며 강화가 무산됐습니다.",
+  "강화의 문턱을 넘지 못했습니다.",
+  "단단한 벽처럼 막혀 있습니다.",
+  "아쉽지만 이번엔 아닌 것 같습니다.",
+  "강화석이 힘없이 식어버렸습니다.",
+  "검이 거부하듯 기운을 밀어냈습니다.",
+  "고강화의 벽은 쉽게 허물어지지 않습니다.",
+  "한 발짝 앞에서 멈췄습니다.",
+  "강화의 문이 굳게 닫혔습니다.",
+  "이 구간은 원래 이렇습니다.",
+  "전설 직전의 마지막 저항입니다.",
+  "별빛이 손가락 사이로 빠져나갔습니다.",
+  "마지막 한 칸이 가장 멀리 있습니다.",
+  "",
+];
+
+export const ENHANCE_DOWNGRADE_FLAVOR: readonly string[] = [
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "검의 기운이 한 단계 후퇴했습니다.",
+  "날이 무뎌지는 소리가 났습니다.",
+  "이전 단계로 돌아갔습니다.",
+  "강화의 힘이 역류했습니다.",
+  "단단해지려다 오히려 부서졌습니다.",
+  "날카로움이 흐릿해졌습니다.",
+  "한 걸음 물러섰지만, 다시 나아갈 수 있습니다.",
+  "이 구간의 대가입니다.",
+  "물러섬이 다음 도약의 준비가 되길 바랍니다.",
+  "별빛이 한 단계 바래졌습니다.",
+  "전설까지의 길이 조금 더 길어졌습니다.",
+  "전설 직전의 가혹한 시련입니다.",
+  "별빛이 흐려졌지만, 아직 검은 살아있습니다.",
+  "한 걸음 물러서도 검의 가치는 변하지 않습니다.",
+  "",
+];
+
+export const ENHANCE_DESTROY_FLAVOR: readonly string[] = [
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "검이 산산이 부서졌습니다. +10으로 복구됩니다.",
+  "강화의 반동이 검을 삼켰습니다. +10으로 되돌아갑니다.",
+  "모든 것이 한순간에 사라졌습니다.",
+  "파괴의 순간은 항상 갑작스럽습니다.",
+  "부서진 파편 속에서 검은 다시 시작을 택했습니다.",
+  "별빛도, 불꽃도, 이 순간만큼은 사라졌습니다.",
+  "전설에 가까울수록 추락도 깊습니다.",
+  "여기까지 온 것만으로도 대단합니다.",
+  "파괴 방지권을 고려해 보세요.",
+  "",
+];
+
+export function getEnhanceFailFlavor(level: number): string {
+  const L = clampLevel(level);
+  return ENHANCE_FAIL_FLAVOR[L] ?? ENHANCE_FAIL_FLAVOR[0]!;
+}
+
+export function getEnhanceDowngradeFlavor(level: number): string {
+  const L = clampLevel(level);
+  return ENHANCE_DOWNGRADE_FLAVOR[L] ?? "";
+}
+
+export function getEnhanceDestroyFlavor(level: number): string {
+  const L = clampLevel(level);
+  return ENHANCE_DESTROY_FLAVOR[L] ?? "";
+}
+
 export function formatMySwordPanelDescription(level: number): string {
   const t = getSwordTier(level);
   const L = clampLevel(level);
@@ -171,6 +258,35 @@ export function formatEnhanceArrowCode(before: number, after: number): string {
 export function formatEnhanceKeepCode(level: number): string {
   const L = clampLevel(level);
   return `\`+${L} 유지\``;
+}
+
+export function formatDungeonNarrative(level: number): string {
+  const L = clampLevel(level);
+  if (L >= 20) {
+    return "전설의 검을 앞세워 던전의 최종 수호자를 단숨에 제압했습니다.";
+  }
+  if (L >= 18) {
+    return "별빛 검기가 보스의 방어를 꿰뚫었습니다.";
+  }
+  if (L >= 15) {
+    return "영웅의 검 앞에 수호 골렘이 무릎을 꿇었습니다.";
+  }
+  if (L >= 12) {
+    return "불길 검기로 서리 드래곤의 비늘을 뚫었습니다.";
+  }
+  if (L >= 10) {
+    return "빛나는 검으로 어둠의 기사를 물리쳤습니다.";
+  }
+  if (L >= 7) {
+    return "날카로운 검끝으로 숲의 정령을 제압했습니다.";
+  }
+  if (L >= 5) {
+    return "단련된 검으로 석굴 도적단을 해치웠습니다.";
+  }
+  if (L >= 3) {
+    return "흔들리지 않는 의지로 지하 고블린을 물리쳤습니다.";
+  }
+  return "낡은 검이지만 던전의 쥐떼를 물리쳤습니다.";
 }
 
 export function formatDungeonMoodLine(level: number): string {

@@ -4,7 +4,6 @@ import type {
   WebPlaylistSummaryDto,
 } from "../types";
 
-/** 서버 정렬 API 없이 현재 로드된 목록만 클라이언트에서 정렬한다. */
 export type PlaylistSortOption =
   | "updatedDesc"
   | "createdDesc"

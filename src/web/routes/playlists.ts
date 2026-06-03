@@ -310,7 +310,7 @@ function parsePlaylistRoute(pathname: string): PlaylistRoute | null {
   if (parts.length === 1 && parts[0] === "favorites") {
     return { kind: "favorites" };
   }
-  // "admin"이 playlist UUID로 해석되지 않도록 :id보다 먼저 매칭
+  // admin이 playlist :id로 해석되지 않도록 선매칭
   if (parts.length === 2 && parts[0] === "admin" && parts[1] === "public") {
     return { kind: "admin_public" };
   }
