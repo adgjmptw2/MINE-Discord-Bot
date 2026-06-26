@@ -12,6 +12,27 @@ export interface SoundroomPatchNote {
 
 export const SOUNDROOM_PATCH_NOTES: SoundroomPatchNote[] = [
   {
+    icon: "📚",
+    timestamp: "6월 27일 18:00",
+    title: "디스코드 플레이리스트 기본 탭 Public",
+    detail:
+      "Soundroom 패널에서 플레이리스트를 열면 내 플레이리스트 대신 공개 플레이리스트가 먼저 표시되도록 개선",
+  },
+  {
+    icon: "🔀",
+    timestamp: "6월 27일 17:00",
+    title: "웹·Discord 대기열 셔플",
+    detail:
+      "웹 리모컨과 Discord 대기열 패널에서 신청 곡 순서를 무작위로 섞을 수 있게 추가",
+  },
+  {
+    icon: "⏱️",
+    timestamp: "6월 27일 16:00",
+    title: "자동재생 6분 초과 곡 제외",
+    detail:
+      "재생 시간이 6분을 넘는 영상은 자동재생 후보에서 제외되도록 개선",
+  },
+  {
     icon: "📊",
     timestamp: "5월 28일 06:00",
     title: "플레이리스트 통계 표시 추가",
