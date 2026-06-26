@@ -334,7 +334,7 @@ export async function handleSoundroomPlaylistInteraction(
   const userId = interaction.user.id;
 
   if (customId === SR_PLAYLIST_OPEN_CUSTOM_ID) {
-    await showBrowser(interaction, userId, "mine", 0, true);
+    await showBrowser(interaction, userId, "public", 0, true);
     return true;
   }
 

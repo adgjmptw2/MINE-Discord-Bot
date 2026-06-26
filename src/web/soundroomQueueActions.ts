@@ -3,6 +3,7 @@ import { getPlayer } from "@/utils/commands";
 import {
   isSoundroomAutoplayTrack,
   setSoundroomQueueUserThenAutoplay,
+  shuffleSoundroomUserQueue,
   splitSoundroomQueue,
   syncAutoplayHintFromQueue,
   userSoundroomQueueEntries,
@@ -426,4 +427,34 @@ export function swapSoundroomQueueItemsFromWeb(
   refreshSoundroomPanelBestEffort(client, guildId, player);
 
   return { from: fromDto, to: toDto };
+}
+
+export function shuffleSoundroomQueueFromWeb(
+  client: MineClient,
+  guildId: string,
+): number {
+  const player = getPlayer(client, guildId);
+  if (!player) {
+    throw new SoundroomQueueActionError(
+      409,
+      "PLAYER_NOT_CONNECTED",
+      "봇이 음성 채널에 연결되어 있지 않습니다.",
+    );
+  }
+
+  const beforeCount = userSoundroomQueueEntries(player).length;
+  if (beforeCount < 2) {
+    throw new SoundroomQueueActionError(
+      400,
+      "QUEUE_SHUFFLE_TOO_SHORT",
+      "섞을 곡이 두 곡 이상 있어야 합니다.",
+    );
+  }
+
+  shuffleSoundroomUserQueue(player);
+  syncAutoplayHintFromQueue(guildId, player);
+  bumpSoundroomPanelRevision(guildId);
+  refreshSoundroomPanelBestEffort(client, guildId, player);
+
+  return beforeCount;
 }

@@ -27,6 +27,7 @@ import { handleSoundroomControl } from "@/web/routes/soundroomControls";
 import { handleSoundroomControlStatus } from "@/web/routes/soundroomControlStatus";
 import {
   handleSoundroomQueueRemove,
+  handleSoundroomQueueShuffle,
   handleSoundroomQueueSwap,
 } from "@/web/routes/soundroomQueue";
 import {
@@ -77,6 +78,9 @@ const AUTH_SOUNDROOM_QUEUE_REMOVE_PATH =
 
 const AUTH_SOUNDROOM_QUEUE_SWAP_PATH =
   /^\/api\/auth\/guilds\/(\d{17,20})\/soundroom\/queue\/swap\/?$/;
+
+const AUTH_SOUNDROOM_QUEUE_SHUFFLE_PATH =
+  /^\/api\/auth\/guilds\/(\d{17,20})\/soundroom\/queue\/shuffle\/?$/;
 
 function applyWebApiGuards(
   req: IncomingMessage,
@@ -288,6 +292,23 @@ async function handleRequest(
         res,
         client,
         authSoundroomQueueSwapMatch[1],
+      );
+      return;
+    }
+
+    const authSoundroomQueueShuffleMatch = pathname.match(
+      AUTH_SOUNDROOM_QUEUE_SHUFFLE_PATH,
+    );
+    if (authSoundroomQueueShuffleMatch) {
+      if (method !== "POST") {
+        sendMethodNotAllowed(res);
+        return;
+      }
+      await handleSoundroomQueueShuffle(
+        req,
+        res,
+        client,
+        authSoundroomQueueShuffleMatch[1],
       );
       return;
     }

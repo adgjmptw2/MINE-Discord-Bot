@@ -24,6 +24,7 @@ import {
 } from "@/utils/ephemeralCleanup";
 import {
   setSoundroomQueueUserThenAutoplay,
+  shuffleSoundroomUserQueue,
   splitSoundroomQueue,
   userSoundroomQueueEntries,
 } from "@/utils/soundroomAutoplay";
@@ -39,19 +40,6 @@ function userQueueLength(player: ExtendedPlayer): number {
 function reverseUserSoundroomQueue(player: ExtendedPlayer): void {
   const { user, autoplay } = splitSoundroomQueue(player);
   setSoundroomQueueUserThenAutoplay(player, [...user].reverse(), autoplay);
-}
-
-function shuffleUserSoundroomQueue(player: ExtendedPlayer): void {
-  const { user, autoplay } = splitSoundroomQueue(player);
-  const copy = [...user];
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const a = copy[i]!;
-    const b = copy[j]!;
-    copy[i] = b;
-    copy[j] = a;
-  }
-  setSoundroomQueueUserThenAutoplay(player, copy, autoplay);
 }
 
 function moveUserQueueTrackByGlobalIndex(
@@ -388,7 +376,7 @@ export async function handleSoundroomQueuePanelInteraction(
     } else if (kind === "rv") {
       reverseUserSoundroomQueue(player);
     } else if (kind === "sh") {
-      shuffleUserSoundroomQueue(player);
+      shuffleSoundroomUserQueue(player);
     } else if (kind === "rf") {
     } else {
       return false;

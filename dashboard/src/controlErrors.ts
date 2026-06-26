@@ -183,6 +183,15 @@ const QUEUE_SWAP_UI_MESSAGES: Record<string, string> = {
   SOUNDROOM_NOT_CONFIGURED: "이 서버에는 노래채널이 설정되어 있지 않습니다.",
 };
 
+const QUEUE_SHUFFLE_UI_MESSAGES: Record<string, string> = {
+  ...CSRF_UI_MESSAGES,
+  QUEUE_SHUFFLE_TOO_SHORT: "섞을 곡이 두 곡 이상 있어야 합니다.",
+  PLAYER_NOT_CONNECTED: "봇이 노래채널에 연결되어 있지 않습니다.",
+  USER_NOT_IN_VOICE_CHANNEL: "먼저 Discord 노래채널에 들어가 주세요.",
+  NOT_SAME_VOICE_CHANNEL: "봇과 같은 노래채널에서만 대기열을 섞을 수 있습니다.",
+  SOUNDROOM_NOT_CONFIGURED: "이 서버에는 노래채널이 설정되어 있지 않습니다.",
+};
+
 function mapQueueError(
   err: unknown,
   messages: Record<string, string>,
@@ -205,6 +214,10 @@ export function mapQueueRemoveError(err: unknown): string {
 
 export function mapQueueSwapError(err: unknown): string {
   return mapQueueError(err, QUEUE_SWAP_UI_MESSAGES);
+}
+
+export function mapQueueShuffleError(err: unknown): string {
+  return mapQueueError(err, QUEUE_SHUFFLE_UI_MESSAGES);
 }
 
 const PLAYLIST_UI_MESSAGES: Record<string, string> = {

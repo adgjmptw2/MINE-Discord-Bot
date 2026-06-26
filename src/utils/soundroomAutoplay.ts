@@ -219,6 +219,22 @@ export function countUserSoundroomQueue(player: ExtendedPlayer): number {
   return n;
 }
 
+export function shuffleSoundroomUserQueue(player: ExtendedPlayer): void {
+  const { user, autoplay } = splitSoundroomQueue(player);
+  if (user.length < 2) {
+    return;
+  }
+  const copy = [...user];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const a = copy[i]!;
+    const b = copy[j]!;
+    copy[i] = b;
+    copy[j] = a;
+  }
+  setSoundroomQueueUserThenAutoplay(player, copy, autoplay);
+}
+
 export function userSoundroomQueueEntries(
   player: ExtendedPlayer,
 ): { track: ExtendedTrack; queueIndex: number }[] {

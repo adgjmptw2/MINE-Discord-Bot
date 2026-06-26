@@ -60,6 +60,8 @@ const AUTH_SOUNDROOM_QUEUE_REMOVE_PATH =
   /^\/api\/auth\/guilds\/(\d{17,20})\/soundroom\/queue\/remove\/?$/;
 const AUTH_SOUNDROOM_QUEUE_SWAP_PATH =
   /^\/api\/auth\/guilds\/(\d{17,20})\/soundroom\/queue\/swap\/?$/;
+const AUTH_SOUNDROOM_QUEUE_SHUFFLE_PATH =
+  /^\/api\/auth\/guilds\/(\d{17,20})\/soundroom\/queue\/shuffle\/?$/;
 const AUTH_PLAYLIST_ADD_TO_QUEUE_PATH =
   /^\/api\/auth\/guilds\/(\d{17,20})\/soundroom\/playlists\/[^/]+\/add-to-queue\/?$/;
 const AUTH_PLAYLISTS_PATH = /^\/api\/auth\/playlists(\/|$)/;
@@ -135,7 +137,8 @@ export function resolveRateLimitBucket(
   }
   if (
     (AUTH_SOUNDROOM_QUEUE_REMOVE_PATH.test(pathname) ||
-      AUTH_SOUNDROOM_QUEUE_SWAP_PATH.test(pathname)) &&
+      AUTH_SOUNDROOM_QUEUE_SWAP_PATH.test(pathname) ||
+      AUTH_SOUNDROOM_QUEUE_SHUFFLE_PATH.test(pathname)) &&
     method === "POST"
   ) {
     return "queue";

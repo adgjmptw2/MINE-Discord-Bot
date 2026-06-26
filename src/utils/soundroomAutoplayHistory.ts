@@ -16,6 +16,17 @@ export type SoundroomAutoplayHistoryEntry = {
 
 const MAX_HISTORY_PER_GUILD = 20;
 
+/** 자동재생 후보로 허용하는 최대 재생 시간(초과 시 매칭 제외) */
+export const AUTOPLAY_MAX_DURATION_MS = 6 * 60 * 1000;
+
+export function isAutoplayDurationEligible(track: ExtendedTrack): boolean {
+  const length = track.info.length;
+  if (typeof length !== "number" || !Number.isFinite(length) || length <= 0) {
+    return true;
+  }
+  return length <= AUTOPLAY_MAX_DURATION_MS;
+}
+
 const soundroomAutoplayHistoryByGuild = new Map<
   string,
   SoundroomAutoplayHistoryEntry[]
@@ -122,6 +133,9 @@ export function scoreAutoplayCandidate(
   guildId: string,
   track: ExtendedTrack,
 ): number {
+  if (!isAutoplayDurationEligible(track)) {
+    return -1;
+  }
   if (isAutoplayCandidateDuplicate(guildId, track)) {
     return -1;
   }

@@ -133,6 +133,16 @@ export async function sendWebRemoteQueueSwapNotice(
   await sendWebRemoteNotice(client, guildId, actorUserId, actionText);
 }
 
+export async function sendWebRemoteQueueShuffleNotice(
+  client: MineClient,
+  guildId: string,
+  actorUserId: string,
+  shuffledCount: number,
+): Promise<void> {
+  const actionText = `대기열 ${shuffledCount}곡을 섞었습니다`;
+  await sendWebRemoteNotice(client, guildId, actorUserId, actionText);
+}
+
 // deprecated — sendWebRemoteQueueSwapNotice 사용
 export async function sendTemporarySoundroomQueueSwapNotice(
   client: MineClient,

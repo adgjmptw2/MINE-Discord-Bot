@@ -13,11 +13,13 @@ import {
 } from "@/web/soundroomControlAuth";
 import {
   sendWebRemoteNotice,
+  sendWebRemoteQueueShuffleNotice,
   sendWebRemoteQueueSwapNotice,
 } from "@/web/soundroomChannelNotice";
 import { buildWebRemoteQueueRemoveNotice } from "@/web/soundroomWebRemoteNotices";
 import {
   removeSoundroomQueueItemFromWeb,
+  shuffleSoundroomQueueFromWeb,
   SoundroomQueueActionError,
   swapSoundroomQueueItemsFromWeb,
   validateQueueRemoveRequest,
@@ -25,6 +27,7 @@ import {
 } from "@/web/soundroomQueueActions";
 import type {
   SoundroomQueueRemoveResponseDto,
+  SoundroomQueueShuffleResponseDto,
   SoundroomQueueSwapResponseDto,
 } from "@/web/types";
 import { log } from "@/utils/logger";
@@ -221,6 +224,78 @@ export async function handleSoundroomQueueSwap(
       500,
       "INTERNAL_ERROR",
       "대기열 순서를 변경하지 못했습니다.",
+    );
+  }
+}
+
+export async function handleSoundroomQueueShuffle(
+  req: IncomingMessage,
+  res: ServerResponse,
+  client: MineClient,
+  guildId: string,
+): Promise<void> {
+  if (!isWebDashboardAuthEnabled()) {
+    sendError(
+      res,
+      503,
+      "AUTH_DISABLED",
+      "웹 대시보드 로그인이 비활성화되어 있습니다.",
+    );
+    return;
+  }
+
+  if (!GUILD_ID_PATTERN.test(guildId)) {
+    sendError(res, 400, "INVALID_GUILD_ID", "잘못된 서버 ID입니다.");
+    return;
+  }
+
+  if (!requireAuthenticatedSessionWithCsrf(req, res)) {
+    return;
+  }
+
+  const access = await requireWebSoundroomQueueAccess(client, req, guildId);
+  if ("status" in access) {
+    sendAuthzFailure(res, access);
+    return;
+  }
+
+  try {
+    const shuffledCount = shuffleSoundroomQueueFromWeb(client, guildId);
+    const state = buildSoundroomGuildStateDto(client, guildId);
+    const response: SoundroomQueueShuffleResponseDto = {
+      ok: true,
+      shuffledCount,
+      state,
+    };
+
+    void sendWebRemoteQueueShuffleNotice(
+      client,
+      guildId,
+      access.session.user.id,
+      shuffledCount,
+    );
+
+    log(
+      "info",
+      "web",
+      `Soundroom queue shuffle guild=${guildId} user=${access.session.user.id} count=${shuffledCount}`,
+    );
+    sendJson(res, 200, response);
+  } catch (error) {
+    if (error instanceof SoundroomQueueActionError) {
+      sendError(res, error.status, error.code, error.message);
+      return;
+    }
+    log(
+      "warn",
+      "web",
+      `Soundroom queue shuffle failed guild=${guildId} user=${access.session.user.id}`,
+    );
+    sendError(
+      res,
+      500,
+      "INTERNAL_ERROR",
+      "대기열을 섞지 못했습니다.",
     );
   }
 }

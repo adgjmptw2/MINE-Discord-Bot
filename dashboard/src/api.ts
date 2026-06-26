@@ -14,6 +14,7 @@ import type {
   SoundroomQueueRemoveRequestDto,
   SoundroomQueueRemoveResponseDto,
   SoundroomQueueSwapRequestDto,
+  SoundroomQueueShuffleResponseDto,
   SoundroomQueueSwapResponseDto,
   SoundroomSearchResponseDto,
   WebPlaylistAddToQueueRequestDto,
@@ -329,6 +330,17 @@ export async function swapSoundroomQueueItems(
   return apiPost<SoundroomQueueSwapResponseDto>(
     `/api/auth/guilds/${encodeURIComponent(guildId)}/soundroom/queue/swap`,
     request,
+    { signal },
+  );
+}
+
+export async function shuffleSoundroomQueue(
+  guildId: string,
+  signal?: AbortSignal,
+): Promise<SoundroomQueueShuffleResponseDto> {
+  return apiPost<SoundroomQueueShuffleResponseDto>(
+    `/api/auth/guilds/${encodeURIComponent(guildId)}/soundroom/queue/shuffle`,
+    {},
     { signal },
   );
 }

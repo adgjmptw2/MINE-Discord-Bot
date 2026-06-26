@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { removeSoundroomQueueItem, swapSoundroomQueueItems } from "../api";
+import { removeSoundroomQueueItem, shuffleSoundroomQueue, swapSoundroomQueueItems } from "../api";
 import {
   isControlUnauthorized,
   isQueueItemChangedError,
   mapQueueRemoveError,
+  mapQueueShuffleError,
   mapQueueSwapError,
   QUEUE_ITEM_CHANGED_UI,
 } from "../controlErrors";
@@ -54,6 +55,7 @@ export function QueueList({
 }: QueueListProps) {
   const [removingIndex, setRemovingIndex] = useState<number | null>(null);
   const [swapPair, setSwapPair] = useState<SwapPair | null>(null);
+  const [shuffling, setShuffling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [queueConflict, setQueueConflict] = useState(false);
   const [refreshingConflict, setRefreshingConflict] = useState(false);
@@ -65,13 +67,15 @@ export function QueueList({
     guildIdRef.current = guildId;
     setRemovingIndex(null);
     setSwapPair(null);
+    setShuffling(false);
     setError(null);
     setQueueConflict(false);
     clearSuccess();
   }, [guildId, clearSuccess]);
 
-  const queueBusy = removingIndex != null || swapPair != null;
+  const queueBusy = removingIndex != null || swapPair != null || shuffling;
   const showMoveControls = canModifyQueue && queue.length >= 2;
+  const showShuffleControl = canModifyQueue && queue.length >= 2;
 
   const withUserAction = async (fn: () => Promise<void>) => {
     onUserActionStart?.();
@@ -178,6 +182,42 @@ export function QueueList({
     });
   };
 
+  const handleShuffle = async () => {
+    if (!canModifyQueue || queueBusy) {
+      return;
+    }
+
+    const gid = guildIdRef.current;
+    setShuffling(true);
+    setError(null);
+    setQueueConflict(false);
+
+    await withUserAction(async () => {
+      try {
+        const res = await shuffleSoundroomQueue(gid);
+        if (isStaleGuild(gid, guildIdRef.current)) {
+          return;
+        }
+        onStateChange(res.state);
+        showSuccess(
+          `대기열 ${res.shuffledCount}곡을 섞었습니다. 노래채널에 변경 안내가 잠시 표시됩니다.`,
+        );
+        onQueueChanged?.();
+      } catch (err) {
+        if (isStaleGuild(gid, guildIdRef.current)) {
+          return;
+        }
+        if (isControlUnauthorized(err)) {
+          onUnauthorized?.();
+          return;
+        }
+        setError(mapQueueShuffleError(err));
+      } finally {
+        setShuffling(false);
+      }
+    });
+  };
+
   const handleConflictRefresh = () => {
     if (!onRefreshPanel || refreshingConflict) {
       return;
@@ -210,7 +250,26 @@ export function QueueList({
   return (
     <div className="queue-panel">
       <div className="queue-summary-bar">
-        <span className="queue-summary-title">대기열 {queue.length}곡</span>
+        <div className="queue-summary-header">
+          <span className="queue-summary-title">대기열 {queue.length}곡</span>
+          {showShuffleControl ? (
+            <button
+              type="button"
+              className="btn btn-secondary btn-queue-shuffle"
+              disabled={queueBusy || shuffling}
+              title={
+                !canModifyQueue && disabledReason
+                  ? disabledReason
+                  : shuffling
+                    ? "섞는 중"
+                    : "대기열 순서를 무작위로 섞기"
+              }
+              onClick={() => void handleShuffle()}
+            >
+              {shuffling ? "섞는 중…" : "대기열 섞기"}
+            </button>
+          ) : null}
+        </div>
         <span className="queue-summary-hint muted">
           내가 추가한 곡은 삭제 가능 · 같은 노래채널이면 순서 변경 가능
         </span>

@@ -263,6 +263,12 @@ export interface SoundroomQueueSwapResponseDto {
   state: SoundroomGuildStateDto;
 }
 
+export interface SoundroomQueueShuffleResponseDto {
+  ok: true;
+  shuffledCount: number;
+  state: SoundroomGuildStateDto;
+}
+
 export type WebPlaylistVisibility = "private" | "public";
 
 export interface WebPlaylistSummaryDto {

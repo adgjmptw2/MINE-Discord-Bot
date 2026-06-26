@@ -1170,6 +1170,14 @@ img {
   border: 1px solid var(--border);
 }
 
+.queue-summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 .queue-summary-title {
   font-weight: 700;
   font-size: 0.9rem;
@@ -1337,6 +1345,13 @@ img {
   flex-shrink: 0;
   padding: 0.3rem 0.65rem;
   font-size: 0.8125rem;
+}
+
+.btn-queue-shuffle {
+  flex-shrink: 0;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.8125rem;
+  white-space: nowrap;
 }
 
 .queue-item--pending {
