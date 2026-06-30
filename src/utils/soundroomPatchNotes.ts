@@ -12,6 +12,13 @@ export interface SoundroomPatchNote {
 
 export const SOUNDROOM_PATCH_NOTES: SoundroomPatchNote[] = [
   {
+    icon: "💬",
+    timestamp: "6월 27일 20:00",
+    title: "상태 메시지 수정",
+    detail:
+      "봇 상태가 「마인 노래 봇 | /세팅」과 「N명과 함께하는 중 | /세팅」을 번갈아 표시하도록 개선",
+  },
+  {
     icon: "🔮",
     timestamp: "6월 27일 19:00",
     title: "운세 작성자 표시 추가",
