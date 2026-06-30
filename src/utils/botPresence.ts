@@ -1,5 +1,5 @@
 import { ActivityType } from "discord.js";
-import type { ExtendedPlayer, MineClient } from "@/types";
+import type { MineClient } from "@/types";
 
 const PRESENCE_SETTING = "마인 노래 봇 | /세팅";
 const PRESENCE_ROTATE_MS = 15_000;
@@ -7,51 +7,21 @@ const PRESENCE_ROTATE_MS = 15_000;
 let showTogetherActivity = false;
 let rotationTimer: NodeJS.Timeout | null = null;
 
-function iteratePlayers(client: MineClient): ExtendedPlayer[] {
-  const riffy = client.riffy as unknown as {
-    players?: Map<string, ExtendedPlayer>;
-  };
-  const map = riffy?.players;
-  if (!map) {
-    return [];
+function getEstimatedMemberCount(client: MineClient): number {
+  let total = 0;
+  for (const guild of client.guilds.cache.values()) {
+    total += guild.memberCount ?? 0;
   }
-  return [...map.values()];
-}
-
-function countActiveVoiceListeners(client: MineClient): number {
-  const botId = client.user?.id;
-  if (!botId) {
-    return 0;
-  }
-
-  let count = 0;
-  for (const player of iteratePlayers(client)) {
-    if (!player.voiceChannel) {
-      continue;
-    }
-    const guild = client.guilds.cache.get(player.guildId);
-    if (!guild) {
-      continue;
-    }
-    const ch = guild.channels.cache.get(String(player.voiceChannel));
-    if (!ch?.isVoiceBased() || !("members" in ch)) {
-      continue;
-    }
-    for (const member of ch.members.values()) {
-      if (member.id !== botId) {
-        count += 1;
-      }
-    }
-  }
-  return count;
+  return total;
 }
 
 function buildActivityName(client: MineClient): string {
   if (!showTogetherActivity) {
     return PRESENCE_SETTING;
   }
-  const listeners = countActiveVoiceListeners(client);
-  return `${listeners}명과 함께하는 중 | /세팅`;
+  const members = getEstimatedMemberCount(client);
+  const formatted = members.toLocaleString("ko-KR");
+  return `${formatted}명과 함께하는 중`;
 }
 
 export function refreshBotPresence(
