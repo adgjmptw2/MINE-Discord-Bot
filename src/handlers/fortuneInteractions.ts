@@ -238,7 +238,11 @@ async function sendPublicFortune(
     profile.gender,
     getKstDateString(),
   );
-  const fortunePanel = compactFortunePanelFields(f, profile.birthDate);
+  const basePanel = compactFortunePanelFields(f, profile.birthDate);
+  const fortunePanel = {
+    ...basePanel,
+    description: `<@${interaction.user.id}> · ${basePanel.description}`,
+  };
 
   await ch.send({
     flags: MessageFlags.IsComponentsV2,

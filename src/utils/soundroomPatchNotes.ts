@@ -12,6 +12,13 @@ export interface SoundroomPatchNote {
 
 export const SOUNDROOM_PATCH_NOTES: SoundroomPatchNote[] = [
   {
+    icon: "🔮",
+    timestamp: "6월 27일 19:00",
+    title: "운세 작성자 표시 추가",
+    detail:
+      "오늘운세 전체 공유 시 누구의 운세인지 멘션으로 표시하되 알림은 가지 않도록 개선",
+  },
+  {
     icon: "📚",
     timestamp: "6월 27일 18:00",
     title: "디스코드 플레이리스트 기본 탭 Public",
